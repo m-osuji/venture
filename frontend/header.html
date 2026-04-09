@@ -1,7 +1,7 @@
 <header>
-  <a href="#" onclick="loadPage('main_page.html')" id="home">Venture</a>
+  <h1 onclick="navigate('/')" style="cursor:pointer;" id="home">Venture</h1>
   <nav>
-    <a href="#" onclick="loadPage('tutorial.html')">Tutorial</a>
-    <a href="#" onclick="loadPage('game.html')">Play Game</a>
+    <a href="/tutorial" onclick="event.preventDefault(); navigate('/tutorial')">Tutorial</a>
+    <a href="/game" onclick="event.preventDefault(); navigate('/game')">Play Game</a>
   </nav>
 </header>

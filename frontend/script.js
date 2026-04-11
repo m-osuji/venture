@@ -8,8 +8,8 @@ fetch("footer.html")
 
 const routes = {
   "/": "home.html",
-  "/tutorial": "tutorial.html",
-  "/game": "game.html"
+  "/tutorial": "pages/tutorial.html",
+  "/game": "pages/game.html"
 };
 
 
@@ -20,10 +20,17 @@ function loadRoute(path) {
 
   const page = routes[path] || "home.html";
 
-  fetch(page)
-    .then(res => res.text())
+  fetch("/" + page)
+    .then(res => {
+      if (!res.ok) throw new Error("Page not found: " + page);
+      return res.text();
+    })
     .then(data => {
       document.getElementById("content").innerHTML = data;
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById("content").innerHTML = "<h2>404 - Page not found</h2>";
     });
 }
 

@@ -1,0 +1,1 @@
+# handles the capability, quiz-solving and personality of the AI opponent - all tied to the 'difficulty' of the opponent

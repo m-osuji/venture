@@ -1,6 +1,7 @@
 # handles the capability, quiz-solving and personality of the AI opponent - all tied to the 'difficulty' of the opponent
 
 from typing import List, Dict, Any
+from helpers.db_helpers import get_db_path
 
 
 AI_MODE_PERSONAS = {

@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 from ..helpers.db_helpers import get_db_path
 
 
+# TODO add person for each level - check w team/client if we want AI to emmulate a student or real businessman
 AI_MODE_PERSONAS = {
     'easy': '',
     'medium': '',
@@ -70,6 +71,34 @@ def get_persona(difficulty: str) -> str:
         raise ValueError(f'[knowledge_profile] Invalid difficulty level: {difficulty}. Choose from one of {list(AI_MODE_PERSONAS.keys())}.')
     
     return persona
+
+def build_knowledge_profile(difficulty: str) -> str:
+    """
+    Builds a knowledge profile starter prompt for the AI opponent based on the difficulty level.
+
+    Args:
+        difficulty (str): The difficulty level of the AI opponent ('easy', 'medium', 'hard').
+    Returns:
+        str: A string containing the prompt to be used for the Granite model.
+    """
+
+    persona = get_persona(difficulty)
+
+    system_prompt = f"""
+    You are an AI opponent in a market strategy game. Your role is to compete 
+    against the human player in a market simulation. Your decisions and actions
+    will be influenced by your persona, which is based on the chosen difficulty level.
+    Here is your persona description: {persona}.
+
+    Use this persona to inform your decision-making and strategy throughout the game.
+
+    Rules:
+    - Stay in character at all times based on the persona description.
+    - Make decisions that align with your persona's traits and tendencies.
+
+    """
+
+    return system_prompt
 
 if __name__ == "__main__":
     # example usage

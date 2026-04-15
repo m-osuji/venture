@@ -2,10 +2,10 @@ import sqlite3
 from helpers.db_helpers import get_db_path
 
 def seed_db_markets():
-    print("[seed_db] seeding the database with market data..")
+    print("[seed_db] Seeding the database with market data..")
     
     db_path = get_db_path()
-    print(f"[seed_db] connecting to database at: {db_path}")
+    print(f"[seed_db] Connecting to database at: {db_path}")
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -26,7 +26,7 @@ def seed_db_markets():
     # commit changes and close the connection
     conn.commit()
     conn.close()
-    print("[seed_db] database seeding complete! querying is now possible")
+    print("[seed_db] Database seeding complete! querying is now possible")
 
 if __name__ == "__main__":
     seed_db_markets()

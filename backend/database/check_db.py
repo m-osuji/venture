@@ -7,7 +7,7 @@ from helpers.db_helpers import get_db_path
 # # get list of all tables in the database
 # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
 # tables = cursor.fetchall()
-# print(f"[check_db] tables in db: {tables}")
+# print(f"[check_db] Tables in db: {tables}")
 
 # if tables:
 #     table_name = tables[0][0] # get the first table name from the list
@@ -29,7 +29,7 @@ cursor = conn.cursor()
 cursor.execute("PRAGMA table_info(Market);")
 columns = cursor.fetchall()
 
-print("schema for table 'Market':")
+print("[check_db] Schema for table 'Market':")
 for col in columns:
     print(f"- column name: {col[1]:<15} | data type: {col[2]}")
 

@@ -1,0 +1,1 @@
+# handles the negotiation logic for the AI opponent strategy

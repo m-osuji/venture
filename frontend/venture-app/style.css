@@ -6,6 +6,22 @@
     --main-grey: #434343;
     --heading-font: 'Playfair Display', serif;
     --content-font: 'Inter', sans-serif;
+    --second-heading-font: 'Raleway', sans-serif;
+}
+
+#loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--content-font);
+  font-size: 20px;
+  z-index: 999;
 }
 
 #loader {
@@ -27,8 +43,10 @@ body {
     margin: 0px;
 }
 
-body h1 {
-    padding: 80px;
+#header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 header {
@@ -100,4 +118,65 @@ footer nav a {
 footer nav p {
     margin: 0px;
     color: var(--main-grey);
+}
+
+/*Tutorial page side navigation*/
+#scroll-indicator {
+    position: fixed;
+    left: 30px;
+    top: 150px;
+    height: 70vh;
+    width: 20px;
+    transition: transform 0.1s linear;
+}
+
+#scroll-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 100%;
+    background: #ddd;
+}
+
+#scroll-progress {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 0%;
+    background: var(--main-orange);
+    transition: height 0.1s linear;
+}
+
+#scroll-ball {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: var(--main-orange);
+    border-radius: 50%;
+}
+
+.marker {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--main-grey);
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+#tutorial-text {
+    padding: 100px;
+    font-family: var(--content-font);
+    color: var(--main-grey);
+}
+
+#tutorial-text p {
+    font-family: var(--content-font);
+    font-weight: 300;
 }

@@ -1,4 +1,5 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
+console.log("hello");
 
 // Define the game configuration
 const config = {

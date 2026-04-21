@@ -113,6 +113,7 @@ function initScrollIndicator() {
 }
 
 // Asynch to load all page elements at the same time, less jumpy
+let currentGameModule = null;
 async function loadRoute(path) {
   if (path === "/index.html") path = "/";
 
@@ -124,6 +125,16 @@ async function loadRoute(path) {
 
     const data = await res.text();
     document.getElementById("content").innerHTML = data;
+
+    if (path === "/game") {
+      currentGameModule = await import("/board.js");
+      currentGameModule.startGame();
+    } else {
+      if (currentGameModule) {
+        currentGameModule.stopGame();
+        currentGameModule = null;
+      }
+    }
 
     initScrollIndicator();
 

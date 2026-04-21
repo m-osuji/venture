@@ -180,3 +180,13 @@ footer nav p {
     font-family: var(--content-font);
     font-weight: 300;
 }
+
+/*Game Page*/
+#board-container canvas {
+  pointer-events: auto;
+}
+
+#board-container {
+  display: flex;
+  justify-content: center;
+}

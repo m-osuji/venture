@@ -1,17 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport">
-    <title>Game Board</title>
-    <link rel="stylesheet" href="../style.css">
-</head>
-
-<body>
-    <div id="board-container" style="width: 800px; height: 600px; margin: 0 auto;">
-        <!-- Game board rendered by Phaser -->
-    </div>
-</body>
-
-</html>
+<div id="board-container" style="margin: 0 auto;">
+    <!-- Game board rendered by Phaser -->
+</div>
+<div id="leaderboard-container">
+  <button id="leaderboard-toggle"></button>
+  <div id="leaderboard-panel" class="hidden">
+    <h3>Leaderboard</h3>
+    <ul id="leaderboard-list">
+      <!-- Filled dynamically -->
+    </ul>
+  </div>
+</div>

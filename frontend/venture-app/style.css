@@ -187,6 +187,43 @@ footer nav p {
 }
 
 #board-container {
+  width: 100%;
+  height: 140vh;
+  overflow: hidden;
+  margin: 0px;
+}
+
+/*Leaderboard button*/
+#leaderboard-container {
+  position: absolute;
+  top: 160px;
+  right: 20px;
+  z-index: 2000;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0px;
+}
+
+#leaderboard-toggle {
+  padding: 10px 15px;
+  cursor: pointer;
+  background-image: url("images/open_button.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 75px;
+  height: 60px;
+}
+
+#leaderboard-panel {
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.hidden {
+    display: none;
 }

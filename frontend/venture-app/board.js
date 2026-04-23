@@ -4,8 +4,8 @@ console.log("hello");
 // Define the game configuration
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 1280,
+    height: 910,
     parent: 'board-container',
     scene: {
         preload: preload,
@@ -24,7 +24,7 @@ function preload() {
 
 // Create the map
 function create() {
-    this.add.image(400, 300, 'Game Board');
+    this.add.image(400, 200, 'Game Board');
 }
 
 // Update the game loop

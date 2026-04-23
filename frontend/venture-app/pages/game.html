@@ -9,8 +9,22 @@
 </head>
 
 <body>
-    <div id="board-container" style="width: 1280px; height: 910px; margin: 0 auto;">
+    <div id="board-container" style="margin: 0 auto;">
         <!-- Game board rendered by Phaser -->
+        <button id="leaderboard-button" type="button" class="leaderboard-button">Leaderboard</button>
+        <div id="leaderboard-overlay" class="leaderboard-overlay" style="display: none;">
+            <div class="leaderboard-dialog">
+                <button type="button" class="leaderboard-close" aria-label="Close leaderboard">×</button>
+                <h2>Leaderboard</h2>
+                <div class="leaderboard-content">
+                    <ol>
+                        <li>John M — 2500</li>
+                        <li>Leon K — 1900</li>
+                        <li>Luis S — 1700</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 

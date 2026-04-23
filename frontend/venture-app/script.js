@@ -1,4 +1,3 @@
-
 // Loads all index.html features at the same time
 async function init() {
   try {
@@ -129,6 +128,7 @@ async function loadRoute(path) {
     if (path === "/game") {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
+      //initLeaderboard();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();

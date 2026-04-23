@@ -14,6 +14,8 @@ export function startGame() {
         return;
     }
 
+    initLeaderboardUI(container);
+
     // Define the game configuration
     const config = {
         type: Phaser.AUTO,
@@ -55,8 +57,29 @@ export function stopGame() {
     }
 }
 
-// Create a Phaser game instance
-//const game = new Phaser.Game(config);
+function initLeaderboardUI(container) {
+    const button = document.getElementById('leaderboard-button');
+    const overlay = document.getElementById('leaderboard-overlay');
+
+    if (!button || !overlay) return;
+
+    container.style.position = container.style.position || 'relative';
+
+    button.addEventListener('click', () => {
+        overlay.style.display = 'flex';
+    });
+
+    const closeButton = overlay.querySelector('.leaderboard-close');
+    closeButton.addEventListener('click', () => {
+        overlay.style.display = 'none';
+    });
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            overlay.style.display = 'none';
+        }
+    });
+}
 
 // Preload assets
 function preload() {

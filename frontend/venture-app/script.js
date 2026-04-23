@@ -1,4 +1,3 @@
-
 // Loads all index.html features at the same time
 async function init() {
   try {
@@ -112,30 +111,6 @@ function initScrollIndicator() {
   });
 }
 
-//Leaderboard loading
-function initLeaderboard() {
-  const button = document.getElementById("leaderboard-toggle");
-  const panel = document.getElementById("leaderboard-panel");
-  const list = document.getElementById("leaderboard-list");
-
-  if (!button) return;
-
-  button.onclick = () => {
-    panel.classList.toggle("hidden");
-  };
-
-  // Example dummy data
-  const data = [
-    { name: "Alice", score: 120 },
-    { name: "Bob", score: 95 },
-    { name: "You", score: 80 }
-  ];
-
-  list.innerHTML = data
-    .map(player => `<li>${player.name}: ${player.score}</li>`)
-    .join("");
-}
-
 // Asynch to load all page elements at the same time, less jumpy
 let currentGameModule = null;
 async function loadRoute(path) {
@@ -153,7 +128,7 @@ async function loadRoute(path) {
     if (path === "/game") {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
-      initLeaderboard();
+      //initLeaderboard();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();

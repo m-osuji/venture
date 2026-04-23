@@ -1,12 +1,31 @@
-<div id="board-container" style="margin: 0 auto;">
-    <!-- Game board rendered by Phaser -->
-</div>
-<div id="leaderboard-container">
-  <button id="leaderboard-toggle"></button>
-  <div id="leaderboard-panel" class="hidden">
-    <h3>Leaderboard</h3>
-    <ul id="leaderboard-list">
-      <!-- Filled dynamically -->
-    </ul>
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport">
+    <title>Venture - Play Game</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+    <div id="board-container" style="margin: 0 auto;">
+        <!-- Game board rendered by Phaser -->
+        <button id="leaderboard-button" type="button" class="leaderboard-button">Leaderboard</button>
+        <div id="leaderboard-overlay" class="leaderboard-overlay" style="display: none;">
+            <div class="leaderboard-dialog">
+                <button type="button" class="leaderboard-close" aria-label="Close leaderboard">×</button>
+                <h2>Leaderboard</h2>
+                <div class="leaderboard-content">
+                    <ol>
+                        <li>John M — 2500</li>
+                        <li>Leon K — 1900</li>
+                        <li>Luis S — 1700</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

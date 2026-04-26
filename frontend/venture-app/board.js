@@ -15,6 +15,7 @@ export function startGame() {
     }
 
     initLeaderboardUI(container);
+    initTerritoryUI(container);
 
     // Define the game configuration
     const config = {
@@ -81,6 +82,30 @@ function initLeaderboardUI(container) {
     });
 }
 
+function initTerritoryUI(container) {
+    const button = document.getElementById('territory-button');
+    const overlay = document.getElementById('territory-overlay');
+
+    if (!button || !overlay) return;
+
+    container.style.position = container.style.position || 'relative';
+
+    button.addEventListener('click', () => {
+        overlay.style.display = 'flex';
+    });
+
+    const closeButton = overlay.querySelector('.territory-close');
+    closeButton.addEventListener('click', () => {
+        overlay.style.display = 'none';
+    });
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            overlay.style.display = 'none';
+        }
+    });
+}
+
 // Preload assets
 function preload() {
     this.load.image('board', '/images/game_board.png');
@@ -103,7 +128,7 @@ function create() {
 
         const scaleX = width / board.width;
         const scaleY = height / board.height;
-        const scale = Math.min(scaleX, scaleY);
+        const scale = Math.max(scaleX, scaleY);
 
         board.setScale(scale);
     };

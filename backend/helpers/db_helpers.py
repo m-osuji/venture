@@ -1,7 +1,9 @@
+""""
+Helper functions for database interactions.
+"""
 from pathlib import Path
 
 import sqlite3
-from typing import Any
 
 ROOT_DIR = Path(__file__).parent.parent.resolve()
 DB_PATH = ROOT_DIR / 'database' / 'db.db'
@@ -18,6 +20,7 @@ def get_db_path() -> str:
 def fetch_all_markets() -> list[dict]:
     """
     Fetches all market records from the database and returns them as a list of dictionaries.
+    
     Returns:
         list[dict]: A list of dictionaries, each representing a market record
     """

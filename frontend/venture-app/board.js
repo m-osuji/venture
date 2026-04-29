@@ -1,29 +1,152 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
-// Define the game configuration
-const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    parent: 'board-container',
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
+let game = null;
+
+export function startGame() {
+    // Prevent multiple instances
+    if (game) return;
+
+    const container = document.getElementById('board-container');
+
+    // Safety check (important for SPA routing)
+    if (!container) {
+        console.warn("No #board-container found. Phaser not started.");
+        return;
     }
-};
 
-// Create a Phaser game instance
-const game = new Phaser.Game(config);
+    initLeaderboardUI(container);
+    initTerritoryUI(container);
+
+    // Define the game configuration
+    const config = {
+        type: Phaser.AUTO,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        parent: container,
+        backgroundColor: '#ffffff',
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+        input: {
+            mouse: {
+                target: document.getElementById('board-container')
+            },
+            touch: {
+                target: document.getElementById('board-container')
+            }
+        },
+        scene: {
+            preload,
+            create,
+            update
+        }
+    };
+
+    setTimeout(() => {
+        game = new Phaser.Game(config);
+    }, 50);
+    console.log("Phaser game started");
+}
+
+// Called when leaving /game
+export function stopGame() {
+    if (game) {
+        game.destroy(true); // true = remove canvas from DOM
+        game = null;
+        console.log("Phaser game destroyed");
+    }
+}
+
+function initLeaderboardUI(container) {
+    const button = document.getElementById('leaderboard-button');
+    const overlay = document.getElementById('leaderboard-overlay');
+
+    if (!button || !overlay) return;
+
+    container.style.position = container.style.position || 'relative';
+
+    button.addEventListener('click', () => {
+        overlay.style.display = 'flex';
+    });
+
+    const closeButton = overlay.querySelector('.leaderboard-close');
+    closeButton.addEventListener('click', () => {
+        overlay.style.display = 'none';
+    });
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            overlay.style.display = 'none';
+        }
+    });
+}
+
+function initTerritoryUI(container) {
+    const button = document.getElementById('territory-button');
+    const overlay = document.getElementById('territory-overlay');
+
+    if (!button || !overlay) return;
+
+    container.style.position = container.style.position || 'relative';
+
+    button.addEventListener('click', () => {
+        overlay.style.display = 'flex';
+    });
+
+    const closeButton = overlay.querySelector('.territory-close');
+    closeButton.addEventListener('click', () => {
+        overlay.style.display = 'none';
+    });
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            overlay.style.display = 'none';
+        }
+    });
+}
 
 // Preload assets
 function preload() {
-    this.load.image('Game Board', 'images/game_board.png');
+    this.load.image('board', '/images/game_board.png');
+    this.load.on('filecomplete-image-board', () => {
+        console.log('Board image loaded successfully');
+    });
+    this.load.on('loaderror', (file) => {
+        console.error('FAILED TO LOAD:', file.src);
+    });
 }
 
 // Create the map
 function create() {
-    this.add.image(400, 300, 'Game Board');
+    const board = this.add.image(0, 0, 'board');
+
+    const resize = (width, height) => {
+        console.log("Resizing to:", width, height);
+
+        board.setPosition(width / 2, height / 2);
+
+        const scaleX = width / board.width;
+        const scaleY = height / board.height;
+        const scale = Math.max(scaleX, scaleY);
+
+        board.setScale(scale);
+    };
+
+    resize(this.scale.width, this.scale.height);
+
+    this.scale.on('resize', (gameSize) => {
+        resize(gameSize.width, gameSize.height);
+    });
+
+    // Scroll fix
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+        window.scrollBy(0, deltaY);
+    });
+
+    this.input.on('pointerdown', (pointer) => {
+        console.log(`Clicked at: ${pointer.x}, ${pointer.y}`);
+    });
 }
 
 // Update the game loop

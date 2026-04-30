@@ -435,3 +435,71 @@ footer nav p {
 .territory-close:hover {
   filter: brightness(1.05);
 }
+
+/*AI opponent and chat*/
+#AI-container {
+    position: fixed;
+    bottom: 40px;
+    left: 20px;
+    z-index: 40;
+
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    gap: 16px;
+}
+
+#AI-bubble {
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    gap: 10px;
+}
+
+#AI {
+    width: auto;
+    max-height: 120px;
+}
+
+#AI-text {
+    background: var(--main-beige);
+    border-radius: 22px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    color: var(--main-grey);
+    font-family: var(--content-font);
+    max-width: 50vw;
+    margin: 0px;
+}
+
+#AI-confirm {
+    background: var(--main-blue);
+    color: white;
+    font-family: var(--content-font);
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    height: min-content;
+}
+
+#stage-progresser {
+    position: fixed;
+    bottom: 40px;
+    left: 89vw;
+    z-index: 40;
+    background: var(--main-blue);
+    color: white;
+    font-family: var(--content-font);
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}

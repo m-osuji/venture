@@ -26,12 +26,91 @@ const routes = {
   "/game": "pages/game.html"
 };
 
+let scrollHandlerAttached = false;
+
 function initScrollIndicator() {
+  // Tutorial page navigation bar to be above the footer
   const indicator = document.getElementById("scroll-indicator");
   const progress = document.getElementById("scroll-progress");
   const ball = document.getElementById("scroll-ball");
   const markersContainer = document.getElementById("scroll-markers");
   const sections = document.querySelectorAll("#content h2");
+
+  // Game page for the AI opponent to be above the footer
+  const footer = document.getElementById("footer");
+
+  // Always attach scroll logic once but keep doing it for game and tutorial
+  if (!scrollHandlerAttached && footer) {
+    window.addEventListener("scroll", () => {
+      const footerRect = footer.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      // How much space we want from edges
+      const margin = 20;
+
+      // Where fixed elements would sit
+      const fixedBottom = viewportHeight - margin;
+
+      // Check collision with footer
+      const isColliding = footerRect.top < fixedBottom;
+
+      // Get AI dynamically (important for SPA navigation)
+      const opponent = document.getElementById("AI-container");
+
+      // Logic to make AI opponent stay above footer      
+      if (opponent) {
+        // Footer position relative to viewport
+        const footerTop = footer.getBoundingClientRect().top;
+        // Max allowed bottom so it doesn't overlap footer
+        const maxBottom = window.innerHeight - footerTop + margin;
+
+        if (footerTop < window.innerHeight) {
+          // Make fixed onto page above footer instead of below
+          opponent.style.position = "fixed";
+          opponent.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          opponent.style.top = "auto";
+        } else {
+          // Normal fixed at bottom of page
+          opponent.style.position = "fixed";
+          opponent.style.bottom = `${margin}px`;
+          opponent.style.top = "auto";
+        }
+      }
+
+      // Tutorial page navigation bar above footer, same logic as above
+      const indicator = document.getElementById("scroll-indicator");
+      if (indicator) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop + margin;
+        if (footerTop < window.innerHeight) {
+          indicator.style.position = "fixed";
+          indicator.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          indicator.style.top = "auto";
+        } else {
+          indicator.style.position = "fixed";
+          indicator.style.bottom = `${margin}px`;
+          indicator.style.top = "auto";
+        }
+      }
+
+      const textbox = document.getElementById("stage-progresser");
+      if (textbox) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop + margin;
+        if (footerTop < window.innerHeight) {
+          textbox.style.position = "fixed";
+          textbox.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          textbox.style.top = "auto";
+        } else {
+          textbox.style.position = "fixed";
+          textbox.style.bottom = `${margin}px`;
+          textbox.style.top = "auto";
+        }
+      }
+    });
+
+    scrollHandlerAttached = true;
+  }
 
   if (!indicator || !markersContainer || sections.length === 0) return;
 
@@ -51,8 +130,6 @@ function initScrollIndicator() {
 
     const docHeight = document.body.scrollHeight - window.innerHeight;
     const indicatorHeight = indicator.offsetHeight;
-
-    const footer = document.getElementById("footer");
 
     // Adding each marker
     sections.forEach(section => {
@@ -80,7 +157,7 @@ function initScrollIndicator() {
     });
 
     // Scrolling updates the page navigation bar
-    window.onscroll = () => {
+    window.addEventListener("scroll", () => {
       const scrollTop = window.scrollY;
       const docHeight = document.body.scrollHeight - window.innerHeight;
       const indicatorHeight = indicator.offsetHeight;
@@ -93,21 +170,7 @@ function initScrollIndicator() {
 
       progress.style.height = `${y}px`;
       ball.style.transform = `translate(-50%, -50%) translateY(${y}px)`;
-
-      // So there is no footer overlap
-      const footerRect = footer.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-
-      // How much the footer overlaps into the viewport
-      const overlap = Math.max(0, viewportHeight - footerRect.top);
-
-      if (overlap > 0) {
-        // Push indicator up smoothly
-        indicator.style.transform = `translateY(-${overlap}px)`;
-      } else {
-        indicator.style.transform = `translateY(0)`;
-      }
-    };
+    });
   });
 }
 
@@ -129,6 +192,7 @@ async function loadRoute(path) {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
       //initLeaderboard();
+      initAIInteraction();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();
@@ -137,10 +201,39 @@ async function loadRoute(path) {
     }
 
     initScrollIndicator();
+    // Needed to actually link the scroll event when reloaded
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+    });
 
   } catch {
     document.getElementById("content").innerHTML = "<h2>404 - Page not found</h2>";
   }
+}
+
+// AI image controller
+function initAIInteraction() {
+  const button = document.getElementById("AI-confirm");
+  const text = document.getElementById("AI-text");
+  const aiImage = document.getElementById("AI");
+
+  if (!button || !text || !aiImage) return;
+
+  button.addEventListener("click", () => {
+    text.classList.add("fade-out");
+    button.classList.add("fade-out");
+
+    setTimeout(() => {
+      // Hide text and button
+      text.style.display = "none";
+      button.style.display = "none";
+    }, 300);
+
+    // Change AI image
+    aiImage.src = "../images/AI_happy.png";
+  });
 }
 
 // File navigation, did not like js navigate function, now uses global

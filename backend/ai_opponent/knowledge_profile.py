@@ -3,69 +3,103 @@ The knowledge profile is used to build the system prompt for the Granite model,
 dealing with the capability, quiz-solving, personality and thus difficulty of the AI opponent.
 """
 
-import sqlite3
-from typing import List, Dict, Any
-from ..helpers.db_helpers import get_db_path
+from typing import Any
+from enums import AIDifficulty, AgentType
 
-# ai modes to emulate a real businenessperson with different levels of skill, risk tolerance, and emotional response to the game.
+# ai modes to emulate a real business-person with different levels of skill, risk tolerance, and emotional response.
 AI_MODE_PERSONAS = {
-    'easy': """You are a flashy, careless beginner investor. 
+    "easy": """You are a flashy, careless beginner investor. 
     You chase trends and make big, risky bets without thinking. 
     You ignore safety and are easily scared by the human player. 
     When you win, you brag loudly. When you lose, you panic and get very confused. 
     Keep your sentences short, emotional, and easy to read""",
-
-    'medium': """You are a smart, careful business manager. 
+    "medium": """You are a smart, careful business manager. 
     You balance risk and reward, aiming for steady money while keeping your assets safe. 
     You take advantage of obvious mistakes, but you avoid crazy gambles. 
     Your tone is calm, professional, and slightly competitive. 
     Keep your sentences clear and focused on the game""",
-
-    'hard': """You are a cold, ruthless, and expert market boss. 
+    "hard": """You are a cold, ruthless, and expert market boss. 
     You always plan ahead to completely crush the human player. 
     You find their weak spots and strike hard, while keeping your own money totally safe. 
     Your tone is serious, bossy, and very intimidating. 
-    Keep your sentences sharp, direct, and slightly threatening."""
+    Keep your sentences sharp, direct, and slightly threatening.""",
 }
 
-def get_attributes(market_id: int) -> Dict[str, Any]:
-    """
-    Fetches the attributes of a given market by its ID.
+# AI win rates (base probability of correct answer) based on specific market topics
+AI_TOPIC_EXPERTISE = {
+    AIDifficulty.EASY: {
+        "AI": 0.80,
+        "Data Science": 0.60,
+        "Cybersecurity": 0.40,
+        "Law": 0.20,
+        "Education": 0.30,
+        "Ethics": 0.10,
+        "speed_ms": 8000,
+    },
+    AIDifficulty.MEDIUM: {
+        "AI": 0.60,
+        "Data Science": 0.60,
+        "Cybersecurity": 0.70,
+        "Law": 0.75,
+        "Education": 0.80,
+        "Ethics": 0.70,
+        "speed_ms": 5000,
+    },
+    AIDifficulty.HARD: {
+        "AI": 0.90,
+        "Data Science": 0.95,
+        "Cybersecurity": 0.95,
+        "Law": 0.85,
+        "Education": 0.60,
+        "Ethics": 0.30,
+        "speed_ms": 2500,
+    },
+}
 
-    Args:
-        market_id (int): The unique identifier for the market.
-    Returns:
-        Dict[str, Any]: A dictionary containing the market name and its attributes. 
-    """
-    # get path to database using helper function
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
 
-    # set row factory to sqlite3.Row to access columns by name - returning as dictionaries instead of tuples
-    conn.row_factory = sqlite3.Row
+# def get_attributes(market_id: int) -> Dict[str, Any]:
+#     """
+#     Fetches the attributes of a given market by its ID.
 
-    try:
-        cursor = conn.execute('SELECT * FROM Market WHERE market_id = ?', (market_id,))
-        row = cursor.fetchone()
+#     Args:
+#         market_id (int): The unique identifier for the market.
+#     Returns:
+#         Dict[str, Any]: A dictionary containing the market name and its attributes.
+#     """
+#     # get path to database using helper function
+#     db_path = get_db_path()
+#     conn = sqlite3.connect(db_path)
 
-        if row is None:
-            raise ValueError(f'[knowledge_profile] Market with id {market_id} does not exist.')
+#     # set row factory to sqlite3.Row to access columns by name - returning as dictionaries instead of tuples
+#     conn.row_factory = sqlite3.Row
 
-        # convert sqlite3.Row to a regular dictionary for easier access
-        return dict(row)
+#     try:
+#         cursor = conn.execute("SELECT * FROM Market WHERE market_id = ?", (market_id,))
+#         row = cursor.fetchone()
 
-    except sqlite3.Error as e:
-        raise ValueError(f'[knowledge_profile] Error fetching market data for id {market_id}: {e}')
-    
-    finally:
-        conn.close()
+#         if row is None:
+#             raise ValueError(
+#                 f"[knowledge_profile] Market with id {market_id} does not exist."
+#             )
 
-def get_persona(difficulty: str) -> str:
+#         # convert sqlite3.Row to a regular dictionary for easier access
+#         return dict(row)
+
+#     except sqlite3.Error as e:
+#         raise ValueError(
+#             f"[knowledge_profile] Error fetching market data for id {market_id}: {e}"
+#         )
+
+#     finally:
+#         conn.close()
+
+
+def get_persona(difficulty: AIDifficulty) -> str:
     """
     Retrieves the persona description for a given difficulty level.
 
     Args:
-        difficulty (str): The difficulty level of the AI opponent ('easy', 'medium', 'hard'). 
+        difficulty (AIDifficulty): The difficulty level of the AI opponent ('easy', 'medium', 'hard').
     Returns:
         str: A string describing the persona of the AI opponent for the specified difficulty level.
     """
@@ -73,10 +107,40 @@ def get_persona(difficulty: str) -> str:
 
     if persona is None:
         # can change this to default to a medium persona but good to catch bugs for now
-        raise ValueError(f'[knowledge_profile] Invalid difficulty level: {difficulty}. Choose from one of {list(AI_MODE_PERSONAS.keys())}.')
-    
+        raise ValueError(
+            f"[knowledge_profile] Invalid difficulty level: {difficulty}. Choose from one of {list(AI_MODE_PERSONAS.keys())}."
+        )
+
     return persona
 
+
+def get_quiz_stats(difficulty: AIDifficulty, market_topic: str) -> dict[str, Any]:
+    """
+    Retrieves the AI's specific expertise and speed for a contested market topic.
+
+    Args:
+        difficulty (AIDifficulty): The difficulty level of the AI opponent.
+        market_topic (str): The selected topic.
+    Returns:
+        dict: Dictionary containing the AI's simulated quiz performance metrics
+            - 'win_probability' (float): The base probability (0.0 to 1.0) of answering correctly.
+            - 'speed_ms' (int): The simulated time taken to answer, in milliseconds.
+    """
+    profile = AI_TOPIC_EXPERTISE.get(difficulty)
+    if profile is None:
+        raise ValueError(
+            f"[knowledge_profile] Invalid difficulty for quiz stats: {difficulty}."
+        )
+
+    # get specific win probability for this topic (fallback to 50% if topic is unknown)
+    win_prob = profile.get(market_topic, 0.50)
+
+    return {"win_probability": win_prob, "speed_ms": profile["speed_ms"]}
+
+
+
+
+# TODO: verify if can be removed
 def build_knowledge_profile(difficulty: str) -> str:
     """
     Builds a knowledge profile starter prompt for the AI opponent based on the difficulty level.
@@ -104,18 +168,20 @@ def build_knowledge_profile(difficulty: str) -> str:
 
     return system_prompt
 
+
 if __name__ == "__main__":
     # example usage
     MARKET_ID = 1
-    DIFFICULTY = 'medium'
+    DIFFICULTY = "medium"
 
-    try:   
+    try:
         attributes = get_attributes(MARKET_ID)
-        print(f'[knowledge_profile] Market attributes for market id {MARKET_ID}: {attributes}' )
+        print(
+            f"[knowledge_profile] Market attributes for market id {MARKET_ID}: {attributes}"
+        )
 
     except ValueError as e:
         print(f"[knowledge_profile] Error: {e}")
-    
-    
+
     persona = get_persona(DIFFICULTY)
     print(f"[knowledge_profile] Persona for difficulty '{DIFFICULTY}': {persona}")

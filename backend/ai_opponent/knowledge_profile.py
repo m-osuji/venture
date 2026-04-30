@@ -1,4 +1,7 @@
-# handles the capability, quiz-solving and personality of the AI opponent - all tied to the 'difficulty' of the opponent
+"""
+The knowledge profile is used to build the system prompt for the Granite model,
+dealing with the capability, quiz-solving, personality and thus difficulty of the AI opponent.
+"""
 
 import sqlite3
 from typing import List, Dict, Any

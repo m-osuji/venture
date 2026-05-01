@@ -137,12 +137,13 @@ def get_quiz_stats(difficulty: AIDifficulty, market_topic: str) -> dict[str, Any
 
     return {"win_probability": win_prob, "speed_ms": profile["speed_ms"]}
 
+
 def build_system_prompt(
     agent_type: AgentType,
     difficulty: AIDifficulty,
     agent_context: dict[str, Any],
     current_stage: GameStage,
-    event_context: str = ""
+    event_context: str = "",
 ) -> str:
     """
     Builds a targeted system prompt based on which agent is being used and the current game stage.
@@ -161,6 +162,7 @@ def build_system_prompt(
     funds = agent_context.get("ip", 0)
     markets = [m.get("name", "Unknown") for m in agent_context.get("owned_markets", [])]
 
+    # stub - will populate with expected format when we have a confirmed input/output expectation from the agents
     EXAMPLE_JSON = """
     EXPECTED JSON FORMAT:
     {
@@ -263,14 +265,14 @@ if __name__ == "__main__":
     print("\n[knowledge_profile] Testing decison maker (plan stage)...")
     mock_context = {
         "ip": 25,
-        "owned_markets": [{"name": "AI"}, {"name": "Data Science"}]
+        "owned_markets": [{"name": "Healthcare"}, {"name": "Cybersecurity"}],
     }
-    
+
     plan_prompt = build_system_prompt(
         agent_type=AgentType.DECISION_MAKER,
         difficulty=AIDifficulty.MEDIUM,
         agent_context=mock_context,
-        current_stage=GameStage.PLAN
+        current_stage=GameStage.PLAN,
     )
     print(plan_prompt)
 
@@ -281,6 +283,6 @@ if __name__ == "__main__":
         difficulty=AIDifficulty.HARD,
         agent_context=mock_context,
         current_stage=GameStage.ORDERS,
-        event_context="You promised Team Blue that you would not attack the AI market."
+        event_context="You promised Team Blue that you would not attack the Healthcare market.",
     )
     print(orders_prompt)

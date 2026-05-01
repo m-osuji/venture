@@ -64,6 +64,17 @@ def _team_entry(state, team_id):
     return next(team for team in state["teams"] if team["team_id"] == team_id)
 
 
+def _perfect_answers(questions):
+    return [
+        {
+            "question_id": question["question_id"],
+            "selected_option": question["answer"],
+            "response_time_ms": 1000 + (index * 250),
+        }
+        for index, question in enumerate(questions)
+    ]
+
+
 def test_plan_stage_requires_all_team_notes(monkeypatch):
     state = _build_state(monkeypatch)
 
@@ -140,6 +151,96 @@ def test_prepare_resolution_applies_defend_and_builds_conflicts(monkeypatch):
     assert _team_entry(state, 2)["ip"] == 2
     assert len(state["turn_log"]["pending_research"]) == 1
     assert state["turn_log"]["conflicts"][0]["market_id"] == 2
+    assert len(state["turn_log"]["active_quizzes"]) == 1
+    assert state["turn_log"]["active_quizzes"][0]["quiz_topic"] == "Cybersecurity"
+
+
+def test_submit_quiz_results_resolves_conflicts_via_turn_log(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    _team_entry(state, 1)["ip"] = 4
+    _team_entry(state, 2)["ip"] = 4
+
+    gph.submit_plan_notes(state, 1, "attack")
+    gph.submit_plan_notes(state, 2, "hold")
+    gph.advance_stage(state)
+    gph.advance_stage(state)
+
+    gph.submit_actual_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 2,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_actual_moves(state, 2, [])
+    gph.advance_stage(state)
+
+    quiz = state["turn_log"]["active_quizzes"][0]
+    gph.submit_quiz_results(
+        state,
+        2,
+        [
+            {
+                "team_id": 1,
+                "answers": _perfect_answers(quiz["questions"]),
+            },
+            {
+                "team_id": 2,
+                "answers": [],
+            },
+        ],
+    )
+
+    gph.advance_stage(state)
+
+    assert state["current_stage"] == GameStage.UPDATE
+    assert state["market_state"]["2"]["owner"] == 1
+    assert state["turn_log"]["resolution_applied"] is True
+    assert state["turn_log"]["quiz_results"]["2"]["market_id"] == 2
+    assert state["turn_log"]["resolution_outcomes"][0]["winner_team_id"] == 1
+
+
+def test_frontend_state_exposes_public_quiz_payload_only(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    _team_entry(state, 1)["ip"] = 4
+    _team_entry(state, 2)["ip"] = 4
+
+    gph.submit_plan_notes(state, 1, "attack")
+    gph.submit_plan_notes(state, 2, "hold")
+    gph.advance_stage(state)
+    gph.advance_stage(state)
+    gph.submit_actual_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 2,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_actual_moves(state, 2, [])
+    gph.advance_stage(state)
+
+    frontend_state = gph.get_frontend_state(state)
+    public_question = frontend_state["active_quizzes"][0]["questions"][0]
+
+    assert frontend_state["active_quizzes"][0]["market_id"] == 2
+    assert "answer" not in public_question
+    assert public_question["options"]["option_1"]
 
 
 def test_resolution_and_round_update_apply_income_research_and_synergy(monkeypatch):

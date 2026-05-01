@@ -16,6 +16,7 @@ from backend.enums import GameStage, SessionStatus
 
 from backend.helpers.db_helpers import fetch_all_markets
 from backend.helpers.db_helpers import fetch_all
+from backend.helpers import quiz_helpers
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -177,6 +178,9 @@ def _empty_turn_log() -> dict[str, Any]:
         "actual_moves": {},
         "prepared_moves": {},
         "conflicts": [],
+        "active_quizzes": [],
+        "quiz_results": {},
+        "resolution_outcomes": [],
         "pending_research": [],
         "negotiation_log": [],
         "resolution_applied": False,
@@ -257,6 +261,119 @@ def submit_actual_moves(
     return game_state
 
 
+def start_resolution_quizzes(
+    game_state: dict[str, Any], used_question_ids: list[int] | None = None
+) -> dict[str, Any]:
+    """
+    Build and store internal quiz payloads for the conflicts prepared this round.
+    """
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    conflicts = turn_log.get("conflicts", []) or []
+
+    if not conflicts:
+        turn_log["active_quizzes"] = []
+        return game_state
+
+    turn_log["active_quizzes"] = quiz_helpers.build_quizzes_for_pending_conflicts(
+        game_state,
+        used_question_ids=used_question_ids,
+    )
+    return game_state
+
+
+def submit_quiz_results(
+    game_state: dict[str, Any], market_id: int, team_results: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """
+    Store quiz answers or score summaries for one conflict during the RESOLVE stage.
+    """
+    _require_stage(game_state, GameStage.RESOLVE)
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    quiz = _get_active_quiz(turn_log, market_id)
+    participant_team_ids = {int(team_id) for team_id in quiz.get("participant_team_ids", [])}
+    time_limit_ms = int(quiz.get("time_limit_ms", 30_000))
+
+    normalised_results: list[dict[str, Any]] = []
+    for raw_result in team_results:
+        if raw_result.get("team_id") is None:
+            raise ValueError(
+                f"[gameplay_helpers] Quiz result for market {market_id} is missing team_id."
+            )
+
+        team_id = int(raw_result["team_id"])
+        if team_id not in participant_team_ids:
+            raise ValueError(
+                f"[gameplay_helpers] Team {team_id} is not a participant in quiz market {market_id}."
+            )
+
+        normalised_result = deepcopy(raw_result)
+        normalised_result["team_id"] = team_id
+
+        if not normalised_result.get("questions"):
+            normalised_result["questions"] = deepcopy(quiz.get("questions", []))
+
+        if "answers" in normalised_result and normalised_result["answers"] is not None:
+            normalised_result["answers"] = [
+                {
+                    "question_id": int(answer["question_id"]),
+                    "selected_option": answer.get("selected_option"),
+                    "response_time_ms": int(answer.get("response_time_ms", time_limit_ms)),
+                }
+                for answer in normalised_result["answers"]
+                if answer.get("question_id") is not None
+            ]
+
+        if "total_response_time_ms" in normalised_result:
+            normalised_result["total_response_time_ms"] = int(
+                normalised_result["total_response_time_ms"]
+            )
+
+        normalised_results.append(normalised_result)
+
+    turn_log.setdefault("quiz_results", {})[str(int(market_id))] = {
+        "market_id": int(market_id),
+        "team_results": normalised_results,
+    }
+    return game_state
+
+
+def resolve_pending_quizzes(game_state: dict[str, Any], force: bool = False) -> dict[str, Any]:
+    """
+    Resolve stored quiz results into market outcomes and apply them to the game state.
+    """
+    _require_stage(game_state, GameStage.RESOLVE)
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    active_quizzes = turn_log.get("active_quizzes", []) or []
+
+    if not active_quizzes:
+        turn_log["resolution_outcomes"] = []
+        if not turn_log.get("conflicts"):
+            turn_log["resolution_applied"] = True
+        return game_state
+
+    missing_results = _missing_quiz_results(game_state)
+    if missing_results and not force:
+        raise ValueError(
+            f"[gameplay_helpers] Cannot resolve quizzes; missing quiz results for markets {missing_results}."
+        )
+
+    quiz_results = list((turn_log.get("quiz_results") or {}).values())
+    if force:
+        recorded_market_ids = {int(result["market_id"]) for result in quiz_results}
+        for quiz in active_quizzes:
+            market_id = int(quiz["market_id"])
+            if market_id in recorded_market_ids:
+                continue
+            quiz_results.append({"market_id": market_id, "team_results": []})
+
+    outcomes = quiz_helpers.build_resolution_outcomes_from_quiz(game_state, quiz_results)
+    turn_log["resolution_outcomes"] = outcomes
+    apply_resolution_outcomes(game_state, outcomes)
+    return game_state
+
+
 def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, Any]:
     """
     Advance the global game state to the next round stage.
@@ -296,12 +413,24 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
         return game_state
 
     if current_stage == GameStage.RESOLVE:
+        missing_quiz_results = _missing_quiz_results(game_state)
+        if (
+            game_state.get("turn_log", {}).get("conflicts")
+            and not game_state.get("turn_log", {}).get("resolution_applied", False)
+            and (not missing_quiz_results or force)
+        ):
+            resolve_pending_quizzes(game_state, force=force)
+
         unresolved = [
             conflict
             for conflict in game_state.get("turn_log", {}).get("conflicts", [])
             if conflict.get("status") != "resolved"
         ]
         if unresolved and not force:
+            if missing_quiz_results:
+                raise ValueError(
+                    f"[gameplay_helpers] Cannot leave RESOLVE stage; missing quiz results for markets {missing_quiz_results}."
+                )
             unresolved_ids = [int(conflict["market_id"]) for conflict in unresolved]
             raise ValueError(
                 f"[gameplay_helpers] Cannot leave RESOLVE stage; unresolved conflicts remain for markets {unresolved_ids}."
@@ -326,6 +455,9 @@ def prepare_resolution_state(game_state: dict[str, Any]) -> dict[str, Any]:
 
     turn_log["prepared_moves"] = {}
     turn_log["conflicts"] = []
+    turn_log["active_quizzes"] = []
+    turn_log["quiz_results"] = {}
+    turn_log["resolution_outcomes"] = []
     turn_log["pending_research"] = []
     turn_log["resolution_applied"] = False
     turn_log["decisions_confirmed"] = False
@@ -391,6 +523,7 @@ def prepare_resolution_state(game_state: dict[str, Any]) -> dict[str, Any]:
         state["contested"] = True
         state["supporting_teams"] = list(conflict["attacker_team_ids"])
 
+    start_resolution_quizzes(game_state)
     return game_state
 
 
@@ -501,6 +634,17 @@ def _missing_submissions(game_state: dict[str, Any], field_name: str) -> list[in
     ]
 
 
+def _missing_quiz_results(game_state: dict[str, Any]) -> list[int]:
+    turn_log = game_state.get("turn_log", {}) or {}
+    active_quizzes = turn_log.get("active_quizzes", []) or []
+    recorded_results = turn_log.get("quiz_results", {}) or {}
+    return [
+        int(quiz["market_id"])
+        for quiz in active_quizzes
+        if str(int(quiz["market_id"])) not in recorded_results
+    ]
+
+
 def _normalise_moves(moves: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not moves:
         return []
@@ -531,6 +675,16 @@ def _market_entry(game_state: dict[str, Any], market_id: int) -> dict[str, Any]:
         return game_state["market_state"][str(int(market_id))]
     except KeyError as exc:
         raise ValueError(f"[gameplay_helpers] Unknown market_id {market_id}.") from exc
+
+
+def _get_active_quiz(turn_log: dict[str, Any], market_id: int) -> dict[str, Any]:
+    target_market_id = int(market_id)
+    for quiz in turn_log.get("active_quizzes", []) or []:
+        if int(quiz["market_id"]) == target_market_id:
+            return quiz
+    raise ValueError(
+        f"[gameplay_helpers] No active quiz exists for market {target_market_id}."
+    )
 
 
 def _reset_resolution_fields(game_state: dict[str, Any]) -> None:
@@ -1178,6 +1332,15 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
         },
         "leaderboard": _build_leaderboard(game_state),
         "active_synergies": game_state.get("active_synergies", []),
+        "active_quizzes": [
+            quiz_helpers.to_public_quiz_payload(quiz)
+            for quiz in (game_state.get("turn_log", {}).get("active_quizzes") or [])
+        ],
+        "quiz_results_submitted_markets": sorted(
+            int(market_id)
+            for market_id in (game_state.get("turn_log", {}).get("quiz_results") or {}).keys()
+        ),
+        "resolution_outcomes": game_state.get("turn_log", {}).get("resolution_outcomes", []),
         "alliances": [
             {
                 "alliance_id": a["alliance_id"],

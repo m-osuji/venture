@@ -4,21 +4,21 @@ dealing with the capability, quiz-solving, personality and thus difficulty of th
 """
 
 from typing import Any
-from enums import AIDifficulty, AgentType
+from ..enums import AIDifficulty, AgentType, GameStage
 
 # ai modes to emulate a real business-person with different levels of skill, risk tolerance, and emotional response.
 AI_MODE_PERSONAS = {
-    "easy": """You are a flashy, careless beginner investor. 
+    AIDifficulty.EASY: """You are a flashy, careless beginner investor. 
     You chase trends and make big, risky bets without thinking. 
     You ignore safety and are easily scared by the human player. 
     When you win, you brag loudly. When you lose, you panic and get very confused. 
     Keep your sentences short, emotional, and easy to read""",
-    "medium": """You are a smart, careful business manager. 
+    AIDifficulty.MEDIUM: """You are a smart, careful business manager. 
     You balance risk and reward, aiming for steady money while keeping your assets safe. 
     You take advantage of obvious mistakes, but you avoid crazy gambles. 
     Your tone is calm, professional, and slightly competitive. 
     Keep your sentences clear and focused on the game""",
-    "hard": """You are a cold, ruthless, and expert market boss. 
+    AIDifficulty.HARD: """You are a cold, ruthless, and expert market boss. 
     You always plan ahead to completely crush the human player. 
     You find their weak spots and strike hard, while keeping your own money totally safe. 
     Your tone is serious, bossy, and very intimidating. 
@@ -137,51 +137,150 @@ def get_quiz_stats(difficulty: AIDifficulty, market_topic: str) -> dict[str, Any
 
     return {"win_probability": win_prob, "speed_ms": profile["speed_ms"]}
 
-
-
-
-# TODO: verify if can be removed
-def build_knowledge_profile(difficulty: str) -> str:
+def build_system_prompt(
+    agent_type: AgentType,
+    difficulty: AIDifficulty,
+    agent_context: dict[str, Any],
+    current_stage: GameStage,
+    event_context: str = ""
+) -> str:
     """
-    Builds a knowledge profile starter prompt for the AI opponent based on the difficulty level.
+    Builds a targeted system prompt based on which agent is being used and the current game stage.
 
     Args:
-        difficulty (str): The difficulty level of the AI opponent ('easy', 'medium', 'hard').
+        agent_type (AgentType): Decision Maker, Commentator, or Negotiator.
+        difficulty (AIDifficulty): Easy, Medium, or Hard.
+        agent_context (dict[str, Any]): The live game state sliced for this specific player.
+        current_stage (GameStage): The exact current phase of the game.
+        event_context (str, optional): Recent game events or negotiation notes.
+
     Returns:
-        str: A string containing the prompt to be used for the Granite model.
+        str: The fully formatted system prompt for Granite/Mellea.
     """
     persona = get_persona(difficulty)
+    funds = agent_context.get("ip", 0)
+    markets = [m.get("name", "Unknown") for m in agent_context.get("owned_markets", [])]
 
-    system_prompt = f"""
-    You are an AI opponent in a market strategy game. Your role is to compete 
-    against the human player in a market simulation. Your decisions and actions
-    will be influenced by your persona, which is based on the chosen difficulty level.
-    Here is your persona description: {persona}.
-
-    Use this persona to inform your decision-making and strategy throughout the game.
-
-    Rules:
-    - Stay in character at all times based on the persona description.
-    - Make decisions that align with your persona's traits and tendencies.
-
+    EXAMPLE_JSON = """
+    EXPECTED JSON FORMAT:
+    {
+    "orders": [
+        {"action": "attack", "market": "ExampleMarket", "ip": 10}
+      ]
+    }
     """
 
-    return system_prompt
+    prompt_lines = [
+        persona,
+        "\n--- CURRENT GAME STATE ---",
+        f"You currently have {funds} Influence Points (IP) to spend.",
+        f"You control the following markets: {', '.join(markets) if markets else 'None'}.",
+        "--------------------------\n",
+    ]
+
+    if agent_type == AgentType.DECISION_MAKER:
+        # pass 1: drafting notes for the Plan stage
+        if current_stage == GameStage.PLAN:
+            prompt_lines.append(
+                f"TASK: You are currently in the {current_stage.name} stage.\n"
+                "Analyse the board and formulate your INITIAL INTENDED moves (Attack, Defend, or Research).\n"
+                "These moves are not yet binding, but will form your strategy going into negotiations.\n"
+                f"{EXAMPLE_JSON}"
+                "CRITICAL: You must output your decision strictly as a JSON object so the game engine can parse it. "
+                "Do not include conversational text."
+            )
+        # pass 2: locking in decisions for the Orders stage (checking for betrayal)
+        else:
+            prompt_lines.append(
+                f"TASK: You are locking in your final moves for the ORDERS stage.\n"
+                f"NEGOTIATION NOTES / RECENT AGREEMENTS: {event_context}\n"
+                "Based on the board state and the negotiations that just occurred, decide your final, binding moves.\n"
+                "Consider your persona: will you honor your agreements to maintain your Ethical Score, or betray them for strategic gain?\n"
+                f"{EXAMPLE_JSON}"
+                "CRITICAL: You must output your decision strictly as a JSON object so the game engine can parse it. "
+                "Do not include conversational text."
+            )
+
+    elif agent_type == AgentType.NEGOTIATOR:
+        prompt_lines.append(
+            f"TASK: You are currently in the {current_stage.name} stage.\n"
+            f"BOARD CONTEXT / RECENT EVENTS: {event_context}\n"
+            "Your goal is to propose an alliance, make a threat, or negotiate a trade with the human players.\n"
+            "Consider your persona's risk tolerance, your current market ownership, and your intended moves.\n"
+            "Keep your message concise, conversational, and directly address the other teams."
+        )
+
+    elif agent_type == AgentType.COMMENTATOR:
+        prompt_lines.append(
+            f"TASK: You are observing the game during the {current_stage.name} stage.\n"
+            f"RECENT EVENT: {event_context}\n"
+            "Provide a short, in-character taunt, remark, or reaction to this event. "
+            "Keep it under 100 words and reference the specific market, stage, or teams involved."
+        )
+
+    else:
+        # error checking in case of mistype
+        raise ValueError(f"[knowledge_profile] Unknown agent_type: {agent_type}.")
+
+    return "\n".join(prompt_lines)
+
+
+# def build_knowledge_profile(difficulty: AIDifficulty) -> str:
+#     """
+#     Builds a knowledge profile starter prompt for the AI opponent based on the difficulty level.
+
+#     Args:
+#         difficulty (str): The difficulty level of the AI opponent ('easy', 'medium', 'hard').
+#     Returns:
+#         str: A string containing the prompt to be used for the Granite model.
+#     """
+#     persona = get_persona(difficulty)
+
+#     system_prompt = f"""
+#     You are an AI opponent in a market strategy game. Your role is to compete 
+#     against the human player in a market simulation. Your decisions and actions
+#     will be influenced by your persona, which is based on the chosen difficulty level.
+#     Here is your persona description: {persona}.
+
+#     Use this persona to inform your decision-making and strategy throughout the game.
+
+#     Rules:
+#     - Stay in character at all times based on the persona description.
+#     - Make decisions that align with your persona's traits and tendencies.
+
+#     """
+
+#     return system_prompt
 
 
 if __name__ == "__main__":
-    # example usage
-    MARKET_ID = 1
-    DIFFICULTY = "medium"
+    print("[knowledge_profile] Testing quiz stats...")
 
-    try:
-        attributes = get_attributes(MARKET_ID)
-        print(
-            f"[knowledge_profile] Market attributes for market id {MARKET_ID}: {attributes}"
-        )
+    stats = get_quiz_stats(AIDifficulty.HARD, "Cybersecurity")
+    print(f"> Hard AI on Cybersecurity: {stats}")
 
-    except ValueError as e:
-        print(f"[knowledge_profile] Error: {e}")
+    # test prompt factory (decision maker in PLAN stage)
+    print("\n[knowledge_profile] Testing decison maker (plan stage)...")
+    mock_context = {
+        "ip": 25,
+        "owned_markets": [{"name": "AI"}, {"name": "Data Science"}]
+    }
+    
+    plan_prompt = build_system_prompt(
+        agent_type=AgentType.DECISION_MAKER,
+        difficulty=AIDifficulty.MEDIUM,
+        agent_context=mock_context,
+        current_stage=GameStage.PLAN
+    )
+    print(plan_prompt)
 
-    persona = get_persona(DIFFICULTY)
-    print(f"[knowledge_profile] Persona for difficulty '{DIFFICULTY}': {persona}")
+    # test prompt factory (decision maker in Orders stage with betrayal context)
+    print("\n[knowledge_profile] Testing decison maker (orders stage)...")
+    orders_prompt = build_system_prompt(
+        agent_type=AgentType.DECISION_MAKER,
+        difficulty=AIDifficulty.HARD,
+        agent_context=mock_context,
+        current_stage=GameStage.ORDERS,
+        event_context="You promised Team Blue that you would not attack the AI market."
+    )
+    print(orders_prompt)

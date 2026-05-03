@@ -15,7 +15,10 @@
             <h3>Current Stage: </h3>
             <p>Planning</p>
             <div id="stage-indicator">
-                <div id="stage-line"></div>
+                <div class="stage-line" data-stage="0"></div>
+                <div class="stage-line" data-stage="1"></div>
+                <div class="stage-line" data-stage="2"></div>
+                <div class="stage-line" data-stage="3"></div>
                 <div class="stage-dot" data-stage="0"></div>
                 <div class="stage-dot" data-stage="1"></div>
                 <div class="stage-dot" data-stage="2"></div>
@@ -37,7 +40,7 @@
                 </div>
             </div>
         </div>
-        <button id="territory-button" type="button" class="territory-button">Cybersecurity</button>
+        <button id="territory-button" type="button" class="territory-button" data-adjusted-position-left="1975" data-adjusted-position-top="2600">Cybersecurity</button>
         <div id="territory-overlay" class="territory-overlay" style="display: none;">
             <div class="territory-dialog">
                 <button type="button" class="territory-close" aria-label="Close territory info">×</button>

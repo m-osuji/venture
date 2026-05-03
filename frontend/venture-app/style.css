@@ -237,13 +237,35 @@ footer nav p {
   justify-content: space-between;
 }
 
-#stage-line {
+.stage-line {
   position: absolute;
-  left: 8px;
-  right: 8px;
   height: 2px;
   background: #ddd;
   z-index: 1;
+}
+
+.stage-line:nth-child(1) {
+  left: 8px;
+  right: 75%;
+}
+
+.stage-line:nth-child(2) {
+  left: 25%;
+  right: 50%;
+}
+
+.stage-line:nth-child(3) {
+  left: 50%;
+  right: 25%;
+}
+
+.stage-line:nth-child(4) {
+  left: 75%;
+  right: 8px;
+}
+
+.stage-line.active {
+  background: var(--main-orange);
 }
 
 .stage-dot {
@@ -255,10 +277,6 @@ footer nav p {
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s ease;
-}
-
-.stage-dot:hover {
-  background: #bbb;
 }
 
 .stage-dot.active {
@@ -353,8 +371,6 @@ footer nav p {
 /* Territory info popup inside the game window */
 .territory-button {
   position: absolute;
-  top: 250px;
-  left: 220px;
   z-index: 40;
   padding: 10px 16px;
   font-family: var(--content-font);
@@ -468,6 +484,7 @@ footer nav p {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     color: var(--main-grey);
     font-family: var(--content-font);
+    font-size: 14px;
     max-width: 50vw;
     margin: 0px;
 }
@@ -476,6 +493,7 @@ footer nav p {
     background: var(--main-blue);
     color: white;
     font-family: var(--content-font);
+    font-size: 16px;
     padding: 10px 16px;
     border: none;
     border-radius: 10px;
@@ -486,12 +504,13 @@ footer nav p {
 
 #stage-progresser {
     position: fixed;
-    bottom: 40px;
-    left: 89vw;
+    bottom: 16px;
+    right: 16px;
     z-index: 40;
-    background: var(--main-blue);
+    background: var(--main-orange);
     color: white;
     font-family: var(--content-font);
+    font-size: 16px;
     padding: 10px 16px;
     border: none;
     border-radius: 10px;

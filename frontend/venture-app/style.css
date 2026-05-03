@@ -468,7 +468,7 @@ footer nav p {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     color: var(--main-grey);
     font-family: var(--content-font);
-    max-width: 50vw;
+    max-width: 65vw;
     margin: 0px;
 }
 

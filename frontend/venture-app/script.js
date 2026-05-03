@@ -232,7 +232,7 @@ function initAIInteraction() {
     }, 300);
 
     // Change AI image
-    aiImage.src = "../images/AI_happy.png";
+    aiImage.src = "../images/AI_happy.png"; 
   });
 }
 

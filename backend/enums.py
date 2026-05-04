@@ -1,11 +1,9 @@
 from enum import Enum, IntEnum
 
-
 class GameStage(IntEnum):
     """
     Enum allowing for strict ordering of game stages.
     """
-
     PLAN = 1
     NEGOTIATE = 2
     ORDERS = 3

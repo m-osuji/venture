@@ -1,3 +1,6 @@
+"""
+Helper functions for database interactions.
+"""
 from pathlib import Path
 import sqlite3
 
@@ -13,10 +16,16 @@ def get_db_path() -> str:
     """
     return str(DB_PATH)
 
-
 def fetch_all(query: str, params: tuple = ()) -> list[sqlite3.Row]:
     """
-    Execute a SQL query and return all rows as sqlite3.Row objects.
+    Executes a SQL query and returns all results as a list of sqlite3.Row objects.
+
+    Args:
+        query (str): The SQL query to execute.
+        params (tuple): Optional parameters to pass.
+
+    Returns:
+        list[sqlite3.Row]: List of rows returned by the query.
     """
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
@@ -30,7 +39,10 @@ def fetch_all(query: str, params: tuple = ()) -> list[sqlite3.Row]:
 
 def fetch_all_markets() -> list[dict]:
     """
-    Fetch every market record from the database as dictionaries.
+    Fetches all market records from the database and returns them as a list of dictionaries.
+
+    Returns:
+        list[dict]: A list of dictionaries, each representing a market record.
     """
     rows = fetch_all("SELECT * FROM Market")
     return [dict(row) for row in rows]

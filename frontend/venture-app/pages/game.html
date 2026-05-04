@@ -1,1 +1,54 @@
-<h2>Game</h2>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport">
+    <title>Venture - Play Game</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+    <div id="board-container" style="margin: 0 auto;">
+        <!-- Game board rendered by Phaser -->
+        <div id="current-stage-display" class="current-stage-display">
+            <h3>Current Stage: </h3>
+            <p>Planning</p>
+            <div id="stage-indicator">
+                <div id="stage-line"></div>
+                <div class="stage-dot" data-stage="0"></div>
+                <div class="stage-dot" data-stage="1"></div>
+                <div class="stage-dot" data-stage="2"></div>
+                <div class="stage-dot" data-stage="3"></div>
+                <div class="stage-dot" data-stage="4"></div>
+            </div>
+        </div>
+        <button id="leaderboard-button" type="button" class="leaderboard-button">Leaderboard</button>
+        <div id="leaderboard-overlay" class="leaderboard-overlay" style="display: none;">
+            <div class="leaderboard-dialog">
+                <button type="button" class="leaderboard-close" aria-label="Close leaderboard">×</button>
+                <h3>Leaderboard</h3>
+                <div class="leaderboard-content">
+                    <ol>
+                        <li>John M - 2500 - 11</li>
+                        <li>Leon K - 1900 - 7</li>
+                        <li>Luis S - 1700 - 3</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        <button id="territory-button" type="button" class="territory-button">Cybersecurity</button>
+        <div id="territory-overlay" class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Cybersecurity Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -76,8 +76,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 import sqlite3
 
-from ...helpers.db_helpers import get_db_path
-from .. import knowledge_profile
+from helpers.db_helpers import get_db_path
+from ai_opponent import knowledge_profile
 
 
 # -----------------------------------------------------------------------------

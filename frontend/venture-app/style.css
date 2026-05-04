@@ -1,4 +1,3 @@
-
 :root {
     --main-blue: #467096;
     --main-orange: #EE672B;
@@ -6,6 +5,22 @@
     --main-grey: #434343;
     --heading-font: 'Playfair Display', serif;
     --content-font: 'Inter', sans-serif;
+    --second-heading-font: 'Raleway', sans-serif;
+}
+
+#loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--content-font);
+  font-size: 20px;
+  z-index: 999;
 }
 
 #loader {
@@ -27,8 +42,10 @@ body {
     margin: 0px;
 }
 
-body h1 {
-    padding: 80px;
+#header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 header {
@@ -100,4 +117,321 @@ footer nav a {
 footer nav p {
     margin: 0px;
     color: var(--main-grey);
+}
+
+/*Tutorial page side navigation*/
+#scroll-indicator {
+    position: fixed;
+    left: 30px;
+    top: 150px;
+    height: 70vh;
+    width: 20px;
+    transition: transform 0.1s linear;
+}
+
+#scroll-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 100%;
+    background: #ddd;
+}
+
+#scroll-progress {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 0%;
+    background: var(--main-orange);
+    transition: height 0.1s linear;
+}
+
+#scroll-ball {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: var(--main-orange);
+    border-radius: 50%;
+}
+
+.marker {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--main-grey);
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+#tutorial-text {
+    padding: 100px;
+    font-family: var(--content-font);
+    color: var(--main-grey);
+}
+
+#tutorial-text p {
+    font-family: var(--content-font);
+    font-weight: 300;
+}
+
+/*Game Page*/
+#board-container canvas {
+  pointer-events: auto;
+}
+
+#board-container {
+  width: 100%;
+  height: 140vh;
+  position: relative;
+  width: 100%;
+  height: 140vh;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* Display showing the current stage of play */
+.current-stage-display {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 40;
+  background: #fff;
+  border-radius: 22px;
+  padding: 16px 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  color: var(--main-grey);
+  font-family: var(--content-font);
+  width: fit-content;
+}
+
+.current-stage-display h3 {
+  display: inline;
+  margin: 0 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.current-stage-display p {
+  display: inline;
+  margin: 0;
+  font-size: 16px;
+  color: var(--main-grey);
+}
+
+/*Game page stage indicator*/
+#stage-indicator {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#stage-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #ddd;
+  z-index: 1;
+}
+
+.stage-dot {
+  position: relative;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  background: #ddd;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.stage-dot:hover {
+  background: #bbb;
+}
+
+.stage-dot.active {
+  background: var(--main-orange);
+  width: 14px;
+  height: 14px;
+}
+
+/* Leaderboard popup inside the game window */
+.leaderboard-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 40;
+  padding: 10px 16px;
+  font-family: var(--content-font);
+  font-size: 16px;
+  color: #fff;
+  background: var(--main-orange);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.leaderboard-button:hover {
+  filter: brightness(1.05);
+}
+
+.leaderboard-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 45;
+}
+
+.leaderboard-dialog {
+  position: relative;
+  width: min(540px, 100%);
+  max-height: 90%;
+  background: #fff;
+  border-radius: 22px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
+  overflow: auto;
+  color: var(--main-grey);
+  font-family: var(--content-font);
+}
+
+.leaderboard-dialog h3 {
+  margin-top: 0;
+  font-size: 28px;
+  color: #222;
+}
+
+.leaderboard-dialog .leaderboard-content {
+  margin-top: 18px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.leaderboard-dialog ol {
+  margin: 14px 0 0 20px;
+}
+
+.leaderboard-dialog li {
+  margin-bottom: 10px;
+}
+
+.leaderboard-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--main-orange);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.leaderboard-close:hover {
+  filter: brightness(1.05);
+}
+
+/* Territory info popup inside the game window */
+.territory-button {
+  position: absolute;
+  top: 250px;
+  left: 220px;
+  z-index: 40;
+  padding: 10px 16px;
+  font-family: var(--content-font);
+  font-size: 16px;
+  color: #fff;
+  background: var(--main-orange);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.territory-button:hover {
+  filter: brightness(1.05);
+}
+
+.territory-action-button {
+  z-index: 40;
+  padding: 8px 14px;
+  font-family: var(--content-font);
+  font-size: 14px;
+  color: #fff;
+  background: var(--main-orange);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.territory-action-button:hover {
+  filter: brightness(1.05);
+}
+
+.territory-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 45;
+}
+
+.territory-dialog {
+  position: relative;
+  width: min(540px, 100%);
+  max-height: 90%;
+  background: #fff;
+  border-radius: 22px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
+  overflow: auto;
+  color: var(--main-grey);
+  font-family: var(--content-font);
+}
+
+.territory-dialog h3 {
+  margin-top: 0;
+  font-size: 28px;
+  color: #222;
+}
+
+.territory-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--main-orange);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.territory-close:hover {
+  filter: brightness(1.05);
 }

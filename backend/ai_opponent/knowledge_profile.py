@@ -2,10 +2,9 @@
 
 import sqlite3
 from typing import List, Dict, Any
-from ..helpers.db_helpers import get_db_path
+from helpers.db_helpers import get_db_path
 
-
-# TODO add person for each level - check w team/client if we want AI to emmulate a student or real businessman
+# ai modes to emulate a real businenessperson with different levels of skill, risk tolerance, and emotional response to the game.
 AI_MODE_PERSONAS = {
     'easy': """You are a flashy, careless beginner investor. 
     You chase trends and make big, risky bets without thinking. 
@@ -25,17 +24,6 @@ AI_MODE_PERSONAS = {
     Your tone is serious, bossy, and very intimidating. 
     Keep your sentences sharp, direct, and slightly threatening."""
 }
-
-# EXAMPLE_MARKET_DATA = {
-#     1: {
-#         'market_name': 'Healthcare',
-#         'size': 'Large',
-#         'regulation_level': 'High',
-#         'growth_potential': 'Medium',
-#         'security_risk': 'Low',
-#         'key_topic': 'Ethics'
-#     }
-# }
 
 def get_attributes(market_id: int) -> Dict[str, Any]:
     """
@@ -95,7 +83,6 @@ def build_knowledge_profile(difficulty: str) -> str:
     Returns:
         str: A string containing the prompt to be used for the Granite model.
     """
-
     persona = get_persona(difficulty)
 
     system_prompt = f"""

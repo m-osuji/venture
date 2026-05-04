@@ -218,14 +218,14 @@ footer nav p {
   margin: 0 6px 0 0;
   font-size: 14px;
   font-weight: 600;
-  color: #222;
+  color: var(--main-grey);
 }
 
 .current-stage-display p {
   display: inline;
   margin: 0;
-  font-size: 16px;
-  color: var(--main-grey);
+  font-size: 14px;
+  color: var(--main-orange);
 }
 
 /*Game page stage indicator*/
@@ -374,15 +374,24 @@ footer nav p {
 .territory-button {
   position: absolute;
   z-index: 40;
-  padding: 10px 16px;
+  padding: 8x 10px;
   font-family: var(--content-font);
-  font-size: 16px;
-  color: #fff;
-  background: var(--main-orange);
+  color: var(--main-grey);
+  background: var(--main-beige);
   border: none;
   border-radius: 10px;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.territory-button h3 {
+  margin: 4px;
+  font-size: 14px;
+}
+  
+.territory-button p {
+  margin: 4px;
+  font-size: 10px;
 }
 
 .territory-button:hover {
@@ -471,7 +480,7 @@ footer nav p {
     display: flex;
     flex-direction: row;
     align-items: end;
-    gap: 10px;
+    gap: 0;
 }
 
 #AI {
@@ -481,7 +490,7 @@ footer nav p {
 
 #AI-text {
     background: var(--main-beige);
-    border-radius: 22px;
+    border-radius: 22px 22px 0 22px;
     padding: 16px 20px;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     color: var(--main-grey);
@@ -492,15 +501,14 @@ footer nav p {
 }
 
 #AI-confirm {
-    background: var(--main-blue);
-    color: white;
+    background: var(--main-beige);
+    color: var(--main-grey);
     font-family: var(--content-font);
     font-size: 16px;
     padding: 10px 16px;
     border: none;
-    border-radius: 10px;
+    border-radius: 0 10px 10px 0;
     cursor: pointer;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     height: min-content;
 }
 
@@ -748,4 +756,82 @@ footer nav p {
     color: var(--main-blue);
     margin-top: 8px;
     font-style: italic;
+}
+
+/* Carousel styles for home page */
+.carousel-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.carousel-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carousel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4); /* Optional overlay for better text readability */
+    color: white;
+    text-align: center;
+}
+
+.carousel-text {
+    margin-bottom: 40px;
+}
+
+.carousel-text h1 {
+    font-family: var(--heading-font);
+    font-size: 48px;
+    margin: 0 0 20px 0;
+}
+
+.carousel-text p {
+    font-family: var(--content-font);
+    font-size: 24px;
+    margin: 0;
+}
+
+.carousel-buttons {
+    display: flex;
+    gap: 20px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    font-family: var(--content-font);
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background: var(--main-orange);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #d55a24;
+}
+
+.btn-secondary {
+    background: var(--main-beige);
+    color: var(--main-grey);
+}
+
+.btn-secondary:hover {
+    background: #f0ede9;
 }

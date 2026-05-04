@@ -95,27 +95,32 @@ function initLeaderboardUI(container) {
 
 function initTerritoryUI(container) {
 
-    const button = document.getElementById('territory-button');
-    const overlay = document.getElementById('territory-overlay');
+    const buttons = document.querySelectorAll('.territory-button');
 
-    if (!button || !overlay) return;
+    if (!buttons.length) return;
 
     container.style.position = container.style.position || 'relative';
 
-    button.addEventListener('click', () => {
-        overlay.style.display = 'flex';
-    });
+    buttons.forEach((button) => {
+        const overlay = button.nextElementSibling;
+        if (!overlay || !overlay.classList.contains('territory-overlay')) return;
 
-    const closeButton = overlay.querySelector('.territory-close');
+        button.addEventListener('click', () => {
+            overlay.style.display = 'flex';
+        });
 
-    closeButton.addEventListener('click', () => {
-        overlay.style.display = 'none';
-    });
-
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            overlay.style.display = 'none';
+        const closeButton = overlay.querySelector('.territory-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                overlay.style.display = 'none';
+            });
         }
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                overlay.style.display = 'none';
+            }
+        });
     });
 }
 
@@ -136,9 +141,9 @@ function initStageProgressButton(container) {
 const STAGE_LABELS = [
     'Planning',
     'Negotiating',
-    'Orders',
-    'Conflict Resolution',
-    'Update'
+    'Ordering',
+    'Resolving',
+    'Updating'
 ];
 
 // Update the stage indicator based on the current stage
@@ -176,15 +181,17 @@ const BOARD_REFERENCE_HEIGHT = 4961;
 // Update territory button positions based on board scale
 function updateTerritoryButtonPositions(boardScale) {
 
-    const territoryButton = document.getElementById('territory-button');
+    const territoryButtons = document.querySelectorAll('.territory-button');
 
-    if (!territoryButton) return;
+    territoryButtons.forEach((territoryButton) => {
+        const baseLeft = parseFloat(territoryButton.dataset.adjustedPositionLeft);
+        const baseTop = parseFloat(territoryButton.dataset.adjustedPositionTop);
 
-    const baseLeft = parseFloat(territoryButton.dataset.adjustedPositionLeft);
-    const baseTop = parseFloat(territoryButton.dataset.adjustedPositionTop);
+        if (Number.isNaN(baseLeft) || Number.isNaN(baseTop)) return;
 
-    territoryButton.style.left = `${baseLeft * boardScale}px`;
-    territoryButton.style.top = `${baseTop * boardScale}px`;
+        territoryButton.style.left = `${baseLeft * boardScale}px`;
+        territoryButton.style.top = `${baseTop * boardScale}px`;
+    });
 }
 
 // Preload assets

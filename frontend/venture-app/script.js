@@ -107,6 +107,21 @@ function initScrollIndicator() {
           textbox.style.top = "auto";
         }
       }
+
+      const setup = document.getElementById("game-setup-overlay");
+      if (setup) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop;
+        if (footerTop < window.innerHeight) {
+          setup.style.position = "fixed";
+          setup.style.bottom = `${Math.max(0, maxBottom)}px`;
+          setup.style.top = "auto";
+        } else {
+          setup.style.position = "fixed";
+          setup.style.bottom = `0px`;
+          setup.style.top = "auto";
+        }
+      }
     });
 
     scrollHandlerAttached = true;
@@ -214,10 +229,12 @@ async function loadRoute(path) {
 }
 
 // AI image controller
+// Replace the existing initAIInteraction function with this updated version
 function initAIInteraction() {
   const button = document.getElementById("AI-confirm");
   const text = document.getElementById("AI-text");
   const aiImage = document.getElementById("AI");
+  const setupOverlay = document.getElementById("game-setup-overlay");
 
   if (!button || !text || !aiImage) return;
 
@@ -232,8 +249,221 @@ function initAIInteraction() {
     }, 300);
 
     // Change AI image
-    aiImage.src = "../images/AI_happy.png"; 
+    aiImage.src = "../images/AI_happy.png";
+    
+    // Show the game setup overlay with dark background
+    if (setupOverlay) {
+      setupOverlay.style.display = "flex";
+      
+      // Initialize team name inputs based on selected team count
+      updateTeamNameInputs();
+      
+      // Set up event listeners for the setup form
+      setupGameEventListeners();
+    }
   });
+}
+
+// New function to update team name inputs based on selected count
+function updateTeamNameInputs() {
+  const teamCountSelect = document.getElementById("teamCountSelect");
+  const teamNamesContainer = document.getElementById("teamNamesContainer");
+  
+  if (!teamCountSelect || !teamNamesContainer) return;
+  
+  const teamCount = parseInt(teamCountSelect.value);
+  teamNamesContainer.innerHTML = "";
+  
+  for (let i = 0; i < teamCount; i++) {
+    const teamDiv = document.createElement("div");
+    teamDiv.className = "team-input-group";
+    teamDiv.innerHTML = `
+      <span class="team-number">Team ${i + 1}:</span>
+      <input type="text" id="teamName${i}" placeholder="Enter team name" value="Team ${String.fromCharCode(65 + i)}">
+    `;
+    teamNamesContainer.appendChild(teamDiv);
+  }
+}
+
+// Function for selecting AI opponent on and off
+function setupAIOptionListener() {
+  const aiYesRadio = document.getElementById("AI-player-yes");
+  const aiNoRadio = document.getElementById("AI-player-no");
+  const difficultyContainer = document.getElementById("difficulty-container");
+  
+  if (!aiYesRadio || !aiNoRadio || !difficultyContainer) return;
+  
+  function toggleDifficulty() {
+    if (aiYesRadio.checked) {
+      difficultyContainer.style.display = "block";
+    } else {
+      difficultyContainer.style.display = "none";
+    }
+  }
+  
+  aiYesRadio.addEventListener("change", toggleDifficulty);
+  aiNoRadio.addEventListener("change", toggleDifficulty);
+  
+  // Initial state
+  toggleDifficulty();
+}
+
+function setupDifficultyButtons() {
+  const difficultyBtns = document.querySelectorAll(".difficulty-btn");
+  const selectedDifficultyDiv = document.getElementById("selected-difficulty");
+  let currentDifficulty = "medium"; // default
+  
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // Remove selected class from all buttons
+      difficultyBtns.forEach(b => b.classList.remove("selected"));
+      // Add selected class to clicked button
+      btn.classList.add("selected");
+      
+      // Store selected difficulty
+      currentDifficulty = btn.getAttribute("data-difficulty");
+      
+      // Display selection
+      if (selectedDifficultyDiv) {
+        const difficultyText = {
+          easy: "🌿 Easy Mode - AI makes occasional mistakes",
+          medium: "⚡ Medium Mode - Balanced AI decisions",
+          hard: "🔥 Hard Mode - Optimized AI strategy"
+        };
+        selectedDifficultyDiv.textContent = difficultyText[currentDifficulty];
+      }
+    });
+  });
+  // Set default selection (Medium)
+  const defaultBtn = document.querySelector('.difficulty-btn[data-difficulty="medium"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add("selected");
+    if (selectedDifficultyDiv) {
+      selectedDifficultyDiv.textContent = "⚡ Medium Mode - Balanced AI decisions";
+    }
+  }
+  
+  return () => currentDifficulty;
+}
+
+// New function to set up game event listeners
+function setupGameEventListeners() {
+  const teamCountSelect = document.getElementById("teamCountSelect");
+  const startButton = document.getElementById("startGameSetupBtn");
+  const cancelButton = document.getElementById("cancelSetupBtn");
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  
+  if (teamCountSelect) {
+    // Remove old listener to prevent duplicates
+    teamCountSelect.removeEventListener("change", updateTeamNameInputs);
+    teamCountSelect.addEventListener("change", updateTeamNameInputs);
+  }
+
+  setupAIOptionListener();
+  const getSelectedDifficulty = setupDifficultyButtons();
+  
+  if (startButton) {
+    startButton.removeEventListener("click", startGameHandler);
+    startButton.addEventListener("click", startGameHandler);
+  }
+  
+  if (cancelButton) {
+    cancelButton.removeEventListener("click", cancelGameSetup);
+    cancelButton.addEventListener("click", cancelGameSetup);
+  }
+
+  if (setupOverlay) {
+    // Remove old listener to prevent duplicates
+    setupOverlay.removeEventListener("click", overlayClickHandler);
+    setupOverlay.addEventListener("click", overlayClickHandler);
+    
+    // Prevent clicks on the setup card from bubbling up to the overlay
+    const setupCard = setupOverlay.querySelector(".setup-card");
+    if (setupCard) {
+      setupCard.removeEventListener("click", stopPropagation);
+      setupCard.addEventListener("click", stopPropagation);
+    }
+  }
+}
+
+function stopPropagation(event) {
+  event.stopPropagation();
+}
+
+function overlayClickHandler(event) {
+  cancelGameSetup();
+}
+
+// Function to handle game start
+function startGameHandler() {
+  const teamCount = parseInt(document.getElementById("teamCountSelect").value);
+  const teamNames = [];
+  
+  // Collect all team names
+  for (let i = 0; i < teamCount; i++) {
+    const teamInput = document.getElementById(`teamName${i}`);
+    const teamName = teamInput ? teamInput.value.trim() : `Team ${String.fromCharCode(65 + i)}`;
+    teamNames.push(teamName || `Team ${String.fromCharCode(65 + i)}`);
+  }
+
+  const aiYesRadio = document.getElementById("AI-player-yes");
+  const includeAI = aiYesRadio ? aiYesRadio.checked : false;
+
+  // Get difficulty (only if AI is included)
+  let difficulty = null;
+  let difficultyDescription = null;
+  
+  if (includeAI && getSelectedDifficulty) {
+    difficulty = getSelectedDifficulty();
+    const difficultyMap = {
+      easy: { level: 1, name: "Easy", multiplier: 0.7, mistakeChance: 0.3 },
+      medium: { level: 2, name: "Medium", multiplier: 1.0, mistakeChance: 0.1 },
+      hard: { level: 3, name: "Hard", multiplier: 1.3, mistakeChance: 0.02 }
+    };
+    difficultyDescription = difficultyMap[difficulty];
+  }
+  
+  // Store game configuration
+  const gameConfig = {
+    teamCount: teamCount,
+    teamNames: teamNames,
+    includeAI: includeAI,
+    aiDifficulty: difficulty,
+    timestamp: new Date().toISOString()
+  };
+  
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  
+  // Close the overlay
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  if (setupOverlay) {
+    setupOverlay.style.display = "none";
+  }
+  
+  // Convert object to JSON string and save to browser's localStorage
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  
+  // You can add more game initialization logic here
+  console.log("Game configuration:", gameConfig);
+}
+
+// Function to cancel game setup
+function cancelGameSetup() {
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  const text = document.getElementById("AI-text");
+  const button = document.getElementById("AI-confirm");
+  
+  if (setupOverlay) {
+    setupOverlay.style.display = "none";
+  }
+  
+  // Restore the AI text and button if needed
+  if (text && button) {
+    text.style.display = "block";
+    button.style.display = "block";
+    text.classList.remove("fade-out");
+    button.classList.remove("fade-out");
+  }
 }
 
 // File navigation, did not like js navigate function, now uses global

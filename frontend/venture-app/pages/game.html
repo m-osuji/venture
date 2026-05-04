@@ -58,7 +58,46 @@
                 <button id="AI-confirm">Okay</button>
             </div>
         </div>
-        <button id="stage-progresser">Next Stage</button>
+        <button id="stage-progresser">Next Stage</button>   
+    </div>
+    <div id="game-setup-overlay" class="game-setup-overlay" style="display: none;">
+        <div class="setup-card">
+            <h2>Game Setup</h2>
+            <div class="team-count-selector">
+                <label>Select Number of Teams:</label>
+                <select id="teamCountSelect">
+                    <option value="2">2 Teams</option>
+                    <option value="3" selected>3 Teams</option>
+                    <option value="4">4 Teams</option>
+                    <option value="5">5 Teams</option>
+                    <option value="6">6 Teams</option>
+                </select>
+            </div>
+            <div id="teamNamesContainer"></div>
+            <div class="ai-option-group">
+                <label>Include AI Opponent?</label>
+                <div class="radio-group">
+                    <input type="radio" id="AI-player-no" name="AI-player" value="no" checked>
+                    <label for="AI-player-no">No</label>
+                    <input type="radio" id="AI-player-yes" name="AI-player" value="yes">
+                    <label for="AI-player-yes">Yes</label>
+                </div>
+            </div>
+
+            <div id="difficulty-container" style="display: none;">
+                <label>AI Difficulty:</label>
+                <div class="difficulty-buttons">
+                    <button type="button" class="difficulty-btn" data-difficulty="easy">Easy</button>
+                    <button type="button" class="difficulty-btn" data-difficulty="medium">Medium</button>
+                    <button type="button" class="difficulty-btn" data-difficulty="hard">Hard</button>
+                </div>
+                <div id="selected-difficulty" class="selected-difficulty"></div>
+            </div>
+            <div class="setup-actions">
+                <button id="cancelSetupBtn" class="setup-btn-secondary">Cancel</button>
+                <button id="startGameSetupBtn" class="setup-btn-primary">Start Game</button>
+            </div>
+        </div>
     </div>
 </body>
 

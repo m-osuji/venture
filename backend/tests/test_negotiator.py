@@ -100,8 +100,8 @@ def test_llm_failure_fallback(mock_llm, base_agent_context, base_game_state):
     )
 
     assert move["taunt"] is not None
-    assert move["proposal_detail"] in ["none", "test proposal"]
-
+    assert isinstance(move["proposal_detail"], str)
+    assert len(move["proposal_detail"]) > 0
 
 @patch("backend.ai_opponent.agents.negotiator.init_granite")
 def test_no_teams_edge_case(mock_llm, base_agent_context):

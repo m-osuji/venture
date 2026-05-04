@@ -3,9 +3,10 @@
 import re
 import random
 import html
-from typing import Any
-from ..knowledge_profile import build_knowledge_profile
+
+from ..knowledge_profile import build_system_prompt
 from ..model_loader import init_granite
+from ...enums import AIDifficulty, AgentType, GameStage
 
 # What the ai is able to offer
 PROPOSAL_ALLIANCE = 'alliance'
@@ -291,8 +292,23 @@ def make_prompt(
     secret_intent: str,
     difficulty: str,
 ) -> str:
+    
+    current_stage = game_state.get("current_stage", GameStage.PLAN)
+    agent_context = {
+        "ip": game_state.get('current_ip', 0),
+        "owned_markets": game_state.get('owned_markets', [])
+    }
 
-    base_prompt = build_knowledge_profile(difficulty)
+    # base_prompt = build_knowledge_profile(AIDifficulty(difficulty.lower()))
+
+    # safely cast the enum
+    try:
+        diff_enum = AIDifficulty(difficulty.lower())
+    except ValueError:
+        diff_enum = AIDifficulty.MEDIUM
+    
+    # negotiation notes don't need to be included here since `intent_context` is appended to prompt
+    base_prompt = build_system_prompt(AgentType.NEGOTIATOR, diff_enum, agent_context, current_stage, event_context="")
 
     teams_summary = "".join(
         f"  - {html.escape(t.get('team_name') or 'Unknown')}: {t.get('ip', 0)} IP, {len(t.get('markets', []))} market(s)\n"

@@ -5,6 +5,8 @@ dealing with the capability, quiz-solving, personality and thus difficulty of th
 
 from typing import Any
 from ..enums import AIDifficulty, AgentType, GameStage
+from ..helpers.db_helpers import fetch_market_by_id
+
 
 # ai modes to emulate a real business-person with different levels of skill, risk tolerance, and emotional response.
 AI_MODE_PERSONAS = {
@@ -57,41 +59,28 @@ AI_TOPIC_EXPERTISE = {
 }
 
 
-# def get_attributes(market_id: int) -> Dict[str, Any]:
-#     """
-#     Fetches the attributes of a given market by its ID.
+def get_attributes(market_id: int) -> dict[str, Any]:
+    """
+    Fetches the attributes of a given market by its ID.
 
-#     Args:
-#         market_id (int): The unique identifier for the market.
-#     Returns:
-#         Dict[str, Any]: A dictionary containing the market name and its attributes.
-#     """
-#     # get path to database using helper function
-#     db_path = get_db_path()
-#     conn = sqlite3.connect(db_path)
+    Args:
+        market_id (int): The unique identifier for the market.
+    Returns:
+        dict[str, Any]: A dictionary containing the market name and its attributes.
+    """
+    try:
+        market_data = fetch_market_by_id(market_id)
+    except Exception as e:
+        raise ValueError(
+            f"[knowledge_profile] Error fetching market data for id {market_id}: {e}"
+        )
 
-#     # set row factory to sqlite3.Row to access columns by name - returning as dictionaries instead of tuples
-#     conn.row_factory = sqlite3.Row
+    if market_data is None:
+        raise ValueError(
+            f"[knowledge_profile] Market with id {market_id} does not exist."
+        )
 
-#     try:
-#         cursor = conn.execute("SELECT * FROM Market WHERE market_id = ?", (market_id,))
-#         row = cursor.fetchone()
-
-#         if row is None:
-#             raise ValueError(
-#                 f"[knowledge_profile] Market with id {market_id} does not exist."
-#             )
-
-#         # convert sqlite3.Row to a regular dictionary for easier access
-#         return dict(row)
-
-#     except sqlite3.Error as e:
-#         raise ValueError(
-#             f"[knowledge_profile] Error fetching market data for id {market_id}: {e}"
-#         )
-
-#     finally:
-#         conn.close()
+    return market_data
 
 
 def get_persona(difficulty: AIDifficulty) -> str:

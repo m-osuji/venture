@@ -15,7 +15,10 @@
             <h3>Current Stage: </h3>
             <p>Planning</p>
             <div id="stage-indicator">
-                <div id="stage-line"></div>
+                <div class="stage-line" data-stage="0"></div>
+                <div class="stage-line" data-stage="1"></div>
+                <div class="stage-line" data-stage="2"></div>
+                <div class="stage-line" data-stage="3"></div>
                 <div class="stage-dot" data-stage="0"></div>
                 <div class="stage-dot" data-stage="1"></div>
                 <div class="stage-dot" data-stage="2"></div>
@@ -37,8 +40,141 @@
                 </div>
             </div>
         </div>
-        <button id="territory-button" type="button" class="territory-button">Cybersecurity</button>
-        <div id="territory-overlay" class="territory-overlay" style="display: none;">
+
+        <button type="button" class="territory-button" data-adjusted-position-left="1800" data-adjusted-position-top="1100" data-territory="food-and-water">
+            <h3>Food & Water</h3>
+            <p>Uncaptured ⋅ 1500</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Food & Water Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="1600" data-adjusted-position-top="800" data-territory="fisheries">
+            <h3>Fisheries</h3>
+            <p>Uncaptured ⋅ 600</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Fisheries Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="1300" data-territory="agriculture">
+            <h3>Agriculture</h3>
+            <p>Uncaptured ⋅ 1100</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Agriculture Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1100</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="3100" data-adjusted-position-top="1200" data-territory="healthcare">
+            <h3>Healthcare</h3>
+            <p>Uncaptured ⋅ 1300</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Healthcare Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1300</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="3550" data-adjusted-position-top="1050" data-territory="pharmaceuticals">
+            <h3>Pharmaceuticals</h3>
+            <p>Uncaptured ⋅ 900</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Pharmaceuticals Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="3000" data-adjusted-position-top="800" data-territory="science">
+            <h3>Science</h3>
+            <p>Uncaptured ⋅ 1200</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Science Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1200</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="4850" data-adjusted-position-top="1000" data-territory="law">
+            <h3>Law</h3>
+            <p>Uncaptured ⋅ 1700</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Law Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1700</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="1900" data-adjusted-position-top="2150" data-territory="technology">
+            <h3>Technology</h3>
+            <p>Owned by John M ⋅ 1800</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Technology Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="2450" data-adjusted-position-top="1925" data-territory="education">
+            <h3>Education</h3>
+            <p>Uncaptured ⋅ 500</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Education Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="2000" data-adjusted-position-top="2600" data-territory="cybersecurity">
+            <h3>Cybersecurity</h3>
+            <p>Uncaptured ⋅ 800</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
             <div class="territory-dialog">
                 <button type="button" class="territory-close" aria-label="Close territory info">×</button>
                 <h3>Cybersecurity Market</h3>
@@ -46,6 +182,212 @@
                 <p>Description of market</p>
                 <p>Star Diagram Here</p>
                 <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="2550" data-adjusted-position-top="2450" data-territory="automotive">
+            <h3>Automotive</h3>
+            <p>Uncaptured ⋅ 1300</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Automotive Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="4050" data-adjusted-position-top="2200" data-territory="aerospace">
+            <h3>Aerospace</h3>
+            <p>Owned by John M ⋅ 1300</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Aerospace Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="3300" data-territory="manufacturing">
+            <h3>Manufacturing</h3>
+            <p>Uncaptured ⋅ 2100</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Manufacturing Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/2100</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="1700" data-adjusted-position-top="3550" data-territory="mining">
+            <h3>Mining</h3>
+            <p>Uncaptured ⋅ 900</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Mining Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="3800" data-territory="civil-engineering">
+            <h3>Civil Engineering</h3>
+            <p>Uncaptured ⋅ 1100</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Civil Engineering Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1100</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="3000" data-adjusted-position-top="3700" data-territory="energy">
+            <h3>Energy</h3>
+            <p>Uncaptured ⋅ 900</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Energy Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="3650" data-adjusted-position-top="3600" data-territory="transport">
+            <h3>Transport</h3>
+            <p>Uncaptured ⋅ 600</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Transport Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="3300" data-adjusted-position-top="3400" data-territory="weapons">
+            <h3>Weapons</h3>
+            <p>Uncaptured ⋅ 1700</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Weapons Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1700</button>
+            </div>
+        </div>
+
+        <button type="button" class="territory-button" data-adjusted-position-left="4850" data-adjusted-position-top="3550" data-territory="real-estate">
+            <h3>Real Estate</h3>
+            <p>Uncaptured ⋅ 400</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Real Estate Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/400</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="4900" data-adjusted-position-top="3200" data-territory="retail">
+            <h3>Retail</h3>
+            <p>Uncaptured ⋅ 600</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Retail Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
+            </div>
+        </div>
+        <button type="button" class="territory-button" data-adjusted-position-left="5250" data-adjusted-position-top="3000" data-territory="finance">
+            <h3>Finance</h3>
+            <p>Uncaptured ⋅ 1300</p>
+        </button>
+        <div class="territory-overlay" style="display: none;">
+            <div class="territory-dialog">
+                <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                <h3>Finance Market</h3>
+                <hr>
+                <p>Description of market</p>
+                <p>Star Diagram Here</p>
+                <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1300</button>
+            </div>
+        </div>
+
+        <div id="AI-container">
+            <img id="AI" src="../images/AI_thinking.png">
+            <div id="AI-bubble">
+                <p id="AI-text">Welcome to Venture, the ultimate game that puts your business acumen to the test. Using IBM SkillsBuild, you’ll embark on a dynamic journey, facing me – the unrivalled business adversary – or competing with fellow apprentices. Sharpen your skills, strategise, and rise above the rest as you navigate challenges and opportunities. Only the most resourceful will prevail and earn the title of champion in the world of Venture.</p>
+                <button id="AI-confirm">Okay</button>
+            </div>
+        </div>
+        <button id="stage-progresser">Next Stage</button>   
+    </div>
+    <div id="game-setup-overlay" class="game-setup-overlay" style="display: none;">
+        <div class="setup-card">
+            <h2>Game Setup</h2>
+            <div class="team-count-selector">
+                <label>Select Number of Teams:</label>
+                <select id="teamCountSelect">
+                    <option value="2">2 Teams</option>
+                    <option value="3" selected>3 Teams</option>
+                    <option value="4">4 Teams</option>
+                    <option value="5">5 Teams</option>
+                    <option value="6">6 Teams</option>
+                </select>
+            </div>
+            <div id="teamNamesContainer"></div>
+            <div class="ai-option-group">
+                <label>Include AI Opponent?</label>
+                <div class="radio-group">
+                    <input type="radio" id="AI-player-no" name="AI-player" value="no" checked>
+                    <label for="AI-player-no">No</label>
+                    <input type="radio" id="AI-player-yes" name="AI-player" value="yes">
+                    <label for="AI-player-yes">Yes</label>
+                </div>
+            </div>
+
+            <div id="difficulty-container" style="display: none;">
+                <label>AI Difficulty:</label>
+                <div class="difficulty-buttons">
+                    <button type="button" class="difficulty-btn" data-difficulty="easy">Easy</button>
+                    <button type="button" class="difficulty-btn" data-difficulty="medium">Medium</button>
+                    <button type="button" class="difficulty-btn" data-difficulty="hard">Hard</button>
+                </div>
+                <div id="selected-difficulty" class="selected-difficulty"></div>
+            </div>
+            <div class="setup-actions">
+                <button id="cancelSetupBtn" class="setup-btn-secondary">Cancel</button>
+                <button id="startGameSetupBtn" class="setup-btn-primary">Start Game</button>
             </div>
         </div>
     </div>

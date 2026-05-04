@@ -1,8 +1,7 @@
-""""
+"""
 Helper functions for database interactions.
 """
 from pathlib import Path
-
 import sqlite3
 
 ROOT_DIR = Path(__file__).parent.parent.resolve()
@@ -20,10 +19,10 @@ def get_db_path() -> str:
 def fetch_all(query: str, params: tuple = ()) -> list[sqlite3.Row]:
     """
     Executes a SQL query and returns all results as a list of sqlite3.Row objects.
-    
-    Args:  
+
+    Args:
         query (str): The SQL query to execute.
-        params (tuple): Optional parameters to pass
+        params (tuple): Optional parameters to pass.
 
     Returns:
         list[sqlite3.Row]: List of rows returned by the query.

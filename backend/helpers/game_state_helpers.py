@@ -10,10 +10,10 @@ from uuid import uuid4
 from typing import Any
 from pathlib import Path
 
-from backend.enums import GameStage, SessionStatus
+from enums import GameStage, SessionStatus
 
-from backend.helpers.db_helpers import get_db_path
-from backend.helpers.db_helpers import fetch_all_markets
+from helpers.db_helpers import get_db_path
+from helpers.db_helpers import fetch_all_markets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

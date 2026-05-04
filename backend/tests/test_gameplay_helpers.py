@@ -75,6 +75,13 @@ def _perfect_answers(questions):
     ]
 
 
+def _event_categories(round_entry):
+    return {
+        event["category"]
+        for event in round_entry["turn_log"].get("ethical_events", [])
+    }
+
+
 def test_plan_stage_requires_all_team_notes(monkeypatch):
     state = _build_state(monkeypatch)
 
@@ -206,6 +213,195 @@ def test_submit_quiz_results_resolves_conflicts_via_turn_log(monkeypatch):
     assert state["turn_log"]["resolution_applied"] is True
     assert state["turn_log"]["quiz_results"]["2"]["market_id"] == 2
     assert state["turn_log"]["resolution_outcomes"][0]["winner_team_id"] == 1
+
+
+def test_allied_attack_requires_break_alliance_flag(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    state["alliances"] = [
+        {
+            "alliance_id": "alliance_1_2",
+            "members": [1, 2],
+            "type": "alliance",
+            "formed_turn": 1,
+            "shared_market": 2,
+        }
+    ]
+    _team_entry(state, 1)["ip"] = 4
+    _team_entry(state, 2)["ip"] = 4
+
+    gph.submit_plan_notes(state, 1, {"planned_action": "attack", "target_market_id": 2})
+    gph.submit_plan_notes(state, 2, "hold")
+    gph.advance_stage(state)
+    gph.submit_declared_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 2,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_declared_moves(state, 2, [])
+    gph.advance_stage(state)
+    gph.submit_actual_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 2,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_actual_moves(state, 2, [])
+
+    with pytest.raises(ValueError):
+        gph.advance_stage(state)
+
+
+def test_alliance_betrayal_breaks_alliance_and_penalises_ethics(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["current_round"] = 3
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    state["alliances"] = [
+        {
+            "alliance_id": "alliance_1_2",
+            "members": [1, 2],
+            "type": "alliance",
+            "formed_turn": 1,
+            "shared_market": 2,
+        }
+    ]
+    _team_entry(state, 1)["ip"] = 4
+    _team_entry(state, 2)["ip"] = 4
+
+    betrayal_attack = {
+        "action_type": "attack",
+        "target_market_id": 2,
+        "ip_spent": 2,
+        "metadata": {
+            "resource_pool": "current_ip",
+            "break_alliance": True,
+        },
+    }
+
+    gph.submit_plan_notes(
+        state,
+        1,
+        {"planned_action": "attack", "target_market_id": 2},
+    )
+    gph.submit_plan_notes(state, 2, "hold")
+    gph.advance_stage(state)
+    gph.submit_declared_moves(state, 1, [betrayal_attack])
+    gph.submit_declared_moves(state, 2, [])
+    gph.advance_stage(state)
+    gph.submit_actual_moves(state, 1, [betrayal_attack])
+    gph.submit_actual_moves(state, 2, [])
+    gph.advance_stage(state)
+
+    quiz = state["turn_log"]["active_quizzes"][0]
+    gph.submit_quiz_results(
+        state,
+        2,
+        [
+            {
+                "team_id": 1,
+                "answers": _perfect_answers(quiz["questions"]),
+            },
+            {
+                "team_id": 2,
+                "answers": [],
+            },
+        ],
+    )
+    gph.advance_stage(state)
+    gph.advance_stage(state)
+
+    alliance = state["alliances"][0]
+    round_entry = state["round_history"][0]
+
+    assert state["current_stage"] == GameStage.PLAN
+    assert state["market_state"]["2"]["owner"] == 1
+    assert alliance["broken_turn"] == 3
+    assert alliance["broken_by_team_id"] == 1
+    assert _team_entry(state, 1)["ethical_score"] < 0.8
+    assert "alliance_betrayal" in _event_categories(round_entry)
+    assert round_entry["turn_log"]["ethical_adjustments"]["1"]["penalty"] > 0.2
+
+
+def test_plan_and_declared_mismatch_penalise_ethics(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    _team_entry(state, 1)["ip"] = 4
+    _team_entry(state, 2)["ip"] = 4
+
+    gph.submit_plan_notes(
+        state,
+        1,
+        {"planned_action": "hold", "target_market_id": 1},
+    )
+    gph.submit_plan_notes(state, 2, "hold")
+    gph.advance_stage(state)
+    gph.submit_declared_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "defend",
+                "target_market_id": 1,
+                "ip_spent": 1,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_declared_moves(state, 2, [])
+    gph.advance_stage(state)
+    gph.submit_actual_moves(
+        state,
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 3,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    gph.submit_actual_moves(state, 2, [])
+    gph.advance_stage(state)
+
+    quiz = state["turn_log"]["active_quizzes"][0]
+    gph.submit_quiz_results(
+        state,
+        3,
+        [
+            {
+                "team_id": 1,
+                "answers": _perfect_answers(quiz["questions"]),
+            }
+        ],
+    )
+    gph.advance_stage(state)
+    gph.advance_stage(state)
+
+    round_entry = state["round_history"][0]
+
+    assert _team_entry(state, 1)["ethical_score"] < 0.9
+    assert "plan_mismatch" in _event_categories(round_entry)
+    assert "negotiation_mismatch" in _event_categories(round_entry)
 
 
 def test_frontend_state_exposes_public_quiz_payload_only(monkeypatch):

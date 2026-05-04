@@ -5,6 +5,7 @@ mutation,and extraction of relevant slices for agents and frontend).
 
 import os
 import json
+import re
 from collections import defaultdict
 from copy import deepcopy
 
@@ -183,6 +184,8 @@ def _empty_turn_log() -> dict[str, Any]:
         "resolution_outcomes": [],
         "pending_research": [],
         "negotiation_log": [],
+        "ethical_events": [],
+        "ethical_adjustments": {},
         "resolution_applied": False,
     }
 
@@ -579,6 +582,8 @@ def apply_round_update(game_state: dict[str, Any]) -> dict[str, Any]:
     turn_log = game_state.setdefault("turn_log", _empty_turn_log())
     current_round = int(game_state.get("current_round", 1))
 
+    _apply_ethical_scoring(game_state)
+
     game_state.setdefault("round_history", []).append(
         {"round": current_round, "turn_log": deepcopy(turn_log)}
     )
@@ -716,6 +721,8 @@ def _validate_attack_move(game_state: dict[str, Any], team_id: int, move: dict[s
         return
 
     if not _can_attack_team(game_state, team_id, int(owner)):
+        if _attack_breaks_alliance(move):
+            return
         raise ValueError(
             f"[gameplay_helpers] Team {team_id} cannot attack allied/protected market {target_market_id}."
         )
@@ -986,6 +993,318 @@ def _enum_score(value: Any) -> float:
     if isinstance(value, (int, float)):
         return float(value)
     return ENUM_SCORE_VALUES.get(str(value).strip().lower(), 0.0)
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, float(value)))
+
+
+def _apply_ethical_scoring(game_state: dict[str, Any]) -> None:
+    """
+    Evaluate ethical penalties for this round before the turn log is archived.
+    """
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    actual_moves_by_team = turn_log.get("actual_moves", {}) or {}
+    declared_moves_by_team = turn_log.get("declared_moves", {}) or {}
+    plan_notes_by_team = turn_log.get("plan_notes", {}) or {}
+
+    events: list[dict[str, Any]] = []
+    penalty_by_team: dict[int, float] = defaultdict(float)
+
+    for team_id in _all_team_ids(game_state):
+        actual_moves = _normalise_moves(actual_moves_by_team.get(str(team_id), []))
+        declared_moves = _normalise_moves(declared_moves_by_team.get(str(team_id), []))
+        plan_notes = plan_notes_by_team.get(str(team_id))
+
+        plan_penalty, plan_event = _evaluate_plan_note_alignment(
+            team_id,
+            plan_notes,
+            actual_moves,
+        )
+        if plan_penalty > 0.0:
+            penalty_by_team[team_id] += plan_penalty
+            events.append(plan_event)
+
+        declared_penalty, declared_event = _evaluate_declared_move_alignment(
+            team_id,
+            declared_moves,
+            actual_moves,
+        )
+        if declared_penalty > 0.0:
+            penalty_by_team[team_id] += declared_penalty
+            events.append(declared_event)
+
+        betrayal_penalty, betrayal_events = _apply_alliance_betrayal_penalties(
+            game_state,
+            team_id,
+            actual_moves,
+        )
+        if betrayal_penalty > 0.0:
+            penalty_by_team[team_id] += betrayal_penalty
+            events.extend(betrayal_events)
+
+    adjustments: dict[str, dict[str, float]] = {}
+    for team in game_state.get("teams", []):
+        team_id = int(team["team_id"])
+        starting_score = _clamp(float(team.get("ethical_score", 1.0)), 0.0, 1.0)
+        penalty = min(0.95, round(float(penalty_by_team.get(team_id, 0.0)), 4))
+        ending_score = _clamp(starting_score - penalty, 0.0, 1.0)
+        team["ethical_score"] = ending_score
+
+        adjustments[str(team_id)] = {
+            "starting_score": round(starting_score, 4),
+            "penalty": penalty,
+            "ending_score": round(ending_score, 4),
+        }
+
+    turn_log["ethical_events"] = events
+    turn_log["ethical_adjustments"] = adjustments
+
+
+def _evaluate_plan_note_alignment(
+    team_id: int,
+    notes: Any,
+    actual_moves: list[dict[str, Any]],
+) -> tuple[float, dict[str, Any] | None]:
+    if notes in (None, "", []):
+        return 0.0, None
+
+    action_hint = _normalise_note_action(notes)
+    planned_targets = _extract_note_market_ids(notes)
+    actual_non_hold_moves = [move for move in actual_moves if move["action_type"] != "hold"]
+    actual_attack_moves = [move for move in actual_moves if move["action_type"] == "attack"]
+    actual_targets = {
+        int(move["target_market_id"])
+        for move in actual_non_hold_moves
+        if move.get("target_market_id") is not None
+    }
+
+    penalty = 0.0
+    reasons: list[str] = []
+
+    if action_hint == "hold" and actual_non_hold_moves:
+        penalty += 0.05
+        reasons.append("planned to hold but executed non-hold actions")
+    elif action_hint == "defend" and actual_attack_moves:
+        penalty += 0.06
+        reasons.append("planned to defend but launched an attack")
+    elif action_hint == "research" and any(
+        move["action_type"] != "research" for move in actual_non_hold_moves
+    ):
+        penalty += 0.05
+        reasons.append("planned to research but changed action type")
+    elif action_hint == "attack" and not actual_attack_moves:
+        penalty += 0.04
+        reasons.append("planned to attack but did not submit an attack")
+
+    unexpected_targets = sorted(actual_targets - planned_targets) if planned_targets else []
+    if unexpected_targets:
+        penalty += min(0.06, 0.03 * len(unexpected_targets))
+        reasons.append(f"used unexpected targets {unexpected_targets}")
+
+    penalty = min(0.12, round(penalty, 4))
+    if penalty <= 0.0:
+        return 0.0, None
+
+    return penalty, {
+        "team_id": team_id,
+        "category": "plan_mismatch",
+        "penalty": penalty,
+        "summary": "; ".join(reasons),
+    }
+
+
+def _evaluate_declared_move_alignment(
+    team_id: int,
+    declared_moves: list[dict[str, Any]],
+    actual_moves: list[dict[str, Any]],
+) -> tuple[float, dict[str, Any] | None]:
+    if not declared_moves:
+        return 0.0, None
+
+    declared_counts = _build_move_signature_counts(declared_moves)
+    actual_counts = _build_move_signature_counts(actual_moves)
+
+    missing_signatures = {
+        signature: count
+        for signature, count in declared_counts.items()
+        if actual_counts.get(signature, 0) < count
+    }
+    surprise_signatures = {
+        signature: count
+        for signature, count in actual_counts.items()
+        if declared_counts.get(signature, 0) < count
+    }
+
+    mismatch_count = 0
+    for signature, count in missing_signatures.items():
+        mismatch_count += count - actual_counts.get(signature, 0)
+    for signature, count in surprise_signatures.items():
+        mismatch_count += count - declared_counts.get(signature, 0)
+
+    penalty = min(0.12, round(0.03 * mismatch_count, 4))
+    if penalty <= 0.0:
+        return 0.0, None
+
+    return penalty, {
+        "team_id": team_id,
+        "category": "negotiation_mismatch",
+        "penalty": penalty,
+        "summary": (
+            f"{mismatch_count} declared-vs-actual move mismatch(es) detected"
+        ),
+        "details": {
+            "missing_moves": [str(signature) for signature in missing_signatures],
+            "surprise_moves": [str(signature) for signature in surprise_signatures],
+        },
+    }
+
+
+def _apply_alliance_betrayal_penalties(
+    game_state: dict[str, Any],
+    attacker_team_id: int,
+    actual_moves: list[dict[str, Any]],
+) -> tuple[float, list[dict[str, Any]]]:
+    alliances = game_state.get("alliances", []) or []
+    current_round = int(game_state.get("current_round", 1))
+    total_penalty = 0.0
+    events: list[dict[str, Any]] = []
+    broken_alliance_ids: set[str] = set()
+
+    for move in actual_moves:
+        if move["action_type"] != "attack" or move.get("target_market_id") is None:
+            continue
+
+        target_state = _market_entry(game_state, int(move["target_market_id"]))
+        defender_team_id = _optional_int(target_state.get("owner"))
+        if defender_team_id is None:
+            continue
+
+        for index, alliance in enumerate(alliances):
+            if alliance.get("broken_turn") is not None:
+                continue
+
+            members = {int(member) for member in (alliance.get("members") or [])}
+            if attacker_team_id not in members or defender_team_id not in members:
+                continue
+
+            alliance_turns = max(
+                1,
+                current_round - int(alliance.get("formed_turn") or current_round) + 1,
+            )
+            shared_market = _optional_int(alliance.get("shared_market"))
+
+            penalty = 0.12 + min(0.18, 0.03 * alliance_turns)
+            if shared_market == int(move["target_market_id"]):
+                penalty += 0.05
+            if _attack_breaks_alliance(move):
+                penalty += 0.03
+            penalty = round(min(0.4, penalty), 4)
+
+            total_penalty += penalty
+            alliance_id = str(alliance.get("alliance_id") or f"alliance_{index}")
+            if alliance_id not in broken_alliance_ids:
+                alliance["broken_turn"] = current_round
+                alliance["broken_by_team_id"] = attacker_team_id
+                alliance["broken_reason"] = "attack"
+                broken_alliance_ids.add(alliance_id)
+
+            events.append(
+                {
+                    "team_id": attacker_team_id,
+                    "category": "alliance_betrayal",
+                    "penalty": penalty,
+                    "summary": (
+                        f"Attacked allied market {move['target_market_id']} owned by team "
+                        f"{defender_team_id} after {alliance_turns} round(s) of alliance."
+                    ),
+                    "details": {
+                        "alliance_id": alliance_id,
+                        "target_market_id": int(move["target_market_id"]),
+                        "defender_team_id": defender_team_id,
+                        "alliance_turns": alliance_turns,
+                    },
+                }
+            )
+
+    return round(min(0.9, total_penalty), 4), events
+
+
+def _normalise_note_action(notes: Any) -> str | None:
+    if isinstance(notes, dict):
+        candidates = [
+            notes.get("planned_action"),
+            notes.get("action_type"),
+            notes.get("intent"),
+            notes.get("stance"),
+        ]
+        for candidate in candidates:
+            action = _normalise_note_action(candidate)
+            if action:
+                return action
+        return None
+
+    text = str(notes or "").strip().lower()
+    if not text:
+        return None
+    if "hold" in text or "wait" in text:
+        return "hold"
+    if "defend" in text or "protect" in text:
+        return "defend"
+    if "research" in text or "upgrade" in text:
+        return "research"
+    if "attack" in text or "capture" in text:
+        return "attack"
+    return None
+
+
+def _extract_note_market_ids(notes: Any) -> set[int]:
+    if isinstance(notes, dict):
+        market_ids: set[int] = set()
+        for key in (
+            "target_market_id",
+            "market_id",
+            "shared_market",
+        ):
+            value = notes.get(key)
+            if value not in (None, ""):
+                market_ids.add(int(value))
+
+        for key in ("target_market_ids", "market_ids", "targets", "protected_markets"):
+            values = notes.get(key) or []
+            for value in values:
+                if value not in (None, ""):
+                    market_ids.add(int(value))
+        return market_ids
+
+    text = str(notes or "")
+    return {int(match) for match in re.findall(r"\b\d+\b", text)}
+
+
+def _build_move_signature_counts(
+    moves: list[dict[str, Any]],
+) -> dict[tuple[str, int | None, int | None, str | None], int]:
+    counts: dict[tuple[str, int | None, int | None, str | None], int] = defaultdict(int)
+    for move in moves:
+        signature = (
+            str(move.get("action_type", "hold")),
+            _optional_int(move.get("target_market_id")),
+            _optional_int(move.get("source_market_id")),
+            str(move.get("metadata", {}).get("research_option")).strip().lower()
+            if move.get("metadata", {}).get("research_option") is not None
+            else None,
+        )
+        counts[signature] += 1
+    return dict(counts)
+
+
+def _attack_breaks_alliance(move: dict[str, Any]) -> bool:
+    metadata = move.get("metadata", {}) or {}
+    return bool(
+        metadata.get("break_alliance")
+        or metadata.get("ignore_commitments")
+        or metadata.get("override_commitments")
+    )
 # -----------------------
 # market state extraction
 # -----------------------
@@ -1078,6 +1397,10 @@ def build_agent_context(game_state: dict[str, Any], team_id: int) -> dict[str, A
     target_team = next((t for t in teams if t["team_id"] == team_id), {})
     current_ip = target_team.get("ip", 0)
     ethical_score = target_team.get("ethical_score", 1.0)
+    team_ethics = {
+        int(team["team_id"]): _clamp(float(team.get("ethical_score", 0.7)), 0.0, 1.0)
+        for team in teams
+    }
 
     active_alliances = _get_active_alliances(team_id, alliances)
 
@@ -1126,6 +1449,7 @@ def build_agent_context(game_state: dict[str, Any], team_id: int) -> dict[str, A
         market_state,
         active_alliances,
         game_state.get("current_round", 1),
+        team_ethics,
     )
 
     return {
@@ -1224,6 +1548,7 @@ def _build_relationship_states(
     market_state: dict[int, Any],
     active_ally_team_ids: set[int],
     current_round: int,
+    team_ethics: dict[int, float],
 ) -> dict[int, dict[str, Any]]:
     """
     Derives relationship states (trust, cooperation) for markets owned by active allies.
@@ -1258,7 +1583,7 @@ def _build_relationship_states(
 
             relationship_states[market_id] = {
                 "alliance_turns": alliance_turns,
-                "trust": 0.7,  # TODO: wire to ally team's ethical_score
+                "trust": team_ethics.get(int(owner), 0.7),
             }
 
     return relationship_states

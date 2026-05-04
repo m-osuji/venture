@@ -26,12 +26,106 @@ const routes = {
   "/game": "pages/game.html"
 };
 
+let scrollHandlerAttached = false;
+
 function initScrollIndicator() {
+  // Tutorial page navigation bar to be above the footer
   const indicator = document.getElementById("scroll-indicator");
   const progress = document.getElementById("scroll-progress");
   const ball = document.getElementById("scroll-ball");
   const markersContainer = document.getElementById("scroll-markers");
   const sections = document.querySelectorAll("#content h2");
+
+  // Game page for the AI opponent to be above the footer
+  const footer = document.getElementById("footer");
+
+  // Always attach scroll logic once but keep doing it for game and tutorial
+  if (!scrollHandlerAttached && footer) {
+    window.addEventListener("scroll", () => {
+      const footerRect = footer.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      // How much space we want from edges
+      const margin = 20;
+
+      // Where fixed elements would sit
+      const fixedBottom = viewportHeight - margin;
+
+      // Check collision with footer
+      const isColliding = footerRect.top < fixedBottom;
+
+      // Get AI dynamically (important for SPA navigation)
+      const opponent = document.getElementById("AI-container");
+
+      // Logic to make AI opponent stay above footer      
+      if (opponent) {
+        // Footer position relative to viewport
+        const footerTop = footer.getBoundingClientRect().top;
+        // Max allowed bottom so it doesn't overlap footer
+        const maxBottom = window.innerHeight - footerTop + margin;
+
+        if (footerTop < window.innerHeight) {
+          // Make fixed onto page above footer instead of below
+          opponent.style.position = "fixed";
+          opponent.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          opponent.style.top = "auto";
+        } else {
+          // Normal fixed at bottom of page
+          opponent.style.position = "fixed";
+          opponent.style.bottom = `${margin}px`;
+          opponent.style.top = "auto";
+        }
+      }
+
+      // Tutorial page navigation bar above footer, same logic as above
+      const indicator = document.getElementById("scroll-indicator");
+      if (indicator) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop + margin;
+        if (footerTop < window.innerHeight) {
+          indicator.style.position = "fixed";
+          indicator.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          indicator.style.top = "auto";
+        } else {
+          indicator.style.position = "fixed";
+          indicator.style.bottom = `${margin}px`;
+          indicator.style.top = "auto";
+        }
+      }
+
+      const textbox = document.getElementById("stage-progresser");
+      if (textbox) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop + margin;
+        if (footerTop < window.innerHeight) {
+          textbox.style.position = "fixed";
+          textbox.style.bottom = `${Math.max(margin, maxBottom)}px`;
+          textbox.style.top = "auto";
+        } else {
+          textbox.style.position = "fixed";
+          textbox.style.bottom = `${margin}px`;
+          textbox.style.top = "auto";
+        }
+      }
+
+      const setup = document.getElementById("game-setup-overlay");
+      if (setup) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop;
+        if (footerTop < window.innerHeight) {
+          setup.style.position = "fixed";
+          setup.style.bottom = `${Math.max(0, maxBottom)}px`;
+          setup.style.top = "auto";
+        } else {
+          setup.style.position = "fixed";
+          setup.style.bottom = `0px`;
+          setup.style.top = "auto";
+        }
+      }
+    });
+
+    scrollHandlerAttached = true;
+  }
 
   if (!indicator || !markersContainer || sections.length === 0) return;
 
@@ -51,8 +145,6 @@ function initScrollIndicator() {
 
     const docHeight = document.body.scrollHeight - window.innerHeight;
     const indicatorHeight = indicator.offsetHeight;
-
-    const footer = document.getElementById("footer");
 
     // Adding each marker
     sections.forEach(section => {
@@ -80,7 +172,7 @@ function initScrollIndicator() {
     });
 
     // Scrolling updates the page navigation bar
-    window.onscroll = () => {
+    window.addEventListener("scroll", () => {
       const scrollTop = window.scrollY;
       const docHeight = document.body.scrollHeight - window.innerHeight;
       const indicatorHeight = indicator.offsetHeight;
@@ -93,21 +185,7 @@ function initScrollIndicator() {
 
       progress.style.height = `${y}px`;
       ball.style.transform = `translate(-50%, -50%) translateY(${y}px)`;
-
-      // So there is no footer overlap
-      const footerRect = footer.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-
-      // How much the footer overlaps into the viewport
-      const overlap = Math.max(0, viewportHeight - footerRect.top);
-
-      if (overlap > 0) {
-        // Push indicator up smoothly
-        indicator.style.transform = `translateY(-${overlap}px)`;
-      } else {
-        indicator.style.transform = `translateY(0)`;
-      }
-    };
+    });
   });
 }
 
@@ -129,6 +207,7 @@ async function loadRoute(path) {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
       //initLeaderboard();
+      initAIInteraction();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();
@@ -137,9 +216,252 @@ async function loadRoute(path) {
     }
 
     initScrollIndicator();
+    // Needed to actually link the scroll event when reloaded
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+    });
 
   } catch {
     document.getElementById("content").innerHTML = "<h2>404 - Page not found</h2>";
+  }
+}
+
+// AI image controller
+// Replace the existing initAIInteraction function with this updated version
+function initAIInteraction() {
+  const button = document.getElementById("AI-confirm");
+  const text = document.getElementById("AI-text");
+  const aiImage = document.getElementById("AI");
+  const setupOverlay = document.getElementById("game-setup-overlay");
+
+  if (!button || !text || !aiImage) return;
+
+  button.addEventListener("click", () => {
+    text.classList.add("fade-out");
+    button.classList.add("fade-out");
+
+    setTimeout(() => {
+      // Hide text and button
+      text.style.display = "none";
+      button.style.display = "none";
+    }, 300);
+
+    // Change AI image
+    aiImage.src = "../images/AI_happy.png";
+    
+    // Show the game setup overlay with dark background
+    if (setupOverlay) {
+      setupOverlay.style.display = "flex";
+      
+      // Initialize team name inputs based on selected team count
+      updateTeamNameInputs();
+      
+      // Set up event listeners for the setup form
+      setupGameEventListeners();
+    }
+  });
+}
+
+// New function to update team name inputs based on selected count
+function updateTeamNameInputs() {
+  const teamCountSelect = document.getElementById("teamCountSelect");
+  const teamNamesContainer = document.getElementById("teamNamesContainer");
+  
+  if (!teamCountSelect || !teamNamesContainer) return;
+  
+  const teamCount = parseInt(teamCountSelect.value);
+  teamNamesContainer.innerHTML = "";
+  
+  for (let i = 0; i < teamCount; i++) {
+    const teamDiv = document.createElement("div");
+    teamDiv.className = "team-input-group";
+    teamDiv.innerHTML = `
+      <span class="team-number">Team ${i + 1}:</span>
+      <input type="text" id="teamName${i}" placeholder="Enter team name" value="Team ${String.fromCharCode(65 + i)}">
+    `;
+    teamNamesContainer.appendChild(teamDiv);
+  }
+}
+
+// Function for selecting AI opponent on and off
+function setupAIOptionListener() {
+  const aiYesRadio = document.getElementById("AI-player-yes");
+  const aiNoRadio = document.getElementById("AI-player-no");
+  const difficultyContainer = document.getElementById("difficulty-container");
+  
+  if (!aiYesRadio || !aiNoRadio || !difficultyContainer) return;
+  
+  function toggleDifficulty() {
+    if (aiYesRadio.checked) {
+      difficultyContainer.style.display = "block";
+    } else {
+      difficultyContainer.style.display = "none";
+    }
+  }
+  
+  aiYesRadio.addEventListener("change", toggleDifficulty);
+  aiNoRadio.addEventListener("change", toggleDifficulty);
+  
+  // Initial state
+  toggleDifficulty();
+}
+
+function setupDifficultyButtons() {
+  const difficultyBtns = document.querySelectorAll(".difficulty-btn");
+  const selectedDifficultyDiv = document.getElementById("selected-difficulty");
+  let currentDifficulty = "medium"; // default
+  
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // Remove selected class from all buttons
+      difficultyBtns.forEach(b => b.classList.remove("selected"));
+      // Add selected class to clicked button
+      btn.classList.add("selected");
+      
+      // Store selected difficulty
+      currentDifficulty = btn.getAttribute("data-difficulty");
+      
+      // Display selection
+      if (selectedDifficultyDiv) {
+        const difficultyText = {
+          easy: "🌿 Easy Mode - AI makes occasional mistakes",
+          medium: "⚡ Medium Mode - Balanced AI decisions",
+          hard: "🔥 Hard Mode - Optimized AI strategy"
+        };
+        selectedDifficultyDiv.textContent = difficultyText[currentDifficulty];
+      }
+    });
+  });
+  // Set default selection (Medium)
+  const defaultBtn = document.querySelector('.difficulty-btn[data-difficulty="medium"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add("selected");
+    if (selectedDifficultyDiv) {
+      selectedDifficultyDiv.textContent = "⚡ Medium Mode - Balanced AI decisions";
+    }
+  }
+  
+  return () => currentDifficulty;
+}
+
+// New function to set up game event listeners
+function setupGameEventListeners() {
+  const teamCountSelect = document.getElementById("teamCountSelect");
+  const startButton = document.getElementById("startGameSetupBtn");
+  const cancelButton = document.getElementById("cancelSetupBtn");
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  
+  if (teamCountSelect) {
+    // Remove old listener to prevent duplicates
+    teamCountSelect.removeEventListener("change", updateTeamNameInputs);
+    teamCountSelect.addEventListener("change", updateTeamNameInputs);
+  }
+
+  setupAIOptionListener();
+  setupDifficultyButtons();
+  
+  if (startButton) {
+    startButton.removeEventListener("click", startGameHandler);
+    startButton.addEventListener("click", startGameHandler);
+  }
+  
+  if (cancelButton) {
+    cancelButton.removeEventListener("click", cancelGameSetup);
+    cancelButton.addEventListener("click", cancelGameSetup);
+  }
+
+  if (setupOverlay) {
+    // Remove old listener to prevent duplicates
+    setupOverlay.removeEventListener("click", overlayClickHandler);
+    setupOverlay.addEventListener("click", overlayClickHandler);
+    
+    // Prevent clicks on the setup card from bubbling up to the overlay
+    const setupCard = setupOverlay.querySelector(".setup-card");
+    if (setupCard) {
+      setupCard.removeEventListener("click", stopPropagation);
+      setupCard.addEventListener("click", stopPropagation);
+    }
+  }
+}
+
+function stopPropagation(event) {
+  event.stopPropagation();
+}
+
+function overlayClickHandler(event) {
+  cancelGameSetup();
+}
+
+// Function to handle game start
+function startGameHandler() {
+  const teamCount = parseInt(document.getElementById("teamCountSelect").value);
+  const teamNames = [];
+  
+  // Collect all team names
+  for (let i = 0; i < teamCount; i++) {
+    const teamInput = document.getElementById(`teamName${i}`);
+    const teamName = teamInput ? teamInput.value.trim() : `Team ${String.fromCharCode(65 + i)}`;
+    teamNames.push(teamName || `Team ${String.fromCharCode(65 + i)}`);
+  }
+
+  const aiYesRadio = document.getElementById("AI-player-yes");
+  const includeAI = aiYesRadio ? aiYesRadio.checked : false;
+
+  // Get difficulty (only if AI is included)
+  let difficulty = null;
+  
+  if (includeAI) {
+    // Get the selected difficulty from the DOM instead of using a closure
+    const selectedBtn = document.querySelector('.difficulty-btn.selected');
+    if (selectedBtn) {
+      difficulty = selectedBtn.getAttribute('data-difficulty');
+    } else {
+      difficulty = "medium"; // default
+    }
+  }
+  
+  // Store game configuration
+  const gameConfig = {
+    teamCount: teamCount,
+    teamNames: teamNames,
+    includeAI: includeAI,
+    aiDifficulty: difficulty,
+    timestamp: new Date().toISOString()
+  };
+  
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  
+  // Close the overlay
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  if (setupOverlay) {
+    setupOverlay.style.display = "none";
+  }
+  
+  // Convert object to JSON string and save to browser's localStorage
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  
+  // You can add more game initialization logic here
+  console.log("Game configuration:", gameConfig);
+}
+
+// Function to cancel game setup
+function cancelGameSetup() {
+  const setupOverlay = document.getElementById("game-setup-overlay");
+  const text = document.getElementById("AI-text");
+  const button = document.getElementById("AI-confirm");
+  
+  if (setupOverlay) {
+    setupOverlay.style.display = "none";
+  }
+  
+  // Restore the AI text and button if needed
+  if (text && button) {
+    text.style.display = "block";
+    button.style.display = "block";
+    text.classList.remove("fade-out");
+    button.classList.remove("fade-out");
   }
 }
 

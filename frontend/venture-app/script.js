@@ -360,7 +360,7 @@ function setupGameEventListeners() {
   }
 
   setupAIOptionListener();
-  const getSelectedDifficulty = setupDifficultyButtons();
+  setupDifficultyButtons();
   
   if (startButton) {
     startButton.removeEventListener("click", startGameHandler);
@@ -411,16 +411,15 @@ function startGameHandler() {
 
   // Get difficulty (only if AI is included)
   let difficulty = null;
-  let difficultyDescription = null;
   
-  if (includeAI && getSelectedDifficulty) {
-    difficulty = getSelectedDifficulty();
-    const difficultyMap = {
-      easy: { level: 1, name: "Easy", multiplier: 0.7, mistakeChance: 0.3 },
-      medium: { level: 2, name: "Medium", multiplier: 1.0, mistakeChance: 0.1 },
-      hard: { level: 3, name: "Hard", multiplier: 1.3, mistakeChance: 0.02 }
-    };
-    difficultyDescription = difficultyMap[difficulty];
+  if (includeAI) {
+    // Get the selected difficulty from the DOM instead of using a closure
+    const selectedBtn = document.querySelector('.difficulty-btn.selected');
+    if (selectedBtn) {
+      difficulty = selectedBtn.getAttribute('data-difficulty');
+    } else {
+      difficulty = "medium"; // default
+    }
   }
   
   // Store game configuration

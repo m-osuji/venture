@@ -2,7 +2,7 @@
 
 import sqlite3
 from typing import List, Dict, Any
-from ..helpers.db_helpers import get_db_path
+from helpers.db_helpers import get_db_path
 
 # ai modes to emulate a real businenessperson with different levels of skill, risk tolerance, and emotional response to the game.
 AI_MODE_PERSONAS = {

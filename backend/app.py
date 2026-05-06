@@ -3,10 +3,12 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask
+from flask_cors import CORS
 from routes.api import api
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
     app.config['JSON_SORT_KEYS'] = False # to preserve the order of keys in JSON
 
     # Register blueprints

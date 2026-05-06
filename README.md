@@ -48,11 +48,11 @@ pip install -r requirements.txt
 ```
 - Create your local environment file using `cp .env.example .env`, then add your [HF_TOKEN](https://huggingface.co/settings/tokens)
 
-- Start the local server:
+- Start the local server (first navigate into `\project\backend`):
  ```bash
- X
+ flask run
 ```
-which will be available at `X`.
+which will be available at `http://127.0.0.1:5000`.
 
 ## Testing
 

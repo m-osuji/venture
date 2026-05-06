@@ -8,6 +8,31 @@ let gameState = {
     currentStage: 0
 };
 
+// Store the full backend data here so we can use it later (like updating territories)
+let currentBackendState = null;
+
+// The Bridge to Python: Fetches the latest state and updates the UI
+export async function fetchGameState() {
+    try {
+        const response = await fetch('http://localhost:5000/api/game/state');
+        if (!response.ok) throw new Error("No active game found on backend");
+
+        const data = await response.json();
+        currentBackendState = data;
+
+        // Python sends the stage as an integer (1 = Plan, 2 = Negotiate, etc.)
+        // JS arrays start at 0, so we subtract 1 to match your STAGE_LABELS array!
+        gameState.currentStage = data.current_stage - 1;
+
+        // Update the visual dots on the screen
+        updateStageIndicator();
+
+        console.log("📥 Backend State Synced:", data);
+    } catch (error) {
+        console.error("Failed to sync game state:", error);
+    }
+}
+
 export function startGame() {
 
     // Prevent multiple instances
@@ -125,16 +150,36 @@ function initTerritoryUI(container) {
 }
 
 function initStageProgressButton(container) {
-
     const button = document.getElementById('stage-progresser');
-    
     if (!button) return;
 
-    const maxStage = STAGE_LABELS.length - 1;
+    button.addEventListener('click', async () => {
+        try {
+            // Prevent spam-clicking while the AI is thinking
+            button.style.pointerEvents = 'none';
+            button.style.opacity = '0.5';
 
-    button.addEventListener('click', () => {
-        gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
-        updateStageIndicator();
+            // 1. Tell Python to push the clock forward (and trigger the AI)
+            const response = await fetch('http://localhost:5000/api/game/advance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            console.log("⏩ Advanced Stage:", result);
+
+            // 2. Fetch the fresh state from the backend to update our UI
+            if (response.ok) {
+                await fetchGameState();
+            }
+
+        } catch (error) {
+            console.error("Error advancing stage:", error);
+        } finally {
+            // Re-enable the button
+            button.style.pointerEvents = 'auto';
+            button.style.opacity = '1';
+        }
     });
 }
 
@@ -148,7 +193,7 @@ const STAGE_LABELS = [
 
 // Update the stage indicator based on the current stage
 function updateStageIndicator() {
-    
+
     const dots = document.querySelectorAll('.stage-dot');
     const lines = document.querySelectorAll('.stage-line');
     const stageText = document.querySelector('#current-stage-display p');
@@ -242,7 +287,7 @@ function create() {
         console.log(`Clicked at: ${pointer.x}, ${pointer.y}`);
     });
 
-    updateStageIndicator();
+    fetchGameState();
 }
 
 // Update the game loop

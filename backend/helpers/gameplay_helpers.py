@@ -38,9 +38,12 @@ DEFAULT_RULES: dict[str, Any] = {
     "max_orders_per_round": 3,
     "primary_action_margin": 0.0,
     "follow_up_action_margin": 1.0,
+    "max_rounds": None,
+    "session_minutes": None,
 }
 
 GAME_MODES: dict[str, int] = {"speedrun": 20, "full": 60}
+DEFAULT_ROUND_MINUTES = 5
 
 SIZE_IP_VALUES: dict[str, int] = {
     "small": 1,
@@ -152,8 +155,12 @@ def init_game_state(
         "current_stage": GameStage.PLAN,
         "current_team_turn": None,
         "team_order": [],
-        "rules": DEFAULT_RULES,
+        "rules": _build_rules_for_game_mode(game_mode),
         "quickfire_results": [],
+        "requested_stop": False,
+        "game_over_reason": None,
+        "finished_round": None,
+        "winner_team_id": None,
         "teams": team_entries,
         "alliances": [],
         "active_synergies": [],
@@ -390,6 +397,9 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
     The transition UPDATE -> PLAN applies end-of-round updates and starts the next
     round.
     """
+    if _is_finished_status(game_state.get("status")):
+        raise ValueError("[gameplay_helpers] Cannot advance a finished game.")
+
     current_stage = GameStage(int(game_state.get("current_stage", GameStage.PLAN)))
 
     if current_stage == GameStage.PLAN:
@@ -597,6 +607,11 @@ def apply_round_update(game_state: dict[str, Any]) -> dict[str, Any]:
     for team in game_state.get("teams", []):
         team["ip_spent_this_turn"] = 0
 
+    finish_reason = _get_game_finish_reason(game_state, current_round)
+    if finish_reason is not None:
+        _finalise_game(game_state, current_round, finish_reason)
+        return game_state
+
     game_state["current_round"] = current_round + 1
     game_state["current_stage"] = GameStage.PLAN
     team_order = game_state.get("team_order") or []
@@ -613,6 +628,29 @@ def apply_round_update(game_state: dict[str, Any]) -> dict[str, Any]:
 
 def _all_team_ids(game_state: dict[str, Any]) -> list[int]:
     return [int(team["team_id"]) for team in (game_state.get("teams") or [])]
+
+
+def _build_rules_for_game_mode(game_mode: str) -> dict[str, Any]:
+    rules = dict(DEFAULT_RULES)
+    mode_key = str(game_mode or "speedrun").strip().lower()
+    session_minutes = int(GAME_MODES.get(mode_key, GAME_MODES["speedrun"]))
+
+    rules["session_minutes"] = session_minutes
+    rules["max_rounds"] = max(1, session_minutes // DEFAULT_ROUND_MINUTES)
+    return rules
+
+
+def _is_finished_status(status: Any) -> bool:
+    if isinstance(status, SessionStatus):
+        return status == SessionStatus.FINISHED
+    return str(status or "").strip().upper() == SessionStatus.FINISHED.value
+
+
+def _status_value(status: Any) -> str:
+    if isinstance(status, SessionStatus):
+        return status.value
+    text = str(status or "").strip().upper()
+    return text or SessionStatus.IN_PROGRESS.value
 
 
 def _get_team_entry(game_state: dict[str, Any], team_id: int) -> dict[str, Any]:
@@ -967,6 +1005,32 @@ def _market_income(state: dict[str, Any]) -> int:
     base_income = SIZE_IP_VALUES.get(size_key, 1)
     production_bonus = int(state.get("production_upgrade_level", 0))
     return base_income + production_bonus
+
+
+def _get_game_finish_reason(game_state: dict[str, Any], completed_round: int) -> str | None:
+    if bool(game_state.get("requested_stop")):
+        return "requested_stop"
+
+    rules = game_state.get("rules", {}) or {}
+    max_rounds = rules.get("max_rounds")
+    if max_rounds not in (None, "", 0):
+        if int(completed_round) >= int(max_rounds):
+            return "max_rounds_reached"
+
+    return None
+
+
+def _finalise_game(game_state: dict[str, Any], completed_round: int, reason: str) -> None:
+    game_state["status"] = SessionStatus.FINISHED
+    game_state["current_stage"] = GameStage.UPDATE
+    game_state["current_team_turn"] = None
+    game_state["current_round"] = completed_round
+    game_state["requested_stop"] = False
+    game_state["game_over_reason"] = str(reason)
+    game_state["finished_round"] = int(completed_round)
+    leaderboard = _build_leaderboard(game_state)
+    winner_team_id = leaderboard[0]["team_id"] if leaderboard else None
+    game_state["winner_team_id"] = winner_team_id
 
 
 def _estimate_market_defense_strength(state: dict[str, Any]) -> float:
@@ -1616,19 +1680,25 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
     # cast market_state stringified keys back to integers for easier handling in frontend logic
     market_state = _cast_market_keys(market_state)
     status = game_state.get("status", SessionStatus.IN_PROGRESS)
+    is_finished = _is_finished_status(status)
 
     stage_int = game_state.get("current_stage", GameStage.PLAN)
     # ensure frontend has readable string version of game stage
     stage_str = GameStage(stage_int).name if stage_int in GameStage._value2member_map_ else "UNKNOWN"
+    leaderboard = _build_leaderboard(game_state)
 
     return {
         "session_uuid": game_state.get("session_uuid"),
-        "status": status,
+        "status": _status_value(status),
+        "is_finished": is_finished,
         "game_mode": game_state.get("game_mode"),
         "current_round": game_state.get("current_round", 1),
         "current_stage": stage_str,
         "current_team_turn": game_state.get("current_team_turn"),
         "team_order": game_state.get("team_order", []),
+        "finished_round": game_state.get("finished_round"),
+        "game_over_reason": game_state.get("game_over_reason"),
+        "winner_team_id": game_state.get("winner_team_id"),
         "teams": [
             {
                 "team_id": t["team_id"],
@@ -1638,7 +1708,7 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "ip_spent_this_turn": t.get("ip_spent_this_turn", 0),
                 # ethical score hidden until game end
                 "ethical_score": (
-                    t["ethical_score"] if status == SessionStatus.FINISHED else None
+                    t["ethical_score"] if is_finished else None
                 ),
                 "is_ai": t.get("is_ai", False),
             }
@@ -1655,7 +1725,8 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
             }
             for market_id, state in market_state.items()
         },
-        "leaderboard": _build_leaderboard(game_state),
+        "leaderboard": leaderboard,
+        "final_leaderboard": leaderboard if is_finished else None,
         "active_synergies": game_state.get("active_synergies", []),
         "active_quizzes": [
             quiz_helpers.to_public_quiz_payload(quiz)
@@ -1682,7 +1753,10 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
 
 def _build_leaderboard(game_state: dict[str, Any]) -> list[dict[str, Any]]:
     """
-    Builds a leaderboard from current game state, sorted by IP then markets controlled (descending).
+    Builds a leaderboard from current game state.
+
+    During the game, teams are ordered by IP and markets controlled.
+    Once finished, ethical score becomes part of the final ranking order.
 
     Args:
         game_state (dict): The global game state dictionary.
@@ -1692,31 +1766,40 @@ def _build_leaderboard(game_state: dict[str, Any]) -> list[dict[str, Any]]:
     """
     teams = game_state.get("teams") or []
     market_state = game_state.get("market_state") or {}
-    status = game_state.get("status", "IN_PROGRESS")
+    is_finished = _is_finished_status(game_state.get("status", SessionStatus.IN_PROGRESS))
 
-    markets_per_team: dict[str, int] = {}
+    markets_per_team: dict[int, int] = {}
     for state in market_state.values():
         owner = state.get("owner")
         if owner:
-            markets_per_team[owner] = markets_per_team.get(owner, 0) + 1
+            numeric_owner = int(owner)
+            markets_per_team[numeric_owner] = markets_per_team.get(numeric_owner, 0) + 1
 
     entries = [
         {
-            "team_id": t["team_id"],
+            "team_id": int(t["team_id"]),
             "team_name": t["team_name"],
             "colour": t["colour"],
-            "ip": t["ip"],
-            "markets_controlled": markets_per_team.get(t["team_id"], 0),
-            "ethical_score": t["ethical_score"] if status == "FINISHED" else None,
+            "ip": int(t["ip"]),
+            "markets_controlled": markets_per_team.get(int(t["team_id"]), 0),
+            "ethical_score": float(t["ethical_score"]) if is_finished else None,
         }
         for t in teams
     ]
 
-    return sorted(
+    sorted_entries = sorted(
         entries,
-        key=lambda e: (e["ip"], e["markets_controlled"]),
-        reverse=True,
+        key=lambda entry: (
+            -entry["ip"],
+            -entry["markets_controlled"],
+            -(entry["ethical_score"] if entry["ethical_score"] is not None else 0.0),
+            entry["team_id"],
+        ),
     )
+    for index, entry in enumerate(sorted_entries, start=1):
+        entry["rank"] = index
+
+    return sorted_entries
 
 
 def _get_owner_colour(owner_id: int | None, teams: list[dict]) -> str | None:

@@ -889,6 +889,11 @@ footer nav p {
 
 #buzzer-status {
     transition: all 0.3s ease;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
 }
 
 /* Tournament and Market Selection Additional Styles */

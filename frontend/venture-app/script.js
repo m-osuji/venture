@@ -763,6 +763,30 @@ function startTeamQuiz() {
     window.team1Locked = false;
     window.team2Locked = false;
     
+    // Clear any existing timeout
+    if (window.questionTimeout) {
+      clearTimeout(window.questionTimeout);
+    }
+    
+    // Set a timeout to automatically skip if no one answers after 30 seconds
+    window.questionTimeout = setTimeout(() => {
+      if (questionActive) {
+        questionActive = false;
+        document.getElementById("buzzer-status").innerHTML = "Time's up! Moving to next question.";
+        document.getElementById("buzzer-status").style.background = "#f39c12";
+        document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">No one answered in time! No points awarded.</span>`;
+        document.getElementById("round-result").style.display = "block";
+        document.getElementById("next-question-btn").style.display = "block";
+        
+        // Disable all options
+        const options = document.querySelectorAll(".competition-option");
+        options.forEach(opt => {
+          opt.style.cursor = "not-allowed";
+          opt.style.opacity = "0.5";
+        });
+      }
+    }, 30000); // 30 seconds timeout
+    
     const question = currentQuestions[currentQuestionIndex];
     
     document.getElementById("question-text").innerHTML = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}: ${question.text}`;
@@ -846,41 +870,68 @@ function startTeamQuiz() {
         document.getElementById("buzzer-status").style.background = "#e74c3c";
         document.getElementById("round-result").innerHTML = `<span style="color: red;">WRONG! ${currentMatchup.team1} loses this turn. ${currentMatchup.team2} can still answer.</span>`;
         
-        // Disable Team 1's options by removing their event listener functionality
-        // Instead of disabling all options, we track that team1 has answered wrong
-        // Store that team1 is locked for this question
-        if (!window.team1Locked) window.team1Locked = false;
         window.team1Locked = true;
         
-        // Re-enable options for team 2 only
-        const options = document.querySelectorAll(".competition-option");
-        options.forEach(opt => {
-          opt.style.cursor = "pointer";
-          opt.style.opacity = "1";
-        });
+        // Check if both teams are now locked
+        if (window.team2Locked) {
+          handleDoubleWrong();
+        }
         
       } else if (team === 2) {
         document.getElementById("buzzer-status").innerHTML = `${currentMatchup.team2} answered WRONG! ${currentMatchup.team1} can still answer.`;
         document.getElementById("buzzer-status").style.background = "#e74c3c";
         document.getElementById("round-result").innerHTML = `<span style="color: red;">WRONG! ${currentMatchup.team2} loses this turn. ${currentMatchup.team1} can still answer.</span>`;
         
-        // Store that team2 is locked for this question
-        if (!window.team2Locked) window.team2Locked = false;
         window.team2Locked = true;
         
-        // Re-enable options for team 1 only
-        const options = document.querySelectorAll(".competition-option");
-        options.forEach(opt => {
-          opt.style.cursor = "pointer";
-          opt.style.opacity = "1";
-        });
+        // Check if both teams are now locked
+        if (window.team1Locked) {
+          handleDoubleWrong();
+        }
       }
       
       document.getElementById("round-result").style.display = "block";
-      // DO NOT hide next question button - keep it hidden until someone answers correctly
-      // The question remains active for the other team
       
       return false;
+    }
+  }
+
+  // Handle case when both teams answered wrong
+  function handleDoubleWrong() {
+    if (window.team1Locked && window.team2Locked && questionActive) {
+      questionActive = false;
+      document.getElementById("buzzer-status").innerHTML = "Both teams answered wrong! Moving to next question.";
+      document.getElementById("buzzer-status").style.background = "#f39c12";
+      document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">Both teams were wrong! No points awarded for this question.</span>`;
+      document.getElementById("round-result").style.display = "block";
+      document.getElementById("next-question-btn").style.display = "block";
+      
+      // No winner recorded for this question
+      currentMatchupResults.push({
+        questionNumber: currentQuestionIndex + 1,
+        question: currentQuestions[currentQuestionIndex].text,
+        correctAnswer: currentQuestions[currentQuestionIndex].correct,
+        correctAnswerText: currentQuestions[currentQuestionIndex].options[currentQuestions[currentQuestionIndex].correct],
+        winningTeam: "Neither",
+        winningTeamId: 0
+      });
+      
+      // Disable all options
+      const options = document.querySelectorAll(".competition-option");
+      options.forEach(opt => {
+        opt.style.cursor = "not-allowed";
+        opt.style.opacity = "0.5";
+      });
+      
+      // Highlight correct answer
+      const question = currentQuestions[currentQuestionIndex];
+      const correctOptionId = `option-${question.correct}`;
+      const correctElement = document.getElementById(correctOptionId);
+      if (correctElement) {
+        correctElement.style.background = "#27ae60";
+        correctElement.style.border = "2px solid #1e7e34";
+        correctElement.style.color = "white";
+      }
     }
   }
 

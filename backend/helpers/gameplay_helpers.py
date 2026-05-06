@@ -183,6 +183,7 @@ def _empty_turn_log() -> dict[str, Any]:
         "decisions_confirmed": False,
         "plan_notes": {},
         "declared_moves": {},
+        "alliance_offers": [],
         "actual_moves": {},
         "prepared_moves": {},
         "conflicts": [],
@@ -255,6 +256,231 @@ def append_negotiation_entry(game_state: dict[str, Any], entry: dict[str, Any]) 
     turn_log = game_state.setdefault("turn_log", _empty_turn_log())
     turn_log.setdefault("negotiation_log", []).append(dict(entry))
     return game_state
+
+
+def propose_alliance(
+    game_state: dict[str, Any],
+    proposer_team_id: int,
+    recipient_team_id: int,
+    *,
+    alliance_type: str = "alliance",
+    shared_market: int | None = None,
+    protected_markets: list[int] | None = None,
+    notes: Any = None,
+) -> dict[str, Any]:
+    """
+    Create a pending bilateral alliance offer during the NEGOTIATE stage.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+    _get_team_entry(game_state, proposer_team_id)
+    _get_team_entry(game_state, recipient_team_id)
+
+    if int(proposer_team_id) == int(recipient_team_id):
+        raise ValueError("[gameplay_helpers] A team cannot propose an alliance to itself.")
+
+    protected_market_ids = _normalise_market_id_list(protected_markets)
+    shared_market_id = _optional_int(shared_market)
+
+    if shared_market_id is not None:
+        _market_entry(game_state, shared_market_id)
+        if shared_market_id not in protected_market_ids:
+            protected_market_ids.append(shared_market_id)
+
+    for market_id in protected_market_ids:
+        _market_entry(game_state, market_id)
+
+    if _find_active_alliance_between(game_state, proposer_team_id, recipient_team_id) is not None:
+        raise ValueError(
+            f"[gameplay_helpers] Teams {proposer_team_id} and {recipient_team_id} already have an active alliance."
+        )
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    offers = turn_log.setdefault("alliance_offers", [])
+
+    if _find_pending_offer_between(offers, proposer_team_id, recipient_team_id) is not None:
+        raise ValueError(
+            f"[gameplay_helpers] Teams {proposer_team_id} and {recipient_team_id} already have a pending alliance offer this round."
+        )
+
+    current_round = int(game_state.get("current_round", 1))
+    offer_id = f"offer_{uuid4().hex[:10]}"
+    offer = {
+        "offer_id": offer_id,
+        "proposer_team_id": int(proposer_team_id),
+        "recipient_team_id": int(recipient_team_id),
+        "members": sorted([int(proposer_team_id), int(recipient_team_id)]),
+        "type": str(alliance_type or "alliance").strip().lower(),
+        "shared_market": shared_market_id,
+        "protected_markets": protected_market_ids,
+        "notes": notes,
+        "status": "pending",
+        "proposed_turn": current_round,
+        "resolved_turn": None,
+        "resolved_by_team_id": None,
+        "rejection_reason": None,
+        "alliance_id": None,
+    }
+    offers.append(offer)
+
+    append_negotiation_entry(
+        game_state,
+        {
+            "entry_type": "alliance_offer",
+            "offer_id": offer_id,
+            "proposer_team_id": int(proposer_team_id),
+            "recipient_team_id": int(recipient_team_id),
+            "shared_market": shared_market_id,
+            "protected_markets": list(protected_market_ids),
+        },
+    )
+    return offer
+
+
+def accept_alliance_offer(
+    game_state: dict[str, Any], offer_id: str, responder_team_id: int
+) -> dict[str, Any]:
+    """
+    Accept a pending alliance offer and create an active alliance entry.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+    _get_team_entry(game_state, responder_team_id)
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    offer = _get_alliance_offer(turn_log, offer_id)
+    if offer["status"] != "pending":
+        raise ValueError(
+            f"[gameplay_helpers] Alliance offer {offer_id} is already {offer['status']}."
+        )
+
+    if int(offer["recipient_team_id"]) != int(responder_team_id):
+        raise ValueError(
+            f"[gameplay_helpers] Only team {offer['recipient_team_id']} can accept alliance offer {offer_id}."
+        )
+
+    members = [int(member) for member in (offer.get("members") or [])]
+    if _find_active_alliance_between(game_state, members[0], members[1]) is not None:
+        raise ValueError(
+            f"[gameplay_helpers] Teams {members[0]} and {members[1]} already have an active alliance."
+        )
+
+    current_round = int(game_state.get("current_round", 1))
+    alliance_id = f"alliance_{uuid4().hex[:10]}"
+    alliance = {
+        "alliance_id": alliance_id,
+        "members": members,
+        "type": offer.get("type", "alliance"),
+        "formed_turn": current_round,
+        "shared_market": offer.get("shared_market"),
+        "protected_markets": list(offer.get("protected_markets") or []),
+        "notes": offer.get("notes"),
+        "source_offer_id": offer_id,
+        "status": "active",
+        "broken_turn": None,
+        "broken_by_team_id": None,
+        "broken_reason": None,
+    }
+
+    offer["status"] = "accepted"
+    offer["resolved_turn"] = current_round
+    offer["resolved_by_team_id"] = int(responder_team_id)
+    offer["alliance_id"] = alliance_id
+    game_state.setdefault("alliances", []).append(alliance)
+
+    append_negotiation_entry(
+        game_state,
+        {
+            "entry_type": "alliance_accepted",
+            "offer_id": offer_id,
+            "alliance_id": alliance_id,
+            "members": members,
+            "accepted_by_team_id": int(responder_team_id),
+        },
+    )
+    return alliance
+
+
+def reject_alliance_offer(
+    game_state: dict[str, Any],
+    offer_id: str,
+    responder_team_id: int,
+    *,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """
+    Reject a pending alliance offer during the NEGOTIATE stage.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+    _get_team_entry(game_state, responder_team_id)
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    offer = _get_alliance_offer(turn_log, offer_id)
+    if offer["status"] != "pending":
+        raise ValueError(
+            f"[gameplay_helpers] Alliance offer {offer_id} is already {offer['status']}."
+        )
+
+    if int(offer["recipient_team_id"]) != int(responder_team_id):
+        raise ValueError(
+            f"[gameplay_helpers] Only team {offer['recipient_team_id']} can reject alliance offer {offer_id}."
+        )
+
+    offer["status"] = "rejected"
+    offer["resolved_turn"] = int(game_state.get("current_round", 1))
+    offer["resolved_by_team_id"] = int(responder_team_id)
+    offer["rejection_reason"] = reason
+
+    append_negotiation_entry(
+        game_state,
+        {
+            "entry_type": "alliance_rejected",
+            "offer_id": offer_id,
+            "rejected_by_team_id": int(responder_team_id),
+            "reason": reason,
+        },
+    )
+    return offer
+
+
+def break_alliance(
+    game_state: dict[str, Any],
+    alliance_id: str,
+    acting_team_id: int,
+    *,
+    reason: str = "manual_break",
+) -> dict[str, Any]:
+    """
+    Explicitly end an active alliance during the NEGOTIATE stage.
+
+    This is treated as an open diplomatic action rather than an attack-based betrayal.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+    _get_team_entry(game_state, acting_team_id)
+
+    alliance = _get_alliance_by_id(game_state, alliance_id)
+    members = {int(member) for member in (alliance.get("members") or [])}
+    if int(acting_team_id) not in members:
+        raise ValueError(
+            f"[gameplay_helpers] Team {acting_team_id} is not a member of alliance {alliance_id}."
+        )
+    if alliance.get("broken_turn") is not None:
+        raise ValueError(f"[gameplay_helpers] Alliance {alliance_id} is already broken.")
+
+    alliance["broken_turn"] = int(game_state.get("current_round", 1))
+    alliance["broken_by_team_id"] = int(acting_team_id)
+    alliance["broken_reason"] = str(reason)
+    alliance["status"] = "broken"
+
+    append_negotiation_entry(
+        game_state,
+        {
+            "entry_type": "alliance_broken",
+            "alliance_id": alliance_id,
+            "members": sorted(members),
+            "broken_by_team_id": int(acting_team_id),
+            "reason": str(reason),
+        },
+    )
+    return alliance
 
 
 def submit_actual_moves(
@@ -412,6 +638,12 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
         return game_state
 
     if current_stage == GameStage.NEGOTIATE:
+        pending_offer_ids = _pending_alliance_offer_ids(game_state)
+        if pending_offer_ids and not force:
+            raise ValueError(
+                f"[gameplay_helpers] Cannot leave NEGOTIATE stage; unresolved alliance offers remain: {pending_offer_ids}."
+            )
+        _expire_pending_alliance_offers(game_state)
         game_state["current_stage"] = GameStage.ORDERS
         return game_state
 
@@ -688,6 +920,37 @@ def _missing_quiz_results(game_state: dict[str, Any]) -> list[int]:
     ]
 
 
+def _pending_alliance_offer_ids(game_state: dict[str, Any]) -> list[str]:
+    turn_log = game_state.get("turn_log", {}) or {}
+    offers = turn_log.get("alliance_offers", []) or []
+    return [
+        str(offer["offer_id"])
+        for offer in offers
+        if str(offer.get("status", "pending")).strip().lower() == "pending"
+    ]
+
+
+def _expire_pending_alliance_offers(game_state: dict[str, Any]) -> None:
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    current_round = int(game_state.get("current_round", 1))
+
+    for offer in turn_log.get("alliance_offers", []) or []:
+        if str(offer.get("status", "pending")).strip().lower() != "pending":
+            continue
+        offer["status"] = "expired"
+        offer["resolved_turn"] = current_round
+        offer["resolved_by_team_id"] = None
+
+        append_negotiation_entry(
+            game_state,
+            {
+                "entry_type": "alliance_offer_expired",
+                "offer_id": offer["offer_id"],
+                "members": list(offer.get("members") or []),
+            },
+        )
+
+
 def _normalise_moves(moves: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not moves:
         return []
@@ -711,6 +974,64 @@ def _optional_int(value: Any) -> int | None:
     if value is None or value == "":
         return None
     return int(value)
+
+
+def _normalise_market_id_list(values: list[int] | None) -> list[int]:
+    if not values:
+        return []
+
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for value in values:
+        market_id = int(value)
+        if market_id in seen:
+            continue
+        seen.add(market_id)
+        ordered.append(market_id)
+    return ordered
+
+
+def _get_alliance_offer(turn_log: dict[str, Any], offer_id: str) -> dict[str, Any]:
+    target_offer_id = str(offer_id)
+    for offer in turn_log.get("alliance_offers", []) or []:
+        if str(offer.get("offer_id")) == target_offer_id:
+            return offer
+    raise ValueError(f"[gameplay_helpers] Unknown alliance offer_id {offer_id}.")
+
+
+def _find_pending_offer_between(
+    offers: list[dict[str, Any]], team_a_id: int, team_b_id: int
+) -> dict[str, Any] | None:
+    target_members = {int(team_a_id), int(team_b_id)}
+    for offer in offers:
+        members = {int(member) for member in (offer.get("members") or [])}
+        if members != target_members:
+            continue
+        if str(offer.get("status", "pending")).strip().lower() == "pending":
+            return offer
+    return None
+
+
+def _find_active_alliance_between(
+    game_state: dict[str, Any], team_a_id: int, team_b_id: int
+) -> dict[str, Any] | None:
+    target_members = {int(team_a_id), int(team_b_id)}
+    for alliance in game_state.get("alliances", []) or []:
+        members = {int(member) for member in (alliance.get("members") or [])}
+        if members != target_members:
+            continue
+        if alliance.get("broken_turn") is not None:
+            continue
+        return alliance
+    return None
+
+
+def _get_alliance_by_id(game_state: dict[str, Any], alliance_id: str) -> dict[str, Any]:
+    target_alliance_id = str(alliance_id)
+    for alliance in game_state.get("alliances", []) or []:
+        if str(alliance.get("alliance_id")) == target_alliance_id:
+            return alliance
+    raise ValueError(f"[gameplay_helpers] Unknown alliance_id {alliance_id}.")
 
 
 def _market_entry(game_state: dict[str, Any], market_id: int) -> dict[str, Any]:
@@ -1257,9 +1578,14 @@ def _apply_alliance_betrayal_penalties(
                 current_round - int(alliance.get("formed_turn") or current_round) + 1,
             )
             shared_market = _optional_int(alliance.get("shared_market"))
+            protected_markets = set(
+                _normalise_market_id_list(alliance.get("protected_markets") or [])
+            )
+            if shared_market is not None:
+                protected_markets.add(shared_market)
 
             penalty = 0.12 + min(0.18, 0.03 * alliance_turns)
-            if shared_market == int(move["target_market_id"]):
+            if int(move["target_market_id"]) in protected_markets:
                 penalty += 0.05
             if _attack_breaks_alliance(move):
                 penalty += 0.03
@@ -1287,6 +1613,7 @@ def _apply_alliance_betrayal_penalties(
                         "target_market_id": int(move["target_market_id"]),
                         "defender_team_id": defender_team_id,
                         "alliance_turns": alliance_turns,
+                        "protected_markets": sorted(protected_markets),
                     },
                 }
             )
@@ -1600,6 +1927,10 @@ def _build_commitments(
         if shared:
             protected_markets.append(shared)
 
+        protected_markets.extend(
+            _normalise_market_id_list(alliance.get("protected_markets") or [])
+        )
+
     return {
         "avoid_attack_markets": list(set(avoid_attack_markets)),
         "protected_markets": list(set(protected_markets)),
@@ -1737,13 +2068,37 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
             for market_id in (game_state.get("turn_log", {}).get("quiz_results") or {}).keys()
         ),
         "resolution_outcomes": game_state.get("turn_log", {}).get("resolution_outcomes", []),
+        "alliance_offers": [
+            {
+                "offer_id": offer["offer_id"],
+                "proposer_team_id": offer["proposer_team_id"],
+                "recipient_team_id": offer["recipient_team_id"],
+                "members": offer.get("members", []),
+                "type": offer.get("type", "alliance"),
+                "shared_market": offer.get("shared_market"),
+                "protected_markets": offer.get("protected_markets", []),
+                "status": offer.get("status", "pending"),
+                "proposed_turn": offer.get("proposed_turn"),
+                "resolved_turn": offer.get("resolved_turn"),
+                "resolved_by_team_id": offer.get("resolved_by_team_id"),
+                "alliance_id": offer.get("alliance_id"),
+                "rejection_reason": offer.get("rejection_reason"),
+                "notes": offer.get("notes"),
+            }
+            for offer in (game_state.get("turn_log", {}).get("alliance_offers") or [])
+        ],
         "alliances": [
             {
                 "alliance_id": a["alliance_id"],
                 "members": a["members"],
                 "type": a["type"],
                 "formed_turn": a["formed_turn"],
+                "shared_market": a.get("shared_market"),
+                "protected_markets": a.get("protected_markets", []),
+                "status": a.get("status", "active"),
                 "broken_turn": a.get("broken_turn"),
+                "broken_by_team_id": a.get("broken_by_team_id"),
+                "broken_reason": a.get("broken_reason"),
             }
             for a in (game_state.get("alliances") or [])
         ],

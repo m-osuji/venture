@@ -404,6 +404,84 @@ def test_plan_and_declared_mismatch_penalise_ethics(monkeypatch):
     assert "negotiation_mismatch" in _event_categories(round_entry)
 
 
+def test_alliance_offers_must_be_resolved_before_leaving_negotiate(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    gph.submit_plan_notes(state, 1, "ally")
+    gph.submit_plan_notes(state, 2, "ally")
+    gph.advance_stage(state)
+
+    offer = gph.propose_alliance(
+        state,
+        1,
+        2,
+        shared_market=2,
+        protected_markets=[3],
+        notes="Let's avoid fighting over these markets.",
+    )
+
+    with pytest.raises(ValueError):
+        gph.advance_stage(state)
+
+    rejected_offer = gph.reject_alliance_offer(
+        state,
+        offer["offer_id"],
+        2,
+        reason="Not this round.",
+    )
+    gph.advance_stage(state)
+
+    assert rejected_offer["status"] == "rejected"
+    assert rejected_offer["rejection_reason"] == "Not this round."
+    assert state["current_stage"] == GameStage.ORDERS
+    assert state["turn_log"]["alliance_offers"][0]["offer_id"] == offer["offer_id"]
+
+
+def test_accepting_and_breaking_alliance_updates_commitments(monkeypatch):
+    state = _build_state(monkeypatch)
+
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+
+    gph.submit_plan_notes(state, 1, "ally")
+    gph.submit_plan_notes(state, 2, "ally")
+    gph.advance_stage(state)
+
+    offer = gph.propose_alliance(
+        state,
+        1,
+        2,
+        shared_market=2,
+        protected_markets=[3],
+    )
+    alliance = gph.accept_alliance_offer(state, offer["offer_id"], 2)
+
+    context_before_break = gph.build_agent_context(state, 1)
+    frontend_before_break = gph.get_frontend_state(state)
+
+    assert alliance["status"] == "active"
+    assert 2 in context_before_break["allied_markets"]
+    assert 2 in context_before_break["commitments"]["avoid_attack_markets"]
+    assert 2 in context_before_break["commitments"]["protected_markets"]
+    assert 3 in context_before_break["commitments"]["protected_markets"]
+    assert frontend_before_break["alliance_offers"][0]["status"] == "accepted"
+    assert set(frontend_before_break["alliances"][0]["protected_markets"]) == {2, 3}
+
+    broken_alliance = gph.break_alliance(
+        state,
+        alliance["alliance_id"],
+        1,
+        reason="strategic_reset",
+    )
+    context_after_break = gph.build_agent_context(state, 1)
+
+    assert broken_alliance["status"] == "broken"
+    assert broken_alliance["broken_by_team_id"] == 1
+    assert broken_alliance["broken_reason"] == "strategic_reset"
+    assert context_after_break["allied_markets"] == []
+    assert context_after_break["commitments"]["protected_markets"] == []
+
+
 def test_frontend_state_exposes_public_quiz_payload_only(monkeypatch):
     state = _build_state(monkeypatch)
 

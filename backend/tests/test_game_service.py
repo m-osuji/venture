@@ -163,6 +163,46 @@ def test_build_ai_context_uses_persisted_state(monkeypatch):
     assert 2 in context["enemy_markets"]
 
 
+def test_game_service_persists_alliance_lifecycle(monkeypatch):
+    _stub_reference_data(monkeypatch)
+    _stub_persistence(monkeypatch)
+
+    service.create_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00"},
+            {"id": 2, "name": "Blue", "colour": "#00f"},
+        ],
+        team_order=[1, 2],
+    )
+
+    service.submit_plan_notes(1, "ally")
+    service.submit_plan_notes(2, "ally")
+    service.advance_stage()
+
+    offered_state = service.propose_alliance(
+        1,
+        2,
+        shared_market=2,
+        protected_markets=[2],
+    )
+    offer_id = offered_state["turn_log"]["alliance_offers"][0]["offer_id"]
+
+    accepted_state = service.accept_alliance_offer(offer_id, 2)
+    alliance_id = accepted_state["alliances"][0]["alliance_id"]
+
+    assert accepted_state["turn_log"]["alliance_offers"][0]["status"] == "accepted"
+    assert accepted_state["alliances"][0]["status"] == "active"
+
+    broken_state = service.break_alliance(
+        alliance_id,
+        1,
+        reason="manual_break",
+    )
+
+    assert broken_state["alliances"][0]["status"] == "broken"
+    assert broken_state["alliances"][0]["broken_by_team_id"] == 1
+
+
 def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
     _stub_reference_data(monkeypatch)
     storage = _stub_persistence(monkeypatch)

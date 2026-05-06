@@ -26,6 +26,85 @@ const routes = {
   "/game": "pages/game.html"
 };
 
+// Question bank loaded from CSV format
+let questionBank = [];
+
+// Load questions from the provided data
+function loadQuestionBank() {
+  const csvData = [
+    ["SkillsBuild Course","question_id","topic","content","option_1","option_2","option_3","option_4","answer","difficulty_level"],
+    ["AI in Legal: From Research to Results","2","AI in Law","A community center hires Rachel to assist multiple families appeal denied government benefits. With no additional staff to manage the caseload, she uses AI to autofill forms, flag missing data, and automate the sorting of case files based on deadlines. How is AI helping Rachel in this case to assist the families?","It is helping her skip the need for client interviews and documentation.","It is helping her guarantee successful outcomes for all benefit appeals.","It is helping her to automatically approve denied benefit applications.","It is helping her reduce costs and make services more affordable.","option_4","medium"],
+    ["Elevate education with ai","2","Education","Élodie is a middle school teacher preparing reading materials with help from a general-purpose AI tool. She avoids entering student names, grades, or personal details into the system and instead uses only general class information. Which best practice is Élodie following?","Verify accuracy","Be transparent","Use AI to support, not replace","Protect student privacy","option_4","easy"],
+    ["The Power of Personalized Finance with AI","4","Ethics, AI","A weekly summary notifies a married couple that their grocery spending has increased by 15% since they moved to a new city. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_4","easy"],
+    ["The Power of Personalized Finance with AI","5","Ethics, AI, Cybersecurity","After detecting large, consistent balances in a checking account, a banking app suggests opening a high-yield savings account that better fits the user’s situation. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Personalized product recommendations","Conversational financial assistance","Smart spending insights","option_2","hard"],
+    ["The Power of Personalized Finance with AI","6","Ethics, AI","A user asks a financial advisory app, 'Should I pay off my student loans or start investing?' The app provides guidance based on the user's income and loan interest rates. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_3","easy"],
+    ["The Power of Personalized Finance with AI","7","Ethics, AI, Cybersecurity","A credit card holder receives an alert stating, 'Your usual coffee purchase was declined after an ATM withdrawal occurred 200 miles away'. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_2","easy"],
+    ["The Power of Personalized Finance with AI","8","Ethics, AI","An investment platform explains why a low-risk bond fund fits a long-term retirement timeline and conservative investment approach.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_1","easy"],
+    ["The Power of Personalized Finance with AI","9","AI, Cybersecurity","An app reviews several months of spending and sends a message explaining why entertainment costs increased after a recent subscription change. Match the personalization scenario with the corresponding AI technology.","Machine learning + large language models","Large language models","Machine learning","Natural language processing","option_1","hard"],
+    ["The Power of Personalized Finance with AI","10","AI, Cybersecurity","An app explains, 'You've spent more on dining out this month. Here are three ways to reduce those costs.' Match the personalization scenario with the corresponding AI technology.","Machine learning + large language models","Large language models","Machine learning","Natural language processing","option_2","easy"],
+    ["Elevate education with ai","11","Education","Chen uses AI to help her evaluate student essays. The AI tool provides detailed comments on each essay based on her rubric, giving her more time to meet with students who need extra guidance.","Decision-making AI","Predictive AI","Generative AI","Computer vision","option_3","easy"],
+    ["The Power of Personalized Finance with AI","12","AI, Cybersecurity","An app answers the question, 'Should I pay off debt or start investing?' by using income, loan rates, and savings goals. Match the personalization scenario with the corresponding AI technology.","Natural language processing","Machine learning","Large language models","Natural language processing + large language models","option_4","medium"],
+    ["The Power of Personalized Finance with AI","13","AI, Cybersecurity","Lakshmi starts a new job with a longer commute. Now, her banking app shows a weekly update highlighting her increased spending on transportation. It also suggests that Lakshmi adjust her monthly budget accordingly. Which AI personalization enhancement does this scenario illustrate?","Personalized product recommendations","Proactive fraud detection","Smart spending insights","Conversational financial assistance","option_3","medium"],
+    ["Elevate education with ai","14","Education","Jordan is using an AI tool to help prepare a lesson on the solar system. In his prompt, he instructs the AI tool to draft the material from his point of view, as a middle school science teacher, so the content aligns with how he would present it in class. Which prompt pattern is Jordan using?","Alternative approaches pattern","Flipped interaction pattern","Persona pattern","Template pattern","option_3","hard"],
+    ["Elevate education with ai","15","Education","Aarav is a vice-principal who uses an AI tool to generate a first draft of the monthly staff update. Before sending it out, he carefully reviews all AI-generated sections to ensure they align with school goals and do not contain errors. Which best practice is Aarav following?","Verify accuracy","Maintain human oversite","Protect student privacy","Use ai to support, not replace","option_2","medium"],
+    ["Elevate education with ai","16","Education","Selena is using an AI tool to help create a new unit on ancient civilizations. She needs the AI tool to produce a lesson plan with a clear, consistent structure, so she provides a specific format in her prompt. The response should include objectives, materials, activities, and assessments, in that order, and include complete content for each section.","Cognitive verifier pattern","Persona pattern","Alternative approaches pattern","Template pattern","option_4","easy"],
+    ["The Power of Personalized Finance with AI","17","AI, Cybersecurity","An investment platform reviews a customer's age, income, savings goals, and risk tolerance. Then, it presents a long-term portfolio strategy with a clear explanation of how this strategy aligns to those goals. Which AI personalization enhancement does this scenario illustrate?","Conversational financial assistance","Smart spending insights","Proactive fraud detection","Customized investment advice","option_4","medium"],
+    ["AI in Legal: From Research to Results","18","AI in Law","Associates at a large law firm spend a considerable amount of their work hours on document review and fact-checking. With AI-enabled automation, the time spent on these tasks drop, freeing up almost 10 hours per week. What benefit does this provide?","Increases productivity.","Enhances accessibility.","Improves legal research.","Strengthens case outcomes.","option_1","easy"],
+    ["AI in Legal: From Research to Results","19","AI in Law","Saul is working on a contract dispute case between companies located in different states and countries, each governed by its own legal system. He uses AI to extract relevant laws and statutes from multiple data sources, gathering insights accurately and quickly. What benefit does this provide?","Increases productivity.","Enhances accessibility.","Improves legal research.","Strengthens case outcomes.","option_3","easy"]
+  ];
+
+  // Skip header row and convert to objects
+  for (let i = 1; i < csvData.length; i++) {
+    const row = csvData[i];
+    questionBank.push({
+      id: parseInt(row[1]),
+      course: row[0],
+      topic: row[2],
+      content: row[3],
+      options: {
+        a: row[4],
+        b: row[5],
+        c: row[6],
+        d: row[7]
+      },
+      correct: row[8], // e.g., "option_1", "option_2", etc.
+      difficulty: row[9]
+    });
+  }
+  
+  console.log(`Loaded ${questionBank.length} questions`);
+}
+
+// Helper function to get the correct option letter
+function getCorrectLetter(correctOption) {
+  const mapping = {
+    'option_1': 'a',
+    'option_2': 'b',
+    'option_3': 'c',
+    'option_4': 'd'
+  };
+  return mapping[correctOption] || 'a';
+}
+
+// Get random questions filtered by difficulty
+function getRandomQuestions(count, difficulty = null) {
+  let filtered = [...questionBank];
+  if (difficulty && difficulty !== 'all') {
+    filtered = filtered.filter(q => q.difficulty === difficulty);
+  }
+  
+  // Shuffle
+  for (let i = filtered.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+  }
+  
+  return filtered.slice(0, count);
+}
+
+// Load questions at startup
+loadQuestionBank();
+
 let scrollHandlerAttached = false;
 
 function initScrollIndicator() {
@@ -222,6 +301,21 @@ function initScrollIndicator() {
 // Asynch to load all page elements at the same time, less jumpy
 let currentGameModule = null;
 async function loadRoute(path) {
+  // Remove tournament and market overlays when changing pages
+  const tournamentOverlay = document.getElementById("tournament-overlay");
+  const marketOverlay = document.getElementById("market-overlay");
+  const quizOverlay = document.getElementById("quiz-overlay");
+
+  if (tournamentOverlay) tournamentOverlay.remove();
+  if (marketOverlay) marketOverlay.remove();
+  if (quizOverlay) quizOverlay.remove();
+
+  // Also clear any timer intervals
+  if (window.countdownInterval) {
+    clearInterval(window.countdownInterval);
+    window.countdownInterval = null;
+  }
+
   if (path === "/index.html") path = "/";
 
   const page = routes[path] || "home.html";
@@ -528,6 +622,10 @@ function initQuizSetup() {
 
 // Tournament system with round robin between all teams
 function startTeamQuiz() {  
+  if (window.location.pathname !== "/game") {
+    return;
+  }
+
   const savedConfig = localStorage.getItem("ventureGameConfig");
   if (!savedConfig) {
     console.error("No game configuration found");
@@ -569,78 +667,7 @@ function startTeamQuiz() {
   });
 
   // Quiz questions with correct answers
-  const questions = [
-    {
-      text: "What does SWOT analysis stand for?",
-      options: {
-        a: "Strengths, Weaknesses, Opportunities, Threats",
-        b: "Strategy, Workforce, Operations, Technology",
-        c: "Sales, Wealth, Organization, Trade",
-        d: "Strengths, Weaknesses, Objectives, Targets"
-      },
-      correct: "a"
-    },
-    {
-      text: "What is the primary goal of market segmentation?",
-      options: {
-        a: "To target all customers equally",
-        b: "To divide a market into distinct groups with similar needs",
-        c: "To eliminate competition",
-        d: "To reduce product quality"
-      },
-      correct: "b"
-    },
-    {
-      text: "Which of the following is a fixed cost for a business?",
-      options: {
-        a: "Raw materials",
-        b: "Rent",
-        c: "Shipping costs",
-        d: "Sales commissions"
-      },
-      correct: "b"
-    },
-    {
-      text: "What is the break-even point?",
-      options: {
-        a: "When total revenue equals total costs",
-        b: "When a business makes maximum profit",
-        c: "When a business closes operations",
-        d: "When demand exceeds supply"
-      },
-      correct: "a"
-    },
-    {
-      text: "What is the purpose of a mission statement?",
-      options: {
-        a: "To calculate financial projections",
-        b: "To define a company's purpose and goals",
-        c: "To list employee benefits",
-        d: "To advertise products"
-      },
-      correct: "b"
-    },
-    {
-      text: "Which of these is a variable cost?",
-      options: {
-        a: "Rent",
-        b: "Salaries",
-        c: "Raw materials",
-        d: "Insurance"
-      },
-      correct: "c"
-    },
-    {
-      text: "What does ROI stand for?",
-      options: {
-        a: "Return on Investment",
-        b: "Rate of Interest",
-        c: "Risk of Inflation",
-        d: "Revenue on Income"
-      },
-      correct: "a"
-    }
-  ];
+  
 
   // Create tournament overlay
   const tournamentOverlay = document.createElement("div");
@@ -725,13 +752,8 @@ function startTeamQuiz() {
   }
 
   function selectRandomQuestions() {
-    // Select 3 random questions for this matchup
-    const shuffled = [...questions];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled.slice(0, 3);
+    // Select 3 random questions from the question bank
+    return getRandomQuestions(3, 'all');
   }
 
   function startMatchup() {
@@ -875,7 +897,8 @@ function startTeamQuiz() {
           // Highlight correct answer
           if (currentQuestions[currentQuestionIndex]) {
             const question = currentQuestions[currentQuestionIndex];
-            const correctOptionId = `option-${question.correct}`;
+            const correctLetter = getCorrectLetter(question.correct);
+            const correctOptionId = `option-${correctLetter}`;
             const correctElement = document.getElementById(correctOptionId);
             if (correctElement) {
               correctElement.style.background = "#27ae60";
@@ -902,24 +925,22 @@ function startTeamQuiz() {
       return;
     }
 
+    // Stop any existing timer
     if (countdownInterval) {
       clearInterval(countdownInterval);
       countdownInterval = null;
     }
 
     questionActive = true;
-    // Reset team lock flags for new question
     window.team1Locked = false;
     window.team2Locked = false;
     
-    // Clear any existing timeout
-    if (window.questionTimeout) {
-      clearTimeout(window.questionTimeout);
-    }
-    
     const question = currentQuestions[currentQuestionIndex];
     
-    document.getElementById("question-text").innerHTML = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}: ${question.text}`;
+    // Store the correct answer letter for checking
+    window.currentCorrectAnswer = getCorrectLetter(question.correct);
+    
+    document.getElementById("question-text").innerHTML = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}: ${question.content}`;
     document.getElementById("option-a").innerHTML = `A. ${question.options.a}`;
     document.getElementById("option-b").innerHTML = `B. ${question.options.b}`;
     document.getElementById("option-c").innerHTML = `C. ${question.options.c}`;
@@ -956,7 +977,7 @@ function startTeamQuiz() {
     if (!questionActive) return false;
     
     const question = currentQuestions[currentQuestionIndex];
-    const isCorrect = (selectedOption === question.correct);
+    const isCorrect = (selectedOption === window.currentCorrectAnswer);
     
     if (isCorrect) {
       stopCountdown(); // Stop timer when someone answers correctly
@@ -980,7 +1001,7 @@ function startTeamQuiz() {
         questionNumber: currentQuestionIndex + 1,
         question: question.text,
         correctAnswer: question.correct,
-        correctAnswerText: question.options[question.correct],
+        correctAnswerText: question.options[window.currentCorrectAnswer],
         winningTeam: team === 1 ? currentMatchup.team1 : currentMatchup.team2,
         winningTeamId: team
       });
@@ -989,7 +1010,8 @@ function startTeamQuiz() {
       document.getElementById("next-question-btn").style.display = "block";
       
       // Highlight correct answer
-      const correctOptionId = `option-${question.correct}`;
+      const correctLetter = getCorrectLetter(question.correct);
+      const correctOptionId = `option-${correctLetter}`;
       const correctElement = document.getElementById(correctOptionId);
       if (correctElement) {
         correctElement.style.background = "#27ae60";
@@ -1053,9 +1075,9 @@ function startTeamQuiz() {
       // No winner recorded for this question
       currentMatchupResults.push({
         questionNumber: currentQuestionIndex + 1,
-        question: currentQuestions[currentQuestionIndex].text,
+        question: currentQuestions[currentQuestionIndex].content,
         correctAnswer: currentQuestions[currentQuestionIndex].correct,
-        correctAnswerText: currentQuestions[currentQuestionIndex].options[currentQuestions[currentQuestionIndex].correct],
+        correctAnswerText: currentQuestions[currentQuestionIndex].options[window.currentCorrectAnswer],
         winningTeam: "Neither",
         winningTeamId: 0
       });
@@ -1069,7 +1091,8 @@ function startTeamQuiz() {
       
       // Highlight correct answer
       const question = currentQuestions[currentQuestionIndex];
-      const correctOptionId = `option-${question.correct}`;
+      const correctLetter = getCorrectLetter(question.correct);
+      const correctOptionId = `option-${correctLetter}`;
       const correctElement = document.getElementById(correctOptionId);
       if (correctElement) {
         correctElement.style.background = "#27ae60";

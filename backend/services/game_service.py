@@ -78,6 +78,78 @@ def submit_declared_moves(team_id: int, moves: list[dict[str, Any]]) -> dict[str
     return _save_and_return(state)
 
 
+def propose_alliance(
+    proposer_team_id: int,
+    recipient_team_id: int,
+    *,
+    alliance_type: str = "alliance",
+    shared_market: int | None = None,
+    protected_markets: list[int] | None = None,
+    notes: Any = None,
+) -> dict[str, Any]:
+    """
+    Persist a pending alliance offer for the current NEGOTIATE stage.
+    """
+    state = _load_required_state()
+    gameplay_helpers.propose_alliance(
+        state,
+        proposer_team_id,
+        recipient_team_id,
+        alliance_type=alliance_type,
+        shared_market=shared_market,
+        protected_markets=protected_markets,
+        notes=notes,
+    )
+    return _save_and_return(state)
+
+
+def accept_alliance_offer(offer_id: str, responder_team_id: int) -> dict[str, Any]:
+    """
+    Accept a pending alliance offer and persist the resulting alliance.
+    """
+    state = _load_required_state()
+    gameplay_helpers.accept_alliance_offer(state, offer_id, responder_team_id)
+    return _save_and_return(state)
+
+
+def reject_alliance_offer(
+    offer_id: str,
+    responder_team_id: int,
+    *,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """
+    Reject a pending alliance offer and persist the updated negotiation state.
+    """
+    state = _load_required_state()
+    gameplay_helpers.reject_alliance_offer(
+        state,
+        offer_id,
+        responder_team_id,
+        reason=reason,
+    )
+    return _save_and_return(state)
+
+
+def break_alliance(
+    alliance_id: str,
+    acting_team_id: int,
+    *,
+    reason: str = "manual_break",
+) -> dict[str, Any]:
+    """
+    Explicitly break an active alliance during the NEGOTIATE stage.
+    """
+    state = _load_required_state()
+    gameplay_helpers.break_alliance(
+        state,
+        alliance_id,
+        acting_team_id,
+        reason=reason,
+    )
+    return _save_and_return(state)
+
+
 def submit_actual_moves(team_id: int, moves: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Persist one team's binding orders for the current round.

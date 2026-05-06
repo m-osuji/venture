@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from backend.enums import GameStage
+from backend.enums import GameStage, SessionStatus
 from backend.services import game_service as service
 
 
@@ -161,3 +161,106 @@ def test_build_ai_context_uses_persisted_state(monkeypatch):
     assert context["current_ip"] == 3
     assert 1 in context["owned_markets"]
     assert 2 in context["enemy_markets"]
+
+
+def test_game_service_persists_alliance_lifecycle(monkeypatch):
+    _stub_reference_data(monkeypatch)
+    _stub_persistence(monkeypatch)
+
+    service.create_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00"},
+            {"id": 2, "name": "Blue", "colour": "#00f"},
+        ],
+        team_order=[1, 2],
+    )
+
+    service.submit_plan_notes(1, "ally")
+    service.submit_plan_notes(2, "ally")
+    service.advance_stage()
+
+    offered_state = service.propose_alliance(
+        1,
+        2,
+        shared_market=2,
+        protected_markets=[2],
+    )
+    offer_id = offered_state["turn_log"]["alliance_offers"][0]["offer_id"]
+
+    accepted_state = service.accept_alliance_offer(offer_id, 2)
+    alliance_id = accepted_state["alliances"][0]["alliance_id"]
+
+    assert accepted_state["turn_log"]["alliance_offers"][0]["status"] == "accepted"
+    assert accepted_state["alliances"][0]["status"] == "active"
+
+    broken_state = service.break_alliance(
+        alliance_id,
+        1,
+        reason="manual_break",
+    )
+
+    assert broken_state["alliances"][0]["status"] == "broken"
+    assert broken_state["alliances"][0]["broken_by_team_id"] == 1
+
+
+def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
+    _stub_reference_data(monkeypatch)
+    storage = _stub_persistence(monkeypatch)
+
+    service.create_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00"},
+            {"id": 2, "name": "Blue", "colour": "#00f"},
+        ],
+        team_order=[1, 2],
+    )
+
+    state = service.get_game_state()
+    assert state is not None
+    state["rules"]["max_rounds"] = 1
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    state["teams"][0]["ip"] = 4
+    state["teams"][1]["ip"] = 4
+    service.gameplay_helpers.save_state(state)
+
+    service.submit_plan_notes(1, "attack")
+    service.submit_plan_notes(2, "hold")
+    service.advance_stage()
+    service.advance_stage()
+    service.submit_actual_moves(
+        1,
+        [
+            {
+                "action_type": "attack",
+                "target_market_id": 2,
+                "ip_spent": 2,
+                "metadata": {"resource_pool": "current_ip"},
+            }
+        ],
+    )
+    service.submit_actual_moves(2, [])
+    service.advance_stage()
+
+    quiz = service.get_game_state()["turn_log"]["active_quizzes"][0]
+    service.submit_quiz_results(
+        2,
+        [
+            {
+                "team_id": 1,
+                "answers": _perfect_answers(quiz["questions"]),
+            },
+            {
+                "team_id": 2,
+                "answers": [],
+            },
+        ],
+    )
+    service.advance_stage()
+    finished_state = service.advance_stage()
+
+    assert finished_state["status"] == SessionStatus.FINISHED
+    assert finished_state["current_stage"] == GameStage.UPDATE
+    assert finished_state["winner_team_id"] == 1
+    assert finished_state["current_round"] == 1
+    assert storage["state"]["status"] == SessionStatus.FINISHED

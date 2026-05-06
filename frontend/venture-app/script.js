@@ -137,6 +137,21 @@ function initScrollIndicator() {
           tournament.style.top = "auto";
         }
       }
+
+      const selection = document.getElementById("market-overlay");
+      if (selection) {
+        const footerTop = footer.getBoundingClientRect().top;
+        const maxBottom = window.innerHeight - footerTop;
+        if (footerTop < window.innerHeight) {
+          selection.style.position = "fixed";
+          selection.style.bottom = `${Math.max(0, maxBottom)}px`;
+          selection.style.top = "auto";
+        } else {
+          selection.style.position = "fixed";
+          selection.style.bottom = `0px`;
+          selection.style.top = "auto";
+        }
+      }
     });
 
     scrollHandlerAttached = true;
@@ -632,7 +647,7 @@ function startTeamQuiz() {
   tournamentOverlay.id = "tournament-overlay";
   tournamentOverlay.className = "game-setup-overlay";
   tournamentOverlay.innerHTML = `
-    <div class="setup-card quiz-card" style="max-width: 900px;">
+    <div class="setup-card quiz-card">
       <h2>TOURNAMENT CHALLENGE</h2>
       <div id="tournament-progress" style="margin-bottom: 15px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px; text-align: center;">
         Matchup X of Y
@@ -974,7 +989,7 @@ function startTeamQuiz() {
     marketOverlay.id = "market-overlay";
     marketOverlay.className = "game-setup-overlay";
     marketOverlay.innerHTML = `
-      <div class="setup-card" style="max-width: 600px;">
+      <div id="market-selection" class="setup-card" style="max-width: 600px;">
         <h2>Market Selection Draft</h2>
         <div id="draft-progress" style="margin-bottom: 20px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">
           Team 1 of X

@@ -893,14 +893,12 @@ footer nav p {
 
 /* Tournament and Market Selection Additional Styles */
 .setup-card.quiz-card {
-    max-width: 900px;
-    height: auto;
-    max-height: 85vh;
-    margin-top: 125px;
+    max-width: 700px;
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 150px;
     margin-bottom: 10px;
 }
-
-
 
 .setup-card h2 {
     text-align: center;

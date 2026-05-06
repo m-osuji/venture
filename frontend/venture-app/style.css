@@ -1012,3 +1012,17 @@ footer nav p {
 .competition-option[style*="background: rgb(240, 240, 240)"] {
     color: var(--main-grey) !important;
 }
+
+#question-timer {
+  transition: background 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}

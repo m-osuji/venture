@@ -527,7 +527,7 @@ function initQuizSetup() {
 }
 
 // Tournament system with round robin between all teams
-function startTeamQuiz() {
+function startTeamQuiz() {  
   const savedConfig = localStorage.getItem("ventureGameConfig");
   if (!savedConfig) {
     console.error("No game configuration found");
@@ -648,7 +648,12 @@ function startTeamQuiz() {
   tournamentOverlay.className = "game-setup-overlay";
   tournamentOverlay.innerHTML = `
     <div class="setup-card quiz-card">
-      <h2>TOURNAMENT CHALLENGE</h2>
+      <div style="position: relative;">
+        <h2>TOURNAMENT CHALLENGE</h2>
+        <div id="question-timer" style="position: absolute; top: 0; right: 0; background: var(--main-orange); color: white; padding: 8px 16px; border-radius: 20px; font-size: 18px; font-weight: bold;">
+          Time: 30s
+        </div>
+      </div>
       <div id="tournament-progress" style="margin-bottom: 15px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px; text-align: center;">
         Matchup X of Y
       </div>
@@ -696,6 +701,10 @@ function startTeamQuiz() {
   let currentQuestions = [];
   let currentMatchupResults = [];
 
+  // Timer variables - moved to outer scope
+  let countdownInterval = null;
+  let currentTimeRemaining = 30;
+
   // Key mappings
   const keyToOption = {
     '1': { team: 1, option: 'a' },
@@ -733,6 +742,22 @@ function startTeamQuiz() {
     questionActive = true;
     currentQuestions = selectRandomQuestions();
     currentMatchupResults = [];
+
+    // Reset timer variables for new matchup
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    currentTimeRemaining = 30;
+
+    // Make sure timer is visible for new matchup
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.textContent = "Time: 30s";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+    }
     
     // Update display names
     const team1Panel = document.getElementById("team1-panel");
@@ -752,10 +777,134 @@ function startTeamQuiz() {
     document.getElementById("team2-score").textContent = matchupTeam2Score;
   }
 
+  // Start the countdown timer
+  function startCountdown() {
+    // Clear any existing interval
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    
+    // Reset to 30 seconds
+    currentTimeRemaining = 30;
+    
+    // Make sure timer is visible
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.textContent = "Time: 30s";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+    }
+    
+    // Start the interval
+    countdownInterval = setInterval(() => {
+      console.log("Timer tick - current value:", currentTimeRemaining); // DEBUG: See what's happening
+      
+      if (!questionActive) {
+        console.log("Question not active, stopping timer");
+        return;
+      }
+      
+      // Decrement
+      currentTimeRemaining--;
+      console.log("After decrement:", currentTimeRemaining); // DEBUG
+      
+      // Update display
+      const timerEl = document.getElementById("question-timer");
+      if (timerEl) {
+        timerEl.textContent = `Time: ${currentTimeRemaining}s`;
+        
+        // Change color
+        if (currentTimeRemaining <= 10 && currentTimeRemaining > 0) {
+          timerEl.style.background = "#e74c3c";
+          timerEl.style.animation = "pulse 0.5s infinite";
+        } else if (currentTimeRemaining <= 20 && currentTimeRemaining > 0) {
+          timerEl.style.background = "#f39c12";
+          timerEl.style.animation = "none";
+        } else if (currentTimeRemaining > 0) {
+          timerEl.style.background = "var(--main-orange)";
+          timerEl.style.animation = "none";
+        } else if (currentTimeRemaining === 0) {
+          timerEl.style.background = "#8b0000";
+          timerEl.style.animation = "none";
+        }
+      }
+      
+      // When time reaches 0
+      if (currentTimeRemaining <= 0) {
+        console.log("TIME REACHED 0! Stopping timer and handling timeout."); // DEBUG
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        
+        if (questionActive) {
+          // Hide timer
+          const timerEl = document.getElementById("question-timer");
+          if (timerEl) {
+            timerEl.style.display = "none";
+          }
+          
+          // Time's up
+          questionActive = false;
+          document.getElementById("buzzer-status").innerHTML = "Time's up! Moving to next question.";
+          document.getElementById("buzzer-status").style.background = "#f39c12";
+          document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">Time's up! No points awarded for this question.</span>`;
+          document.getElementById("round-result").style.display = "block";
+          document.getElementById("next-question-btn").style.display = "block";
+          
+          // Record that no one answered
+          if (currentQuestions[currentQuestionIndex]) {
+            currentMatchupResults.push({
+              questionNumber: currentQuestionIndex + 1,
+              question: currentQuestions[currentQuestionIndex].text,
+              correctAnswer: currentQuestions[currentQuestionIndex].correct,
+              correctAnswerText: currentQuestions[currentQuestionIndex].options[currentQuestions[currentQuestionIndex].correct],
+              winningTeam: "None",
+              winningTeamId: 0,
+              timeOut: true
+            });
+          }
+          
+          // Disable all options
+          const options = document.querySelectorAll(".competition-option");
+          options.forEach(opt => {
+            opt.style.cursor = "not-allowed";
+            opt.style.opacity = "0.5";
+          });
+          
+          // Highlight correct answer
+          if (currentQuestions[currentQuestionIndex]) {
+            const question = currentQuestions[currentQuestionIndex];
+            const correctOptionId = `option-${question.correct}`;
+            const correctElement = document.getElementById(correctOptionId);
+            if (correctElement) {
+              correctElement.style.background = "#27ae60";
+              correctElement.style.border = "2px solid #1e7e34";
+              correctElement.style.color = "white";
+            }
+          }
+        }
+      }
+    }, 1000);
+  }
+
+  // Stop the countdown timer
+  function stopCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
   function displayQuestion() {
     if (currentQuestionIndex >= currentQuestions.length) {
       endMatchup();
       return;
+    }
+
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
     }
 
     questionActive = true;
@@ -767,25 +916,6 @@ function startTeamQuiz() {
     if (window.questionTimeout) {
       clearTimeout(window.questionTimeout);
     }
-    
-    // Set a timeout to automatically skip if no one answers after 30 seconds
-    window.questionTimeout = setTimeout(() => {
-      if (questionActive) {
-        questionActive = false;
-        document.getElementById("buzzer-status").innerHTML = "Time's up! Moving to next question.";
-        document.getElementById("buzzer-status").style.background = "#f39c12";
-        document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">No one answered in time! No points awarded.</span>`;
-        document.getElementById("round-result").style.display = "block";
-        document.getElementById("next-question-btn").style.display = "block";
-        
-        // Disable all options
-        const options = document.querySelectorAll(".competition-option");
-        options.forEach(opt => {
-          opt.style.cursor = "not-allowed";
-          opt.style.opacity = "0.5";
-        });
-      }
-    }, 30000); // 30 seconds timeout
     
     const question = currentQuestions[currentQuestionIndex];
     
@@ -808,6 +938,18 @@ function startTeamQuiz() {
       opt.style.cursor = "pointer";
       opt.style.opacity = "1";
     });
+
+    // Reset timer display
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+      timerElement.textContent = "Time: 30s";
+    }
+
+    // Start the countdown timer
+    startCountdown();
   }
 
   function handleAnswer(team, selectedOption) {
@@ -817,6 +959,7 @@ function startTeamQuiz() {
     const isCorrect = (selectedOption === question.correct);
     
     if (isCorrect) {
+      stopCountdown(); // Stop timer when someone answers correctly
       questionActive = false;
       
       if (team === 1) {
@@ -899,6 +1042,7 @@ function startTeamQuiz() {
   // Handle case when both teams answered wrong
   function handleDoubleWrong() {
     if (window.team1Locked && window.team2Locked && questionActive) {
+      stopCountdown(); // Stop timer when both are wrong
       questionActive = false;
       document.getElementById("buzzer-status").innerHTML = "Both teams answered wrong! Moving to next question.";
       document.getElementById("buzzer-status").style.background = "#f39c12";
@@ -936,6 +1080,7 @@ function startTeamQuiz() {
   }
 
   function nextQuestion() {
+    stopCountdown(); // Stop timer when moving to next question
     currentQuestionIndex++;
     if (currentQuestionIndex < currentQuestions.length) {
       displayQuestion();

@@ -835,3 +835,175 @@ footer nav p {
 .btn-secondary:hover {
     background: #f0ede9;
 }
+
+/* Quiz Styles */
+.competition-option {
+    padding: 15px;
+    margin: 5px;
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+}
+
+.competition-option:hover {
+    background: #e0e0e0;
+    transform: scale(1.02);
+}
+
+#team1-panel, #team2-panel {
+    transition: all 0.3s ease;
+}
+
+#team1-panel:active, #team2-panel:active {
+    transform: scale(0.98);
+}
+
+.quiz-card {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.market-option {
+    transition: all 0.2s ease;
+}
+
+.market-option:hover {
+    transform: translateX(5px);
+}
+
+.select-market-btn {
+    transition: all 0.2s ease;
+}
+
+.select-market-btn:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+#buzzer-status {
+    transition: all 0.3s ease;
+}
+
+/* Tournament and Market Selection Additional Styles */
+.setup-card.quiz-card {
+    max-width: 700px;
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 150px;
+    margin-bottom: 10px;
+}
+
+.setup-card h2 {
+    text-align: center;
+}
+
+#tournament-progress {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#question-area {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+#question-text {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+#options-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#round-result {
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+#next-question-btn, #next-matchup-btn {
+    min-width: 150px;
+}
+
+/* Market Selection Draft Styles */
+#draft-progress {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#current-team {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#current-team-name {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+#markets-list {
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.market-option div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin: 10px 0;
+    background: #f9f9f9;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+}
+
+.market-option strong {
+    font-size: 18px;
+}
+
+.market-option span {
+    font-size: 14px;
+    color: #666;
+}
+
+#selection-feedback {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+/* Fix for correct answer text color */
+.competition-option[style*="background: #27ae60"],
+.competition-option[style*="background: rgb(39, 174, 96)"],
+.competition-option[style*="background-color: #27ae60"] {
+    color: white !important;
+}
+
+.competition-option[style*="background: #f0f0f0"],
+.competition-option[style*="background: rgb(240, 240, 240)"] {
+    color: var(--main-grey) !important;
+}

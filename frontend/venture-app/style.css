@@ -99,6 +99,8 @@ footer {
     background-size: 180px;
 
     filter: drop-shadow(0px -10px 6px rgba(0, 0, 0, 0.1));
+
+    z-index: 1000;
 }
 
 footer nav {
@@ -216,14 +218,14 @@ footer nav p {
   margin: 0 6px 0 0;
   font-size: 14px;
   font-weight: 600;
-  color: #222;
+  color: var(--main-grey);
 }
 
 .current-stage-display p {
   display: inline;
   margin: 0;
-  font-size: 16px;
-  color: var(--main-grey);
+  font-size: 14px;
+  color: var(--main-orange);
 }
 
 /*Game page stage indicator*/
@@ -237,13 +239,35 @@ footer nav p {
   justify-content: space-between;
 }
 
-#stage-line {
+.stage-line {
   position: absolute;
-  left: 8px;
-  right: 8px;
   height: 2px;
   background: #ddd;
   z-index: 1;
+}
+
+.stage-line:nth-child(1) {
+  left: 8px;
+  right: 75%;
+}
+
+.stage-line:nth-child(2) {
+  left: 25%;
+  right: 50%;
+}
+
+.stage-line:nth-child(3) {
+  left: 50%;
+  right: 25%;
+}
+
+.stage-line:nth-child(4) {
+  left: 75%;
+  right: 8px;
+}
+
+.stage-line.active {
+  background: var(--main-orange);
 }
 
 .stage-dot {
@@ -255,10 +279,6 @@ footer nav p {
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s ease;
-}
-
-.stage-dot:hover {
-  background: #bbb;
 }
 
 .stage-dot.active {
@@ -353,18 +373,25 @@ footer nav p {
 /* Territory info popup inside the game window */
 .territory-button {
   position: absolute;
-  top: 250px;
-  left: 220px;
   z-index: 40;
-  padding: 10px 16px;
+  padding: 8x 10px;
   font-family: var(--content-font);
-  font-size: 16px;
-  color: #fff;
-  background: var(--main-orange);
+  color: var(--main-grey);
+  background: var(--main-beige);
   border: none;
   border-radius: 10px;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.territory-button h3 {
+  margin: 4px;
+  font-size: 14px;
+}
+  
+.territory-button p {
+  margin: 4px;
+  font-size: 10px;
 }
 
 .territory-button:hover {
@@ -434,4 +461,549 @@ footer nav p {
 
 .territory-close:hover {
   filter: brightness(1.05);
+}
+
+/*AI opponent and chat*/
+#AI-container {
+    position: fixed;
+    bottom: 40px;
+    left: 20px;
+    z-index: 40;
+
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    gap: 16px;
+}
+
+#AI-bubble {
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    gap: 0;
+}
+
+#AI {
+    width: auto;
+    max-height: 120px;
+}
+
+#AI-text {
+    background: var(--main-beige);
+    border-radius: 22px 22px 0 22px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    color: var(--main-grey);
+    font-family: var(--content-font);
+    font-size: 14px;
+    max-width: 65vw;
+    margin: 0px;
+}
+
+#AI-confirm {
+    background: var(--main-beige);
+    color: var(--main-grey);
+    font-family: var(--content-font);
+    font-size: 16px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 0 10px 10px 0;
+    cursor: pointer;
+    height: min-content;
+}
+
+#stage-progresser {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 40;
+    background: var(--main-orange);
+    color: white;
+    font-family: var(--content-font);
+    font-size: 16px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Game Setup Overlay Styles */
+.game-setup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.setup-card::-webkit-scrollbar {
+    width: 8px;
+}
+
+.setup-card::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.setup-card::-webkit-scrollbar-thumb {
+    background: var(--main-orange);
+    border-radius: 10px;
+}
+
+.setup-card::-webkit-scrollbar-thumb:hover {
+    background: var(--main-blue);
+}
+
+.setup-card {
+    background: white;
+    border-radius: 22px;
+    padding: 30px;
+    margin-top: 125px;
+    margin-bottom: 10px;
+    max-width: 500px;
+    width: 90%;
+    font-family: var(--content-font);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+    height: 425px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.setup-card h2 {
+    margin-top: 0;
+    color: var(--main-orange);
+}
+
+.team-count-selector {
+    margin-bottom: 20px;
+}
+
+.team-count-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+#teamCountSelect {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-family: var(--content-font);
+    font-size: 16px;
+}
+
+#teamNamesContainer {
+    margin-bottom: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.team-input-group {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-number {
+    font-weight: bold;
+    color: var(--main-blue);
+    min-width: 30px;
+}
+
+.team-input-group input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: var(--content-font);
+}
+
+.setup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.setup-btn-primary {
+    background: var(--main-orange);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+}
+
+.setup-btn-secondary {
+    background: var(--main-grey);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+}
+
+.setup-btn-primary:hover, .setup-btn-secondary:hover {
+    opacity: 0.9;
+}
+
+.ai-option-group {
+    margin: 20px 0 15px 0;
+}
+
+.ai-option-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.radio-group input[type="radio"] {
+    margin-right: 5px;
+    cursor: pointer;
+    margin-top: 0px;
+}
+
+.radio-group label {
+    margin-right: 15px;
+    cursor: pointer;
+    font-weight: normal;
+    margin: 0px;
+}
+
+#difficulty-container {
+    margin: 15px 0 20px 0;
+    padding: 15px;
+    background: #f5f7fa;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+#difficulty-container label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+.difficulty-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.difficulty-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.difficulty-btn[data-difficulty="easy"]:hover,
+.difficulty-btn[data-difficulty="easy"].selected {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.difficulty-btn[data-difficulty="medium"]:hover,
+.difficulty-btn[data-difficulty="medium"].selected {
+    background: #ff9800;
+    border-color: #ff9800;
+    color: white;
+}
+
+.difficulty-btn[data-difficulty="hard"]:hover,
+.difficulty-btn[data-difficulty="hard"].selected {
+    background: #f44336;
+    border-color: #f44336;
+    color: white;
+}
+
+.selected-difficulty {
+    font-size: 13px;
+    color: var(--main-blue);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Carousel styles for home page */
+.carousel-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.carousel-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carousel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4); /* Optional overlay for better text readability */
+    color: white;
+    text-align: center;
+}
+
+.carousel-text {
+    margin-bottom: 40px;
+}
+
+.carousel-text h1 {
+    font-family: var(--heading-font);
+    font-size: 48px;
+    margin: 0 0 20px 0;
+}
+
+.carousel-text p {
+    font-family: var(--content-font);
+    font-size: 24px;
+    margin: 0;
+}
+
+.carousel-buttons {
+    display: flex;
+    gap: 20px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    font-family: var(--content-font);
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background: var(--main-orange);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #d55a24;
+}
+
+.btn-secondary {
+    background: var(--main-beige);
+    color: var(--main-grey);
+}
+
+.btn-secondary:hover {
+    background: #f0ede9;
+}
+
+/* Quiz Styles */
+.competition-option {
+    padding: 15px;
+    margin: 5px;
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+}
+
+.competition-option:hover {
+    background: #e0e0e0;
+    transform: scale(1.02);
+}
+
+#team1-panel, #team2-panel {
+    transition: all 0.3s ease;
+}
+
+#team1-panel:active, #team2-panel:active {
+    transform: scale(0.98);
+}
+
+.quiz-card {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.market-option {
+    transition: all 0.2s ease;
+}
+
+.market-option:hover {
+    transform: translateX(5px);
+}
+
+.select-market-btn {
+    transition: all 0.2s ease;
+}
+
+.select-market-btn:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+#buzzer-status {
+    transition: all 0.3s ease;
+}
+
+/* Tournament and Market Selection Additional Styles */
+.setup-card.quiz-card {
+    max-width: 700px;
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 150px;
+    margin-bottom: 10px;
+}
+
+.setup-card h2 {
+    text-align: center;
+}
+
+#tournament-progress {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#question-area {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+#question-text {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+#options-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#round-result {
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+#next-question-btn, #next-matchup-btn {
+    min-width: 150px;
+}
+
+/* Market Selection Draft Styles */
+#draft-progress {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#current-team {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#current-team-name {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+#markets-list {
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.market-option div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin: 10px 0;
+    background: #f9f9f9;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+}
+
+.market-option strong {
+    font-size: 18px;
+}
+
+.market-option span {
+    font-size: 14px;
+    color: #666;
+}
+
+#selection-feedback {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+/* Fix for correct answer text color */
+.competition-option[style*="background: #27ae60"],
+.competition-option[style*="background: rgb(39, 174, 96)"],
+.competition-option[style*="background-color: #27ae60"] {
+    color: white !important;
+}
+
+.competition-option[style*="background: #f0f0f0"],
+.competition-option[style*="background: rgb(240, 240, 240)"] {
+    color: var(--main-grey) !important;
 }

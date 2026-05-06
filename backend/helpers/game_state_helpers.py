@@ -588,7 +588,7 @@ if __name__ == "__main__":
     # localised import just for testing the generation of an initial game state JSON file, to avoid circular imports with the agent context building functions
     import pprint
 
-    print("> game_state_helpers : intialising game state...")
+    print("[game_state_helpers] Intialising game state...")
 
     initial_state = init_game_state(
         teams=[
@@ -601,13 +601,13 @@ if __name__ == "__main__":
     )
 
     save_state(initial_state)
-    print("> game_state_helpers: saved to json file.")
+    print("[game_state_helpers] Saved to json file.")
 
     loaded = load_state()
 
     if loaded is not None:
-        print("> game_state_helpers: loaded from json file.")
+        print("[game_state_helpers] Loaded from json file.")
         frontend_view = _get_frontend_states(loaded)
         pprint.pprint(frontend_view)
     else:
-        print("> game_state_helpers: no saved state found.")
+        print("[game_state_helpers] No saved state found.")

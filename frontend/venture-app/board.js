@@ -1,8 +1,5 @@
 import * as Phaser from "phaser";
 
-let game = null;
-let currentBackendState = null;
-
 const API_BASE = window.VENTURE_API_BASE || "http://localhost:5000";
 const STAGE_SEQUENCE = ["PLAN", "NEGOTIATE", "ORDERS", "RESOLVE", "UPDATE"];
 const STAGE_LABELS = {
@@ -13,9 +10,15 @@ const STAGE_LABELS = {
     UPDATE: "Updating",
 };
 
+let game = null;
+let currentBackendState = null;
+
 const gameState = {
     currentStage: 0,
     currentStageName: "PLAN",
+    teamModeActive: false,
+    currentTeamIndex: 0,
+    tournamentRankings: [],
 };
 
 export async function fetchGameState() {
@@ -30,12 +33,16 @@ export async function fetchGameState() {
         renderLeaderboard(currentBackendState);
         renderMarketState(currentBackendState);
         renderDemoMessage(currentBackendState);
+        updateTeamIndicator();
         updateStageIndicator();
 
         console.log("Backend state synced:", currentBackendState);
         return currentBackendState;
     } catch (error) {
         console.error("Failed to sync game state:", error);
+        syncGameStateFromBackend(null);
+        updateTeamIndicator();
+        updateStageIndicator();
         return null;
     }
 }
@@ -51,6 +58,7 @@ export function startGame() {
 
     initLeaderboardUI(container);
     initTerritoryUI(container);
+    initTeamIndicatorDisplay(container);
     initStageProgressButton();
 
     const config = {
@@ -92,15 +100,58 @@ export function stopGame() {
     }
 }
 
+export function configureTeams() {
+    const savedResults = localStorage.getItem("tournamentResults");
+    if (!savedResults) return;
+
+    try {
+        const results = JSON.parse(savedResults);
+        if (Array.isArray(results.tournamentRankings)) {
+            gameState.tournamentRankings = results.tournamentRankings;
+            gameState.teamModeActive = true;
+            gameState.currentTeamIndex = 0;
+            updateTeamIndicator();
+            updateButtonText();
+        }
+    } catch (error) {
+        console.error("Error loading tournament rankings:", error);
+    }
+}
+
+export function populateLeaderboard() {
+    const savedResults = localStorage.getItem("tournamentResults");
+    if (!savedResults) return;
+
+    try {
+        const results = JSON.parse(savedResults);
+        if (!Array.isArray(results.tournamentRankings)) return;
+
+        const content = document.querySelector(".leaderboard-content");
+        if (!content) return;
+
+        const items = results.tournamentRankings
+            .map(
+                (team, index) =>
+                    `<li><strong>${index + 1}. ${escapeHtml(team.team)}</strong> - ${team.score} wins</li>`,
+            )
+            .join("");
+        content.innerHTML = `<ol>${items}</ol>`;
+
+        const button = document.getElementById("leaderboard-button");
+        if (button) {
+            button.style.display = "block";
+        }
+    } catch (error) {
+        console.error("Error populating leaderboard:", error);
+    }
+}
+
 function syncGameStateFromBackend(state) {
-    const currentStageName = String(state?.current_stage || "PLAN").toUpperCase();
-    gameState.currentStageName = STAGE_SEQUENCE.includes(currentStageName)
-        ? currentStageName
-        : "PLAN";
-    gameState.currentStage = Math.max(
-        STAGE_SEQUENCE.indexOf(gameState.currentStageName),
-        0,
-    );
+    const rawStage = state?.current_stage ?? "PLAN";
+    const currentStageName = String(rawStage).toUpperCase();
+    const stageIndex = STAGE_SEQUENCE.indexOf(currentStageName);
+    gameState.currentStageName = stageIndex >= 0 ? currentStageName : "PLAN";
+    gameState.currentStage = stageIndex >= 0 ? stageIndex : 0;
 }
 
 function initLeaderboardUI(container) {
@@ -110,6 +161,9 @@ function initLeaderboardUI(container) {
     if (!button || !overlay) return;
 
     container.style.position = container.style.position || "relative";
+    if (!currentBackendState && !localStorage.getItem("tournamentResults")) {
+        button.style.display = "none";
+    }
 
     button.addEventListener("click", () => {
         overlay.style.display = "flex";
@@ -158,6 +212,10 @@ function initTerritoryUI(container) {
     });
 }
 
+function initTeamIndicatorDisplay() {
+    updateTeamIndicator();
+}
+
 function initStageProgressButton() {
     const button = document.getElementById("stage-progresser");
     if (!button) return;
@@ -167,22 +225,38 @@ function initStageProgressButton() {
             button.style.pointerEvents = "none";
             button.style.opacity = "0.5";
 
-            const demoMode = currentBackendState?.demo_mode ?? (window.VENTURE_DEMO_MODE !== false);
+            if (currentBackendState?.is_finished) {
+                return;
+            }
+
+            if (
+                gameState.teamModeActive &&
+                gameState.tournamentRankings.length > 0 &&
+                gameState.currentTeamIndex < gameState.tournamentRankings.length - 1
+            ) {
+                gameState.currentTeamIndex += 1;
+                updateTeamIndicator();
+                updateButtonText();
+                return;
+            }
+
+            const demoMode =
+                currentBackendState?.demo_mode ?? (window.VENTURE_DEMO_MODE === true);
             const endpoint = demoMode
                 ? `${API_BASE}/api/demo/step`
                 : `${API_BASE}/api/game/advance`;
+
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(
-                    demoMode ? {} : { force: true },
-                ),
+                body: JSON.stringify(demoMode ? {} : { force: true }),
             });
 
-            const result = await response.json();
+            const result = await response.json().catch(() => ({}));
             console.log("Advanced stage:", result);
 
             if (response.ok) {
+                gameState.currentTeamIndex = 0;
                 await fetchGameState();
             }
         } catch (error) {
@@ -190,8 +264,11 @@ function initStageProgressButton() {
         } finally {
             button.style.pointerEvents = "auto";
             button.style.opacity = "1";
+            updateButtonText();
         }
     });
+
+    updateButtonText();
 }
 
 function updateStageIndicator() {
@@ -213,9 +290,6 @@ function updateStageIndicator() {
 
     if (stageButton) {
         stageButton.disabled = Boolean(currentBackendState?.is_finished);
-        stageButton.textContent = currentBackendState?.is_finished
-            ? "Demo Complete"
-            : "Next Stage";
     }
 
     dots.forEach((dot, index) => {
@@ -225,6 +299,8 @@ function updateStageIndicator() {
     lines.forEach((line, index) => {
         line.classList.toggle("active", index < gameState.currentStage);
     });
+
+    updateButtonText();
 }
 
 function renderLeaderboard(state) {
@@ -236,14 +312,20 @@ function renderLeaderboard(state) {
         : state?.leaderboard || [];
 
     if (!entries.length) {
-        content.innerHTML = "<p>No leaderboard data yet.</p>";
+        if (gameState.teamModeActive && gameState.tournamentRankings.length) {
+            populateLeaderboard();
+        } else {
+            content.innerHTML = "<p>No leaderboard data yet.</p>";
+        }
         return;
     }
 
     const items = entries
         .map((entry) => {
             const ethicsText =
-                state?.is_finished && entry.ethical_score !== null && entry.ethical_score !== undefined
+                state?.is_finished &&
+                entry.ethical_score !== null &&
+                entry.ethical_score !== undefined
                     ? ` | Ethics ${Number(entry.ethical_score).toFixed(2)}`
                     : "";
             return (
@@ -254,6 +336,11 @@ function renderLeaderboard(state) {
         .join("");
 
     content.innerHTML = `<ol>${items}</ol>`;
+
+    const button = document.getElementById("leaderboard-button");
+    if (button) {
+        button.style.display = "block";
+    }
 }
 
 function renderMarketState(state) {
@@ -281,9 +368,7 @@ function renderMarketState(state) {
         }
 
         if (buttonMeta) {
-            const statusText = ownerName
-                ? `Owned by ${ownerName}`
-                : "Uncaptured";
+            const statusText = ownerName ? `Owned by ${ownerName}` : "Uncaptured";
             const sizeText = market.size ? ` | ${toTitleCase(market.size)}` : "";
             buttonMeta.textContent = `${statusText}${sizeText}`;
         }
@@ -304,8 +389,7 @@ function renderMarketState(state) {
 
         if (paragraphs[0]) {
             const contestedText = market.contested ? "Contested" : "Stable";
-            paragraphs[0].textContent =
-                `Owner: ${ownerName || "Neutral"} | ${contestedText}`;
+            paragraphs[0].textContent = `Owner: ${ownerName || "Neutral"} | ${contestedText}`;
         }
 
         if (paragraphs[1]) {
@@ -325,6 +409,44 @@ function renderDemoMessage(state) {
     const aiText = document.getElementById("AI-text");
     if (!aiText || !state?.demo_mode || !state?.demo_message) return;
     aiText.textContent = state.demo_message;
+}
+
+function updateTeamIndicator() {
+    const teamDisplay = document.getElementById("current-team-display");
+    const teamNameElement = document.getElementById("team-name");
+
+    if (!gameState.teamModeActive || !gameState.tournamentRankings.length) {
+        if (teamDisplay) {
+            teamDisplay.style.display = "none";
+        }
+        return;
+    }
+
+    if (!teamDisplay || !teamNameElement) return;
+
+    const currentTeamData = gameState.tournamentRankings[gameState.currentTeamIndex];
+    if (!currentTeamData) return;
+
+    teamNameElement.textContent = currentTeamData.team;
+    teamDisplay.style.display = "block";
+}
+
+function updateButtonText() {
+    const button = document.getElementById("stage-progresser");
+    if (!button) return;
+
+    if (currentBackendState?.is_finished) {
+        button.textContent = currentBackendState?.demo_mode ? "Demo Complete" : "Game Complete";
+        return;
+    }
+
+    if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+        const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+        button.textContent = isLastTeam ? "Next Stage" : "Next Team";
+        return;
+    }
+
+    button.textContent = currentBackendState?.demo_mode ? "Next Demo Step" : "Next Stage";
 }
 
 function slugifyMarketName(name) {

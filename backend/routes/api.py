@@ -9,8 +9,8 @@ if PROJECT_ROOT not in sys.path:
 from flask import Blueprint, jsonify, request
 
 from backend.ai_opponent.agents.decision_maker import choose_action, choose_orders
-from backend.helpers.db_helpers import fetch_all_markets
 from backend.helpers import gameplay_helpers
+from backend.helpers.db_helpers import fetch_all_markets
 from backend.services import game_service
 
 api = Blueprint("api", __name__)
@@ -226,10 +226,8 @@ def submit_quiz_results_endpoint():
 @api.route("/api/game/advance", methods=["POST"])
 def advance_game_stage():
     """
-    Demo-friendly stage progression endpoint.
-
-    Defaults to force mode so the UI can drive the round loop even before every
-    frontend action is fully wired up.
+    Advance the round flow. Defaults to force mode so the UI can drive the loop
+    before every frontend form is fully wired.
     """
     try:
         data = _json_payload()

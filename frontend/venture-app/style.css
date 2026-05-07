@@ -175,11 +175,239 @@ footer nav p {
     padding: 100px;
     font-family: var(--content-font);
     color: var(--main-grey);
+    max-width: 920px;
+    margin: 0 auto;
+    line-height: 1.75;
 }
 
 #tutorial-text p {
     font-family: var(--content-font);
     font-weight: 300;
+    font-size: 17px;
+    margin: 0 0 18px 0;
+}
+
+#tutorial-text h1,
+#tutorial-text h2,
+#tutorial-text h3 {
+    color: var(--main-grey);
+}
+
+#tutorial-text h1 {
+    font-family: var(--heading-font);
+    font-size: 52px;
+    margin-bottom: 18px;
+}
+
+#tutorial-text h2 {
+    font-family: var(--second-heading-font);
+    font-size: 30px;
+    margin: 48px 0 18px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(70, 112, 150, 0.16);
+}
+
+#tutorial-text h3 {
+    font-family: var(--second-heading-font);
+    font-size: 22px;
+    margin: 28px 0 12px 0;
+}
+
+#tutorial-text ul {
+    margin: 14px 0 18px 0;
+    padding-left: 24px;
+}
+
+#tutorial-text li {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.tutorial-quickstart {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    margin: 28px 0 40px 0;
+}
+
+.tutorial-quickstep {
+    position: relative;
+    background: linear-gradient(160deg, rgba(255, 252, 248, 0.98), rgba(70, 112, 150, 0.08));
+    border: 1px solid rgba(70, 112, 150, 0.12);
+    border-radius: 18px;
+    padding: 18px 16px 16px 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
+}
+
+.tutorial-quickstep h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.tutorial-quickstep p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.quickstep-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    background: var(--main-orange);
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.tutorial-panel {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 0.95), rgba(238, 103, 43, 0.08));
+    border: 1px solid rgba(70, 112, 150, 0.16);
+    border-radius: 18px;
+    padding: 20px 24px;
+    margin: 20px 0 28px 0;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
+}
+
+.tutorial-panel p:last-child,
+.tutorial-panel ul:last-child {
+    margin-bottom: 0;
+}
+
+.tutorial-callout {
+    margin: 18px 0 34px 0;
+    padding: 22px 24px;
+    border-left: 6px solid var(--main-orange);
+    border-radius: 0 18px 18px 0;
+    background: linear-gradient(90deg, rgba(238, 103, 43, 0.16), rgba(255, 252, 248, 0.98));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+}
+
+.tutorial-callout h3 {
+    margin-top: 0;
+}
+
+.tutorial-callout p {
+    margin-bottom: 0;
+    font-size: 18px;
+}
+
+.stage-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 26px 0 36px 0;
+}
+
+.stage-card {
+    position: relative;
+    border-radius: 20px;
+    padding: 22px 22px 18px 22px;
+    border: 1px solid rgba(70, 112, 150, 0.14);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.05);
+    background: white;
+}
+
+.stage-card p {
+    margin-top: 8px;
+}
+
+.stage-card ul {
+    margin-bottom: 0;
+}
+
+.stage-chip {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.stage-plan {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 1), rgba(238, 103, 43, 0.08));
+}
+
+.stage-plan .stage-chip {
+    background: rgba(238, 103, 43, 0.16);
+    color: #b84d1c;
+}
+
+.stage-negotiate {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 1), rgba(70, 112, 150, 0.09));
+}
+
+.stage-negotiate .stage-chip {
+    background: rgba(70, 112, 150, 0.16);
+    color: #31526d;
+}
+
+.stage-orders {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 1), rgba(27, 154, 170, 0.1));
+}
+
+.stage-orders .stage-chip {
+    background: rgba(27, 154, 170, 0.16);
+    color: #146f7a;
+}
+
+.stage-resolve {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 1), rgba(67, 67, 67, 0.08));
+}
+
+.stage-resolve .stage-chip {
+    background: rgba(67, 67, 67, 0.12);
+    color: #434343;
+}
+
+.stage-update {
+    background: linear-gradient(135deg, rgba(255, 252, 248, 1), rgba(244, 162, 97, 0.13));
+}
+
+.stage-update .stage-chip {
+    background: rgba(244, 162, 97, 0.2);
+    color: #b5651d;
+}
+
+.tutorial-tips {
+    margin-top: 26px;
+    padding: 24px 26px;
+    border-radius: 22px;
+    background: radial-gradient(circle at top right, rgba(238, 103, 43, 0.18), rgba(255, 252, 248, 1) 55%);
+    border: 1px solid rgba(238, 103, 43, 0.14);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.05);
+}
+
+.tutorial-tips h3 {
+    margin-top: 0;
+}
+
+.tutorial-tips ul {
+    margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    #tutorial-text {
+        padding: 72px 28px 72px 72px;
+    }
+
+    #tutorial-text h1 {
+        font-size: 40px;
+    }
+
+    #tutorial-text h2 {
+        font-size: 26px;
+    }
+
+    .tutorial-quickstart,
+    .stage-card-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /*Game Page*/
@@ -203,7 +431,7 @@ footer nav p {
   position: absolute;
   top: 16px;
   left: 16px;
-  z-index: 40;
+  z-index: 35;  /* Match timer z-index */
   background: #fff;
   border-radius: 22px;
   padding: 16px 20px;
@@ -232,7 +460,7 @@ footer nav p {
 #stage-indicator {
   position: relative;
   width: 100%;
-  height: 32px;
+  height: 20px;
   margin-top: 12px;
   display: flex;
   align-items: center;
@@ -287,11 +515,65 @@ footer nav p {
   height: 14px;
 }
 
+/* Display showing the current team */
+.current-team-display {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 40;
+  background: #fff;
+  border-radius: 22px;
+  padding: 16px 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  color: var(--main-grey);
+  font-family: var(--content-font);
+  width: fit-content;
+  max-width: 300px;
+}
+
+.current-team-display h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-name {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--main-orange);
+}
+
+.current-team-display hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+.current-team-display .team-actions-title {
+  margin: 8px 0 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-actions-list {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-actions-list li {
+  margin: 4px 0;
+}
+
 /* Leaderboard popup inside the game window */
 .leaderboard-button {
   position: absolute;
   top: 16px;
-  right: 16px;
+  right: 210px;
   z-index: 40;
   padding: 10px 16px;
   font-family: var(--content-font);
@@ -432,7 +714,7 @@ footer nav p {
   max-height: 90%;
   background: #fff;
   border-radius: 22px;
-  padding: 28px 24px 24px;
+  padding: 18px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
   overflow: auto;
   color: var(--main-grey);
@@ -481,6 +763,7 @@ footer nav p {
     flex-direction: row;
     align-items: end;
     gap: 0;
+    position: relative;
 }
 
 #AI {
@@ -490,7 +773,7 @@ footer nav p {
 
 #AI-text {
     background: var(--main-beige);
-    border-radius: 22px 22px 0 22px;
+    border-radius: 22px;
     padding: 16px 20px;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     color: var(--main-grey);
@@ -501,15 +784,19 @@ footer nav p {
 }
 
 #AI-confirm {
-    background: var(--main-beige);
-    color: var(--main-grey);
     font-family: var(--content-font);
-    font-size: 16px;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 0 10px 10px 0;
-    cursor: pointer;
+    font-size: 20px;
+    background: var(--main-orange);
+    color: #fff;
     height: min-content;
+    position: absolute;
+    top: -22px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
 #stage-progresser {
@@ -889,6 +1176,11 @@ footer nav p {
 
 #buzzer-status {
     transition: all 0.3s ease;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
 }
 
 /* Tournament and Market Selection Additional Styles */
@@ -1006,4 +1298,123 @@ footer nav p {
 .competition-option[style*="background: #f0f0f0"],
 .competition-option[style*="background: rgb(240, 240, 240)"] {
     color: var(--main-grey) !important;
+}
+#question-timer {
+  transition: background 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 35;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Game Length Selector Styles */
+.game-length-selector {
+    margin: 20px 0 15px 0;
+}
+
+.game-length-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+.length-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.length-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.length-btn[data-length="short"]:hover,
+.length-btn[data-length="short"].selected {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.length-btn[data-length="medium"]:hover,
+.length-btn[data-length="medium"].selected {
+    background: #ff9800;
+    border-color: #ff9800;
+    color: white;
+}
+
+.length-btn[data-length="freeplay"]:hover,
+.length-btn[data-length="freeplay"].selected {
+    background: var(--main-blue);
+    border-color: var(--main-blue);
+    color: white;
+}
+
+.selected-length {
+    font-size: 13px;
+    color: var(--main-blue);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Game Timer Display */
+#game-timer {
+    position: absolute;
+    top: 150px;
+    left: 250px;  /* Position next to current stage display */
+    background: var(--main-orange);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: monospace;
+    z-index: 35;  /* Lower than overlays (which are z-index 40-200) */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#game-timer.warning {
+    background: #e74c3c;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Territory button ownership styling */
+.territory-button[style*="border: 2px solid gold"] {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.territory-button {
+    transition: all 0.3s ease;
+}
+
+.territory-button:hover {
+    transform: scale(1.05);
+    z-index: 50;
 }

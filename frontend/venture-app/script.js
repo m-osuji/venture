@@ -35,6 +35,85 @@ const DEFAULT_TEAM_COLOURS = [
   "#F4A261"
 ];
 
+// Question bank loaded from CSV format
+let questionBank = [];
+
+// Load questions from the provided data
+function loadQuestionBank() {
+  const csvData = [
+    ["SkillsBuild Course","question_id","topic","content","option_1","option_2","option_3","option_4","answer","difficulty_level"],
+    ["AI in Legal: From Research to Results","2","AI in Law","A community center hires Rachel to assist multiple families appeal denied government benefits. With no additional staff to manage the caseload, she uses AI to autofill forms, flag missing data, and automate the sorting of case files based on deadlines. How is AI helping Rachel in this case to assist the families?","It is helping her skip the need for client interviews and documentation.","It is helping her guarantee successful outcomes for all benefit appeals.","It is helping her to automatically approve denied benefit applications.","It is helping her reduce costs and make services more affordable.","option_4","medium"],
+    ["Elevate education with ai","2","Education","Élodie is a middle school teacher preparing reading materials with help from a general-purpose AI tool. She avoids entering student names, grades, or personal details into the system and instead uses only general class information. Which best practice is Élodie following?","Verify accuracy","Be transparent","Use AI to support, not replace","Protect student privacy","option_4","easy"],
+    ["The Power of Personalized Finance with AI","4","Ethics, AI","A weekly summary notifies a married couple that their grocery spending has increased by 15% since they moved to a new city. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_4","easy"],
+    ["The Power of Personalized Finance with AI","5","Ethics, AI, Cybersecurity","After detecting large, consistent balances in a checking account, a banking app suggests opening a high-yield savings account that better fits the user’s situation. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Personalized product recommendations","Conversational financial assistance","Smart spending insights","option_2","hard"],
+    ["The Power of Personalized Finance with AI","6","Ethics, AI","A user asks a financial advisory app, 'Should I pay off my student loans or start investing?' The app provides guidance based on the user's income and loan interest rates. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_3","easy"],
+    ["The Power of Personalized Finance with AI","7","Ethics, AI, Cybersecurity","A credit card holder receives an alert stating, 'Your usual coffee purchase was declined after an ATM withdrawal occurred 200 miles away'. Match this personal finance scenario to the applicable AI enhancement.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_2","easy"],
+    ["The Power of Personalized Finance with AI","8","Ethics, AI","An investment platform explains why a low-risk bond fund fits a long-term retirement timeline and conservative investment approach.","Customized investment advice","Proactive fraud detection","Conversational financial assistance","Smart spending insights","option_1","easy"],
+    ["The Power of Personalized Finance with AI","9","AI, Cybersecurity","An app reviews several months of spending and sends a message explaining why entertainment costs increased after a recent subscription change. Match the personalization scenario with the corresponding AI technology.","Machine learning + large language models","Large language models","Machine learning","Natural language processing","option_1","hard"],
+    ["The Power of Personalized Finance with AI","10","AI, Cybersecurity","An app explains, 'You've spent more on dining out this month. Here are three ways to reduce those costs.' Match the personalization scenario with the corresponding AI technology.","Machine learning + large language models","Large language models","Machine learning","Natural language processing","option_2","easy"],
+    ["Elevate education with ai","11","Education","Chen uses AI to help her evaluate student essays. The AI tool provides detailed comments on each essay based on her rubric, giving her more time to meet with students who need extra guidance.","Decision-making AI","Predictive AI","Generative AI","Computer vision","option_3","easy"],
+    ["The Power of Personalized Finance with AI","12","AI, Cybersecurity","An app answers the question, 'Should I pay off debt or start investing?' by using income, loan rates, and savings goals. Match the personalization scenario with the corresponding AI technology.","Natural language processing","Machine learning","Large language models","Natural language processing + large language models","option_4","medium"],
+    ["The Power of Personalized Finance with AI","13","AI, Cybersecurity","Lakshmi starts a new job with a longer commute. Now, her banking app shows a weekly update highlighting her increased spending on transportation. It also suggests that Lakshmi adjust her monthly budget accordingly. Which AI personalization enhancement does this scenario illustrate?","Personalized product recommendations","Proactive fraud detection","Smart spending insights","Conversational financial assistance","option_3","medium"],
+    ["Elevate education with ai","14","Education","Jordan is using an AI tool to help prepare a lesson on the solar system. In his prompt, he instructs the AI tool to draft the material from his point of view, as a middle school science teacher, so the content aligns with how he would present it in class. Which prompt pattern is Jordan using?","Alternative approaches pattern","Flipped interaction pattern","Persona pattern","Template pattern","option_3","hard"],
+    ["Elevate education with ai","15","Education","Aarav is a vice-principal who uses an AI tool to generate a first draft of the monthly staff update. Before sending it out, he carefully reviews all AI-generated sections to ensure they align with school goals and do not contain errors. Which best practice is Aarav following?","Verify accuracy","Maintain human oversite","Protect student privacy","Use ai to support, not replace","option_2","medium"],
+    ["Elevate education with ai","16","Education","Selena is using an AI tool to help create a new unit on ancient civilizations. She needs the AI tool to produce a lesson plan with a clear, consistent structure, so she provides a specific format in her prompt. The response should include objectives, materials, activities, and assessments, in that order, and include complete content for each section.","Cognitive verifier pattern","Persona pattern","Alternative approaches pattern","Template pattern","option_4","easy"],
+    ["The Power of Personalized Finance with AI","17","AI, Cybersecurity","An investment platform reviews a customer's age, income, savings goals, and risk tolerance. Then, it presents a long-term portfolio strategy with a clear explanation of how this strategy aligns to those goals. Which AI personalization enhancement does this scenario illustrate?","Conversational financial assistance","Smart spending insights","Proactive fraud detection","Customized investment advice","option_4","medium"],
+    ["AI in Legal: From Research to Results","18","AI in Law","Associates at a large law firm spend a considerable amount of their work hours on document review and fact-checking. With AI-enabled automation, the time spent on these tasks drop, freeing up almost 10 hours per week. What benefit does this provide?","Increases productivity.","Enhances accessibility.","Improves legal research.","Strengthens case outcomes.","option_1","easy"],
+    ["AI in Legal: From Research to Results","19","AI in Law","Saul is working on a contract dispute case between companies located in different states and countries, each governed by its own legal system. He uses AI to extract relevant laws and statutes from multiple data sources, gathering insights accurately and quickly. What benefit does this provide?","Increases productivity.","Enhances accessibility.","Improves legal research.","Strengthens case outcomes.","option_3","easy"]
+  ];
+
+  // Skip header row and convert to objects
+  for (let i = 1; i < csvData.length; i++) {
+    const row = csvData[i];
+    questionBank.push({
+      id: parseInt(row[1]),
+      course: row[0],
+      topic: row[2],
+      content: row[3],
+      options: {
+        a: row[4],
+        b: row[5],
+        c: row[6],
+        d: row[7]
+      },
+      correct: row[8], // e.g., "option_1", "option_2", etc.
+      difficulty: row[9]
+    });
+  }
+  
+  console.log(`Loaded ${questionBank.length} questions`);
+}
+
+// Helper function to get the correct option letter
+function getCorrectLetter(correctOption) {
+  const mapping = {
+    'option_1': 'a',
+    'option_2': 'b',
+    'option_3': 'c',
+    'option_4': 'd'
+  };
+  return mapping[correctOption] || 'a';
+}
+
+// Get random questions filtered by difficulty
+function getRandomQuestions(count, difficulty = null) {
+  let filtered = [...questionBank];
+  if (difficulty && difficulty !== 'all') {
+    filtered = filtered.filter(q => q.difficulty === difficulty);
+  }
+  
+  // Shuffle
+  for (let i = filtered.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+  }
+  
+  return filtered.slice(0, count);
+}
+
+// Load questions at startup
+loadQuestionBank();
+
 let scrollHandlerAttached = false;
 
 function initScrollIndicator() {
@@ -231,6 +310,21 @@ function initScrollIndicator() {
 // Asynch to load all page elements at the same time, less jumpy
 let currentGameModule = null;
 async function loadRoute(path) {
+  // Remove tournament and market overlays when changing pages
+  const tournamentOverlay = document.getElementById("tournament-overlay");
+  const marketOverlay = document.getElementById("market-overlay");
+  const quizOverlay = document.getElementById("quiz-overlay");
+
+  if (tournamentOverlay) tournamentOverlay.remove();
+  if (marketOverlay) marketOverlay.remove();
+  if (quizOverlay) quizOverlay.remove();
+
+  // Also clear any timer intervals
+  if (window.countdownInterval) {
+    clearInterval(window.countdownInterval);
+    window.countdownInterval = null;
+  }
+
   if (path === "/index.html") path = "/";
 
   const page = routes[path] || "home.html";
@@ -247,6 +341,13 @@ async function loadRoute(path) {
       currentGameModule.startGame();
       //initLeaderboard();
       initAIInteraction();
+      // Also clear game timer
+      if (gameTimerInterval) {
+        clearInterval(gameTimerInterval);
+        gameTimerInterval = null;
+      }
+      const gameTimer = document.getElementById("game-timer");
+      if (gameTimer) gameTimer.remove();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();
@@ -384,6 +485,41 @@ function setupDifficultyButtons() {
   return () => currentDifficulty;
 }
 
+// Function to setup game length buttons
+function setupGameLengthButtons() {
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  const selectedLengthDiv = document.getElementById("selected-length");
+  let currentLength = "freeplay";
+  
+  lengthBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      lengthBtns.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      currentLength = btn.getAttribute("data-length");
+      
+      if (selectedLengthDiv) {
+        const lengthText = {
+          short: "Short game - 20 minute time limit",
+          medium: "Medium game - 1 hour time limit",
+          freeplay: "Freeplay - No time limit"
+        };
+        selectedLengthDiv.textContent = lengthText[currentLength];
+      }
+    });
+  });
+  
+  // Set default selection (Freeplay)
+  const defaultBtn = document.querySelector('.length-btn[data-length="freeplay"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add("selected");
+    if (selectedLengthDiv) {
+      selectedLengthDiv.textContent = "Freeplay - No time limit";
+    }
+  }
+  
+  return () => currentLength;
+}
+
 // New function to set up game event listeners
 function setupGameEventListeners() {
   const teamCountSelect = document.getElementById("teamCountSelect");
@@ -399,6 +535,7 @@ function setupGameEventListeners() {
 
   setupAIOptionListener();
   setupDifficultyButtons();
+  setupGameLengthButtons();
   
   if (startButton) {
     startButton.removeEventListener("click", startGameHandler);
@@ -433,11 +570,12 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
+// Function to handle game start
 async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
   
-  // Collect all team names
+  // Collect all team names from the UI
   for (let i = 0; i < teamCount; i++) {
     const teamInput = document.getElementById(`teamName${i}`);
     const teamName = teamInput ? teamInput.value.trim() : `Team ${String.fromCharCode(65 + i)}`;
@@ -448,8 +586,7 @@ async function startGameHandler() {
   const includeAI = aiYesRadio ? aiYesRadio.checked : false;
 
   // Get difficulty (only if AI is included)
-  let difficulty = "medium";
-  
+  let difficulty = "medium"; // default
   if (includeAI) {
     const selectedBtn = document.querySelector('.difficulty-btn.selected');
     if (selectedBtn) {
@@ -457,24 +594,27 @@ async function startGameHandler() {
     }
   }
 
-  const gameConfig = {
-    teamCount: teamCount,
-    teamNames: teamNames,
-    includeAI: includeAI,
-    aiDifficulty: difficulty,
-    timestamp: new Date().toISOString()
-  };
+  // Get game length
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  let gameLength = "freeplay";
+  lengthBtns.forEach(btn => {
+    if (btn.classList.contains("selected")) {
+      gameLength = btn.getAttribute("data-length");
+    }
+  });
   
-  // Keep the local copy around for any still-unwired frontend flows.
-  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  // Format data for backend
+  const backendTeams = [];
+  for (let i = 0; i < teamNames.length; i++) {
+    backendTeams.push({
+      id: i + 1,
+      name: teamNames[i],
+      colour: DEFAULT_TEAM_COLOURS[i] || "#467096",
+      is_ai: false
+    });
+  }
 
-  const backendTeams = teamNames.map((teamName, index) => ({
-    id: index + 1,
-    name: teamName,
-    colour: DEFAULT_TEAM_COLOURS[index] || "#467096",
-    is_ai: false
-  }));
-
+  // If the user selected AI, add the AI as the final team
   if (includeAI) {
     backendTeams.push({
       id: backendTeams.length + 1,
@@ -484,28 +624,51 @@ async function startGameHandler() {
     });
   }
 
+  // Build the final payload for the Python backend
   const backendPayload = {
     teams: backendTeams,
     difficulty: difficulty,
-    mode: "full"
+    mode: 'full'
   };
 
   const apiBase = window.VENTURE_API_BASE || "http://localhost:5000";
-  const demoMode = window.VENTURE_DEMO_MODE !== false;
+  const demoMode = window.VENTURE_DEMO_MODE === true;
   const startEndpoint = demoMode
     ? `${apiBase}/api/demo/start`
     : `${apiBase}/api/game/start`;
 
-  // Close the overlay early so the UI feels responsive.
+  // Close the setup menu immediately
   const setupOverlay = document.getElementById("game-setup-overlay");
   if (setupOverlay) {
     setupOverlay.style.display = "none";
   }
 
+  // Save the game config with the correct structure for the quiz
+  const gameConfigForQuiz = {
+    teamCount: teamCount,
+    teamNames: teamNames,
+    includeAI: includeAI,
+    aiDifficulty: difficulty,
+    gameLength: gameLength,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Save to localStorage for the quiz to use (ONLY ONCE, don't overwrite)
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfigForQuiz));
+  localStorage.setItem("backendGameConfig", JSON.stringify(backendPayload));
+  
+  // Start game timer immediately
+  if (!demoMode) {
+    startGameTimer(gameLength);
+  }
+
+  // -----------------------------------------------
+  // FETCH: Send data to Python (don't affect quiz)
+  // -----------------------------------------------
   try {
     const response = await fetch(startEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(backendPayload)
     });
 
@@ -515,8 +678,24 @@ async function startGameHandler() {
     }
 
     const result = await response.json();
-    console.log("Game created on backend:", result);
+    console.log("✅ Game created on backend!", result);
 
+  } catch (error) {
+    console.error("Error starting game:", error);
+    if (demoMode) {
+      alert("Failed to connect to the game server. Make sure the backend is running.");
+      if (setupOverlay) {
+        setupOverlay.style.display = "flex";
+      }
+      return;
+    }
+
+    alert("Failed to connect to the game server. Is your Python backend running?\n\nContinuing with local game.");
+  }
+  
+  console.log("Game configuration for quiz:", gameConfigForQuiz);
+
+  if (demoMode) {
     if (currentGameModule?.fetchGameState) {
       await currentGameModule.fetchGameState();
     } else if (window.location.pathname !== "/game") {
@@ -526,21 +705,16 @@ async function startGameHandler() {
     const aiText = document.getElementById("AI-text");
     const aiButton = document.getElementById("AI-confirm");
     if (aiText) {
-      aiText.innerHTML = demoMode
-        ? "The scripted demo is live. Use the Next Stage button to walk through the round."
-        : "The game is live. Use the board to inspect markets and the Next Stage button to move the round on.";
+      aiText.innerHTML =
+        "The scripted demo is live. Use the Next Stage button to walk through the round.";
     }
     if (aiButton) {
       aiButton.textContent = "Ready";
       aiButton.style.display = "none";
     }
-  } catch (error) {
-    console.error("Error starting game:", error);
-    alert("Failed to connect to the game server. Make sure the backend is running.");
-
-    if (setupOverlay) {
-      setupOverlay.style.display = "flex";
-    }
+  } else {
+    // Start the quiz (ONLY ONCE)
+    initQuizSetup();
   }
 }
 
@@ -595,7 +769,11 @@ function initQuizSetup() {
 }
 
 // Tournament system with round robin between all teams
-function startTeamQuiz() {
+function startTeamQuiz() {  
+  if (window.location.pathname !== "/game") {
+    return;
+  }
+
   const savedConfig = localStorage.getItem("ventureGameConfig");
   if (!savedConfig) {
     console.error("No game configuration found");
@@ -637,78 +815,7 @@ function startTeamQuiz() {
   });
 
   // Quiz questions with correct answers
-  const questions = [
-    {
-      text: "What does SWOT analysis stand for?",
-      options: {
-        a: "Strengths, Weaknesses, Opportunities, Threats",
-        b: "Strategy, Workforce, Operations, Technology",
-        c: "Sales, Wealth, Organization, Trade",
-        d: "Strengths, Weaknesses, Objectives, Targets"
-      },
-      correct: "a"
-    },
-    {
-      text: "What is the primary goal of market segmentation?",
-      options: {
-        a: "To target all customers equally",
-        b: "To divide a market into distinct groups with similar needs",
-        c: "To eliminate competition",
-        d: "To reduce product quality"
-      },
-      correct: "b"
-    },
-    {
-      text: "Which of the following is a fixed cost for a business?",
-      options: {
-        a: "Raw materials",
-        b: "Rent",
-        c: "Shipping costs",
-        d: "Sales commissions"
-      },
-      correct: "b"
-    },
-    {
-      text: "What is the break-even point?",
-      options: {
-        a: "When total revenue equals total costs",
-        b: "When a business makes maximum profit",
-        c: "When a business closes operations",
-        d: "When demand exceeds supply"
-      },
-      correct: "a"
-    },
-    {
-      text: "What is the purpose of a mission statement?",
-      options: {
-        a: "To calculate financial projections",
-        b: "To define a company's purpose and goals",
-        c: "To list employee benefits",
-        d: "To advertise products"
-      },
-      correct: "b"
-    },
-    {
-      text: "Which of these is a variable cost?",
-      options: {
-        a: "Rent",
-        b: "Salaries",
-        c: "Raw materials",
-        d: "Insurance"
-      },
-      correct: "c"
-    },
-    {
-      text: "What does ROI stand for?",
-      options: {
-        a: "Return on Investment",
-        b: "Rate of Interest",
-        c: "Risk of Inflation",
-        d: "Revenue on Income"
-      },
-      correct: "a"
-    }
-  ];
+  
 
   // Create tournament overlay
   const tournamentOverlay = document.createElement("div");
@@ -716,7 +823,12 @@ function startTeamQuiz() {
   tournamentOverlay.className = "game-setup-overlay";
   tournamentOverlay.innerHTML = `
     <div class="setup-card quiz-card">
-      <h2>TOURNAMENT CHALLENGE</h2>
+      <div style="position: relative;">
+        <h2>TOURNAMENT CHALLENGE</h2>
+        <div id="question-timer" style="position: absolute; top: 0; right: 0; background: var(--main-orange); color: white; padding: 8px 16px; border-radius: 20px; font-size: 18px; font-weight: bold;">
+          Time: 30s
+        </div>
+      </div>
       <div id="tournament-progress" style="margin-bottom: 15px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px; text-align: center;">
         Matchup X of Y
       </div>
@@ -764,6 +876,10 @@ function startTeamQuiz() {
   let currentQuestions = [];
   let currentMatchupResults = [];
 
+  // Timer variables - moved to outer scope
+  let countdownInterval = null;
+  let currentTimeRemaining = 30;
+
   // Key mappings
   const keyToOption = {
     '1': { team: 1, option: 'a' },
@@ -784,13 +900,8 @@ function startTeamQuiz() {
   }
 
   function selectRandomQuestions() {
-    // Select 3 random questions for this matchup
-    const shuffled = [...questions];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled.slice(0, 3);
+    // Select 3 random questions from the question bank
+    return getRandomQuestions(3, 'all');
   }
 
   function startMatchup() {
@@ -801,6 +912,22 @@ function startTeamQuiz() {
     questionActive = true;
     currentQuestions = selectRandomQuestions();
     currentMatchupResults = [];
+
+    // Reset timer variables for new matchup
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    currentTimeRemaining = 30;
+
+    // Make sure timer is visible for new matchup
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.textContent = "Time: 30s";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+    }
     
     // Update display names
     const team1Panel = document.getElementById("team1-panel");
@@ -820,20 +947,148 @@ function startTeamQuiz() {
     document.getElementById("team2-score").textContent = matchupTeam2Score;
   }
 
+  // Start the countdown timer
+  function startCountdown() {
+    // Clear any existing interval
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    
+    // Reset to 30 seconds
+    currentTimeRemaining = 30;
+    
+    // Make sure timer is visible
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.textContent = "Time: 30s";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+    }
+    
+    // Start the interval
+    countdownInterval = setInterval(() => {
+      console.log("Timer tick - current value:", currentTimeRemaining); // DEBUG: See what's happening
+      
+      if (!questionActive) {
+        console.log("Question not active, stopping timer");
+        return;
+      }
+      
+      // Decrement
+      currentTimeRemaining--;
+      console.log("After decrement:", currentTimeRemaining); // DEBUG
+      
+      // Update display
+      const timerEl = document.getElementById("question-timer");
+      if (timerEl) {
+        timerEl.textContent = `Time: ${currentTimeRemaining}s`;
+        
+        // Change color
+        if (currentTimeRemaining <= 10 && currentTimeRemaining > 0) {
+          timerEl.style.background = "#e74c3c";
+          timerEl.style.animation = "pulse 0.5s infinite";
+        } else if (currentTimeRemaining <= 20 && currentTimeRemaining > 0) {
+          timerEl.style.background = "#f39c12";
+          timerEl.style.animation = "none";
+        } else if (currentTimeRemaining > 0) {
+          timerEl.style.background = "var(--main-orange)";
+          timerEl.style.animation = "none";
+        } else if (currentTimeRemaining === 0) {
+          timerEl.style.background = "#8b0000";
+          timerEl.style.animation = "none";
+        }
+      }
+      
+      // When time reaches 0
+      if (currentTimeRemaining <= 0) {
+        console.log("TIME REACHED 0! Stopping timer and handling timeout."); // DEBUG
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        
+        if (questionActive) {
+          // Hide timer
+          const timerEl = document.getElementById("question-timer");
+          if (timerEl) {
+            timerEl.style.display = "none";
+          }
+          
+          // Time's up
+          questionActive = false;
+          document.getElementById("buzzer-status").innerHTML = "Time's up! Moving to next question.";
+          document.getElementById("buzzer-status").style.background = "#f39c12";
+          document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">Time's up! No points awarded for this question.</span>`;
+          document.getElementById("round-result").style.display = "block";
+          document.getElementById("next-question-btn").style.display = "block";
+          
+          // Record that no one answered
+          if (currentQuestions[currentQuestionIndex]) {
+            currentMatchupResults.push({
+              questionNumber: currentQuestionIndex + 1,
+              question: currentQuestions[currentQuestionIndex].text,
+              correctAnswer: currentQuestions[currentQuestionIndex].correct,
+              correctAnswerText: currentQuestions[currentQuestionIndex].options[currentQuestions[currentQuestionIndex].correct],
+              winningTeam: "None",
+              winningTeamId: 0,
+              timeOut: true
+            });
+          }
+          
+          // Disable all options
+          const options = document.querySelectorAll(".competition-option");
+          options.forEach(opt => {
+            opt.style.cursor = "not-allowed";
+            opt.style.opacity = "0.5";
+          });
+          
+          // Highlight correct answer
+          if (currentQuestions[currentQuestionIndex]) {
+            const question = currentQuestions[currentQuestionIndex];
+            const correctLetter = getCorrectLetter(question.correct);
+            const correctOptionId = `option-${correctLetter}`;
+            const correctElement = document.getElementById(correctOptionId);
+            if (correctElement) {
+              correctElement.style.background = "#27ae60";
+              correctElement.style.border = "2px solid #1e7e34";
+              correctElement.style.color = "white";
+            }
+          }
+        }
+      }
+    }, 1000);
+  }
+
+  // Stop the countdown timer
+  function stopCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
   function displayQuestion() {
     if (currentQuestionIndex >= currentQuestions.length) {
       endMatchup();
       return;
     }
 
+    // Stop any existing timer
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+
     questionActive = true;
-    // Reset team lock flags for new question
     window.team1Locked = false;
     window.team2Locked = false;
     
     const question = currentQuestions[currentQuestionIndex];
     
-    document.getElementById("question-text").innerHTML = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}: ${question.text}`;
+    // Store the correct answer letter for checking
+    window.currentCorrectAnswer = getCorrectLetter(question.correct);
+    
+    document.getElementById("question-text").innerHTML = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}: ${question.content}`;
     document.getElementById("option-a").innerHTML = `A. ${question.options.a}`;
     document.getElementById("option-b").innerHTML = `B. ${question.options.b}`;
     document.getElementById("option-c").innerHTML = `C. ${question.options.c}`;
@@ -852,15 +1107,28 @@ function startTeamQuiz() {
       opt.style.cursor = "pointer";
       opt.style.opacity = "1";
     });
+
+    // Reset timer display
+    const timerElement = document.getElementById("question-timer");
+    if (timerElement) {
+      timerElement.style.display = "block";
+      timerElement.style.background = "var(--main-orange)";
+      timerElement.style.animation = "none";
+      timerElement.textContent = "Time: 30s";
+    }
+
+    // Start the countdown timer
+    startCountdown();
   }
 
   function handleAnswer(team, selectedOption) {
     if (!questionActive) return false;
     
     const question = currentQuestions[currentQuestionIndex];
-    const isCorrect = (selectedOption === question.correct);
+    const isCorrect = (selectedOption === window.currentCorrectAnswer);
     
     if (isCorrect) {
+      stopCountdown(); // Stop timer when someone answers correctly
       questionActive = false;
       
       if (team === 1) {
@@ -881,7 +1149,7 @@ function startTeamQuiz() {
         questionNumber: currentQuestionIndex + 1,
         question: question.text,
         correctAnswer: question.correct,
-        correctAnswerText: question.options[question.correct],
+        correctAnswerText: question.options[window.currentCorrectAnswer],
         winningTeam: team === 1 ? currentMatchup.team1 : currentMatchup.team2,
         winningTeamId: team
       });
@@ -890,7 +1158,8 @@ function startTeamQuiz() {
       document.getElementById("next-question-btn").style.display = "block";
       
       // Highlight correct answer
-      const correctOptionId = `option-${question.correct}`;
+      const correctLetter = getCorrectLetter(question.correct);
+      const correctOptionId = `option-${correctLetter}`;
       const correctElement = document.getElementById(correctOptionId);
       if (correctElement) {
         correctElement.style.background = "#27ae60";
@@ -914,45 +1183,75 @@ function startTeamQuiz() {
         document.getElementById("buzzer-status").style.background = "#e74c3c";
         document.getElementById("round-result").innerHTML = `<span style="color: red;">WRONG! ${currentMatchup.team1} loses this turn. ${currentMatchup.team2} can still answer.</span>`;
         
-        // Disable Team 1's options by removing their event listener functionality
-        // Instead of disabling all options, we track that team1 has answered wrong
-        // Store that team1 is locked for this question
-        if (!window.team1Locked) window.team1Locked = false;
         window.team1Locked = true;
         
-        // Re-enable options for team 2 only
-        const options = document.querySelectorAll(".competition-option");
-        options.forEach(opt => {
-          opt.style.cursor = "pointer";
-          opt.style.opacity = "1";
-        });
+        // Check if both teams are now locked
+        if (window.team2Locked) {
+          handleDoubleWrong();
+        }
         
       } else if (team === 2) {
         document.getElementById("buzzer-status").innerHTML = `${currentMatchup.team2} answered WRONG! ${currentMatchup.team1} can still answer.`;
         document.getElementById("buzzer-status").style.background = "#e74c3c";
         document.getElementById("round-result").innerHTML = `<span style="color: red;">WRONG! ${currentMatchup.team2} loses this turn. ${currentMatchup.team1} can still answer.</span>`;
         
-        // Store that team2 is locked for this question
-        if (!window.team2Locked) window.team2Locked = false;
         window.team2Locked = true;
         
-        // Re-enable options for team 1 only
-        const options = document.querySelectorAll(".competition-option");
-        options.forEach(opt => {
-          opt.style.cursor = "pointer";
-          opt.style.opacity = "1";
-        });
+        // Check if both teams are now locked
+        if (window.team1Locked) {
+          handleDoubleWrong();
+        }
       }
       
       document.getElementById("round-result").style.display = "block";
-      // DO NOT hide next question button - keep it hidden until someone answers correctly
-      // The question remains active for the other team
       
       return false;
     }
   }
 
+  // Handle case when both teams answered wrong
+  function handleDoubleWrong() {
+    if (window.team1Locked && window.team2Locked && questionActive) {
+      stopCountdown(); // Stop timer when both are wrong
+      questionActive = false;
+      document.getElementById("buzzer-status").innerHTML = "Both teams answered wrong! Moving to next question.";
+      document.getElementById("buzzer-status").style.background = "#f39c12";
+      document.getElementById("round-result").innerHTML = `<span style="color: orange; font-weight: bold;">Both teams were wrong! No points awarded for this question.</span>`;
+      document.getElementById("round-result").style.display = "block";
+      document.getElementById("next-question-btn").style.display = "block";
+      
+      // No winner recorded for this question
+      currentMatchupResults.push({
+        questionNumber: currentQuestionIndex + 1,
+        question: currentQuestions[currentQuestionIndex].content,
+        correctAnswer: currentQuestions[currentQuestionIndex].correct,
+        correctAnswerText: currentQuestions[currentQuestionIndex].options[window.currentCorrectAnswer],
+        winningTeam: "Neither",
+        winningTeamId: 0
+      });
+      
+      // Disable all options
+      const options = document.querySelectorAll(".competition-option");
+      options.forEach(opt => {
+        opt.style.cursor = "not-allowed";
+        opt.style.opacity = "0.5";
+      });
+      
+      // Highlight correct answer
+      const question = currentQuestions[currentQuestionIndex];
+      const correctLetter = getCorrectLetter(question.correct);
+      const correctOptionId = `option-${correctLetter}`;
+      const correctElement = document.getElementById(correctOptionId);
+      if (correctElement) {
+        correctElement.style.background = "#27ae60";
+        correctElement.style.border = "2px solid #1e7e34";
+        correctElement.style.color = "white";
+      }
+    }
+  }
+
   function nextQuestion() {
+    stopCountdown(); // Stop timer when moving to next question
     currentQuestionIndex++;
     if (currentQuestionIndex < currentQuestions.length) {
       displayQuestion();
@@ -1041,12 +1340,48 @@ function startTeamQuiz() {
 
   // Market selection after tournament
   function startMarketSelection(rankedTeams) {
+    // Updated markets with their attributes
     const markets = [
-      { id: "tech", name: "Technology Market", bonus: "Innovation boost - +2 research points per round" },
-      { id: "finance", name: "Finance Market", bonus: "Capital advantage - Start with 50% more currency" },
-      { id: "retail", name: "Retail Market", bonus: "Customer loyalty - 20% discount on all purchases" },
-      { id: "energy", name: "Energy Market", bonus: "Resource efficiency - 30% reduced operating costs" },
-      { id: "healthcare", name: "Healthcare Market", bonus: "Stability bonus - Immunity to market crashes" }
+      { 
+        id: "healthcare", 
+        name: "Healthcare Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "Low",
+        growth: "Medium"
+      },
+      { 
+        id: "finance", 
+        name: "Finance Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "High",
+        growth: "Medium"
+      },
+      { 
+        id: "energy", 
+        name: "Energy Market", 
+        size: "Large",
+        regulation: "Medium",
+        risk: "High",
+        growth: "High"
+      },
+      { 
+        id: "manufacturing", 
+        name: "Manufacturing Market", 
+        size: "Medium",
+        regulation: "Low",
+        risk: "Medium",
+        growth: "High"
+      },
+      { 
+        id: "agriculture", 
+        name: "Agriculture Market", 
+        size: "Medium",
+        regulation: "Low",
+        risk: "Low",
+        growth: "High"
+      }
     ];
     
     let currentTeamIndex = 0;
@@ -1057,7 +1392,7 @@ function startTeamQuiz() {
     marketOverlay.id = "market-overlay";
     marketOverlay.className = "game-setup-overlay";
     marketOverlay.innerHTML = `
-      <div id="market-selection" class="setup-card" style="max-width: 600px;">
+      <div id="market-selection" class="setup-card" style="max-width: 800px;">
         <h2>Market Selection Draft</h2>
         <div id="draft-progress" style="margin-bottom: 20px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">
           Team 1 of X
@@ -1066,18 +1401,27 @@ function startTeamQuiz() {
           <h3 id="current-team-name">Team Name</h3>
           <p>Select your starting market</p>
         </div>
-        <div id="markets-list" style="margin-bottom: 20px;">
+        <div id="markets-list" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
           <!-- Markets will be listed here -->
         </div>
         <div id="selection-feedback" style="text-align: center; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: none;"></div>
         <div class="setup-actions">
-          <button id="confirm-market-btn" class="setup-btn-primary" style="display: none;">Confirm Selection</button>
+          <button id="cancel-market-btn" class="setup-btn-secondary">Cancel</button>
         </div>
       </div>
     `;
     
     document.body.appendChild(marketOverlay);
     marketOverlay.style.display = "flex";
+    
+    // Cancel button functionality
+    const cancelMarketBtn = document.getElementById("cancel-market-btn");
+    if (cancelMarketBtn) {
+      cancelMarketBtn.onclick = () => {
+        marketOverlay.remove();
+        // Optionally restart tournament or go back
+      };
+    }
     
     function updateDraftProgress() {
       const progressDiv = document.getElementById("draft-progress");
@@ -1092,16 +1436,21 @@ function startTeamQuiz() {
       if (!marketsList) return;
       
       marketsList.innerHTML = "";
-      availableMarkets.forEach((market, index) => {
+      availableMarkets.forEach((market) => {
         const marketDiv = document.createElement("div");
         marketDiv.className = "market-option";
         marketDiv.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px; cursor: pointer;">
-            <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px; transition: all 0.2s ease;">
+            <div style="flex: 2;">
               <strong style="font-size: 18px;">${market.name}</strong><br>
-              <span style="font-size: 14px; color: #666;">${market.bonus}</span>
+              <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px;">
+                <span>📊 Size: ${market.size}</span>
+                <span>⚖️ Regulation: ${market.regulation}</span>
+                <span>⚠️ Risk: ${market.risk}</span>
+                <span>📈 Growth: ${market.growth}</span>
+              </div>
             </div>
-            <button class="select-market-btn" data-market-id="${market.id}" data-market-name="${market.name}" style="background: ${currentTeamIndex === 0 ? '#EE672B' : '#467096'}; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer;">Select</button>
+            <button class="select-market-btn" data-market-id="${market.id}" data-market-name="${market.name}" style="background: ${currentTeamIndex === 0 ? '#EE672B' : '#467096'}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold;">Select</button>
           </div>
         `;
         marketsList.appendChild(marketDiv);
@@ -1120,7 +1469,8 @@ function startTeamQuiz() {
     
     function selectMarket(marketId, marketName) {
       const currentTeam = rankedTeams[currentTeamIndex].team;
-      selectedMarkets[currentTeam] = { id: marketId, name: marketName };
+      const selectedMarket = availableMarkets.find(m => m.id === marketId);
+      selectedMarkets[currentTeam] = selectedMarket;
       
       // Remove selected market from available list
       const marketIndex = availableMarkets.findIndex(m => m.id === marketId);
@@ -1159,17 +1509,39 @@ function startTeamQuiz() {
       localStorage.setItem("tournamentResults", JSON.stringify(finalResults));
       localStorage.setItem("marketSelections", JSON.stringify(selectedMarkets));
       
+      // Update territory buttons with market selections
+      updateTerritoryButtonsWithMarketSelections();
+      
+      // Enable team mode and populate leaderboard in the game if module is available
+      if (currentGameModule) {
+        if (currentGameModule.configureTeams) {
+          currentGameModule.configureTeams();
+        }
+        if (currentGameModule.populateLeaderboard) {
+          currentGameModule.populateLeaderboard();
+        }
+      }
+      
       marketOverlay.remove();
+      
+      // Start the game timer based on selected length
+      // const savedGameConfig = localStorage.getItem("ventureGameConfig");
+      // if (savedGameConfig) {
+      //   const config = JSON.parse(savedGameConfig);
+      //   startGameTimer(config.gameLength);
+      // }
       
       // Update AI text
       const aiText = document.getElementById("AI-text");
       if (aiText) {
         let rankingText = rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n");
-        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarkets have been selected. Click the button below to begin the game!`;
+        let marketText = Object.entries(selectedMarkets).map(([team, market]) => `${team}: ${market.name}`).join("\n");
+        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}\n\nClick the button below to begin the game!`;
       }
       
       // Show final results
-      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarkets have been assigned based on draft order.\n\nThe game will now begin!`);
+      let marketResults = Object.entries(selectedMarkets).map(([team, market]) => `${team} selected ${market.name}`).join("\n");
+      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarket Selections:\n${marketResults}\n\nThe game will now begin!`);
       
       // Re-enable the AI confirm button for game start
       const aiButton = document.getElementById("AI-confirm");
@@ -1179,6 +1551,84 @@ function startTeamQuiz() {
         newButton.textContent = "Start Game";
         newButton.addEventListener("click", () => {
           alert("Game is starting with your tournament rankings and market selections!");
+        });
+      }
+    }
+    
+    // Update territory buttons with market selections
+    function updateTerritoryButtonsWithMarketSelections() {
+      const marketSelections = localStorage.getItem("marketSelections");
+      if (!marketSelections) return;
+      
+      const selections = JSON.parse(marketSelections);
+      const territoryButtons = document.querySelectorAll('.territory-button');
+      
+      // Map market IDs to territory data attributes
+      const marketToTerritory = {
+        'healthcare': 'healthcare',
+        'finance': 'finance',
+        'energy': 'energy',
+        'manufacturing': 'manufacturing',
+        'agriculture': 'agriculture'
+      };
+      
+      territoryButtons.forEach(button => {
+        const territoryName = button.getAttribute('data-territory');
+        
+        // Find which team selected this territory's market
+        for (const [team, market] of Object.entries(selections)) {
+          const mappedTerritory = marketToTerritory[market.id];
+          if (mappedTerritory === territoryName) {
+            // Update button text to show ownership
+            const h3 = button.querySelector('h3');
+            const p = button.querySelector('p');
+            if (h3 && p) {
+              const currentText = p.textContent;
+              const valueMatch = currentText.match(/\d+$/);
+              const value = valueMatch ? valueMatch[0] : '';
+              p.innerHTML = `Owned by ${team} ⋅ ${value}`;
+              button.style.opacity = '0.85';
+              button.style.border = '3px solid gold';
+              button.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+            }
+            break;
+          }
+        }
+      });
+      
+      // Update leaderboard with market ownership
+      updateLeaderboardWithMarkets(selections);
+    }
+    
+    // Update leaderboard to show market ownership
+    function updateLeaderboardWithMarkets(selections) {
+      const leaderboardContent = document.querySelector('.leaderboard-content ol');
+      if (!leaderboardContent) return;
+      
+      // Group markets by team with attributes
+      const teamMarkets = {};
+      for (const [team, market] of Object.entries(selections)) {
+        if (!teamMarkets[team]) teamMarkets[team] = [];
+        teamMarkets[team].push({
+          name: market.name,
+          size: market.size,
+          regulation: market.regulation,
+          risk: market.risk,
+          growth: market.growth
+        });
+      }
+      
+      // Update existing leaderboard items
+      const existingItems = leaderboardContent.querySelectorAll('li');
+      if (existingItems.length > 0) {
+        existingItems.forEach(item => {
+          for (const [team, markets] of Object.entries(teamMarkets)) {
+            if (item.textContent.includes(team)) {
+              const marketsText = markets.map(m => `${m.name} (Size:${m.size}, Risk:${m.risk})`).join(', ');
+              item.textContent = item.textContent.split(' - Markets:')[0] + ` - Markets: ${marketsText}`;
+              break;
+            }
+          }
         });
       }
     }
@@ -1229,7 +1679,7 @@ function startTeamQuiz() {
   buzzerStatus.style.textAlign = "center";
   
   const questionArea = document.getElementById("question-area");
-  if (questionArea) {
+  if (questionArea && questionArea.parentNode) {
     questionArea.parentNode.insertBefore(buzzerStatus, questionArea);
   }
 
@@ -1344,6 +1794,105 @@ function calculateQuizResults(teamScoresArg, allTeamResponsesArg, includeAI) {
       alert(`🎮 Game is ready!\n\nStarting Order:\n${teamOrder.map((t, i) => `${i+1}. ${t.team} (${t.score} points)`).join('\n')}\n\nThe board will now be set up according to your quiz results.`);
     };
   }
+}
+
+// Game timer variables
+let gameTimerInterval = null;
+let gameTimeRemaining = 0;
+let gameStartTime = null;
+let isGameTimed = false;
+
+function startGameTimer(gameLength) {
+  console.log("startGameTimer called with gameLength:", gameLength);
+
+  // Remove existing timer if any
+  const existingTimer = document.getElementById("game-timer");
+  if (existingTimer) existingTimer.remove();
+  
+  // Create timer display
+  const timerDisplay = document.createElement("div");
+  timerDisplay.id = "game-timer";
+  document.body.appendChild(timerDisplay);
+  
+  if (gameLength === "short") {
+    isGameTimed = true;
+    gameTimeRemaining = 20 * 60; // 20 minutes in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        // Warning when 5 minutes left
+        if (gameTimeRemaining <= 300) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+          // Add game end logic here
+        }
+      }
+    }, 1000);
+  } else if (gameLength === "medium") {
+    isGameTimed = true;
+    gameTimeRemaining = 60 * 60; // 1 hour in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        if (gameTimeRemaining <= 600) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+        }
+      }
+    }, 1000);
+  } else {
+    // Freeplay - show elapsed time
+    isGameTimed = false;
+    gameStartTime = Date.now();
+    updateElapsedTimeDisplay();
+    gameTimerInterval = setInterval(() => {
+      updateElapsedTimeDisplay();
+    }, 1000);
+  }
+}
+
+function updateGameTimerDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && isGameTimed) {
+    const minutes = Math.floor(gameTimeRemaining / 60);
+    const seconds = gameTimeRemaining % 60;
+    timerDisplay.textContent = `Time Remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function updateElapsedTimeDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && !isGameTimed && gameStartTime) {
+    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    timerDisplay.textContent = `Elapsed Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function stopGameTimer() {
+  if (gameTimerInterval) {
+    clearInterval(gameTimerInterval);
+    gameTimerInterval = null;
+  }
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay) timerDisplay.remove();
 }
 
 // File navigation, did not like js navigate function, now uses global

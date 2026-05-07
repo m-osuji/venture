@@ -1085,3 +1085,83 @@ footer nav p {
     transform: scale(1.05);
   }
 }
+
+/* Game Length Selector Styles */
+.game-length-selector {
+    margin: 20px 0 15px 0;
+}
+
+.game-length-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+.length-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.length-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.length-btn[data-length="short"]:hover,
+.length-btn[data-length="short"].selected {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.length-btn[data-length="medium"]:hover,
+.length-btn[data-length="medium"].selected {
+    background: #ff9800;
+    border-color: #ff9800;
+    color: white;
+}
+
+.length-btn[data-length="freeplay"]:hover,
+.length-btn[data-length="freeplay"].selected {
+    background: var(--main-blue);
+    border-color: var(--main-blue);
+    color: white;
+}
+
+.selected-length {
+    font-size: 13px;
+    color: var(--main-blue);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Game Timer Display */
+#game-timer {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--main-orange);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: monospace;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#game-timer.warning {
+    background: #e74c3c;
+    animation: pulse 1s infinite;
+}

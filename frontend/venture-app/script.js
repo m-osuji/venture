@@ -332,6 +332,13 @@ async function loadRoute(path) {
       currentGameModule.startGame();
       //initLeaderboard();
       initAIInteraction();
+      // Also clear game timer
+      if (gameTimerInterval) {
+        clearInterval(gameTimerInterval);
+        gameTimerInterval = null;
+      }
+      const gameTimer = document.getElementById("game-timer");
+      if (gameTimer) gameTimer.remove();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();
@@ -469,6 +476,41 @@ function setupDifficultyButtons() {
   return () => currentDifficulty;
 }
 
+// Function to setup game length buttons
+function setupGameLengthButtons() {
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  const selectedLengthDiv = document.getElementById("selected-length");
+  let currentLength = "freeplay";
+  
+  lengthBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      lengthBtns.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      currentLength = btn.getAttribute("data-length");
+      
+      if (selectedLengthDiv) {
+        const lengthText = {
+          short: "Short game - 20 minute time limit",
+          medium: "Medium game - 1 hour time limit",
+          freeplay: "Freeplay - No time limit"
+        };
+        selectedLengthDiv.textContent = lengthText[currentLength];
+      }
+    });
+  });
+  
+  // Set default selection (Freeplay)
+  const defaultBtn = document.querySelector('.length-btn[data-length="freeplay"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add("selected");
+    if (selectedLengthDiv) {
+      selectedLengthDiv.textContent = "Freeplay - No time limit";
+    }
+  }
+  
+  return () => currentLength;
+}
+
 // New function to set up game event listeners
 function setupGameEventListeners() {
   const teamCountSelect = document.getElementById("teamCountSelect");
@@ -484,6 +526,7 @@ function setupGameEventListeners() {
 
   setupAIOptionListener();
   setupDifficultyButtons();
+  setupGameLengthButtons();
   
   if (startButton) {
     startButton.removeEventListener("click", startGameHandler);
@@ -544,6 +587,15 @@ function startGameHandler() {
       difficulty = "medium"; // default
     }
   }
+
+  // Get game length
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  let gameLength = "freeplay";
+  lengthBtns.forEach(btn => {
+    if (btn.classList.contains("selected")) {
+      gameLength = btn.getAttribute("data-length");
+    }
+  });
   
   // Store game configuration
   const gameConfig = {
@@ -551,6 +603,7 @@ function startGameHandler() {
     teamNames: teamNames,
     includeAI: includeAI,
     aiDifficulty: difficulty,
+    gameLength: gameLength,
     timestamp: new Date().toISOString()
   };
   
@@ -1321,6 +1374,13 @@ function startTeamQuiz() {
       }
       
       marketOverlay.remove();
+
+      // Start the game timer based on selected length
+      const savedGameConfig = localStorage.getItem("ventureGameConfig");
+      if (savedGameConfig) {
+        const config = JSON.parse(savedGameConfig);
+        startGameTimer(config.gameLength);
+      }
       
       // Update AI text
       const aiText = document.getElementById("AI-text");
@@ -1505,6 +1565,103 @@ function calculateQuizResults(teamScoresArg, allTeamResponsesArg, includeAI) {
       alert(`🎮 Game is ready!\n\nStarting Order:\n${teamOrder.map((t, i) => `${i+1}. ${t.team} (${t.score} points)`).join('\n')}\n\nThe board will now be set up according to your quiz results.`);
     };
   }
+}
+
+// Game timer variables
+let gameTimerInterval = null;
+let gameTimeRemaining = 0;
+let gameStartTime = null;
+let isGameTimed = false;
+
+function startGameTimer(gameLength) {
+  // Remove existing timer if any
+  const existingTimer = document.getElementById("game-timer");
+  if (existingTimer) existingTimer.remove();
+  
+  // Create timer display
+  const timerDisplay = document.createElement("div");
+  timerDisplay.id = "game-timer";
+  document.body.appendChild(timerDisplay);
+  
+  if (gameLength === "short") {
+    isGameTimed = true;
+    gameTimeRemaining = 20 * 60; // 20 minutes in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        // Warning when 5 minutes left
+        if (gameTimeRemaining <= 300) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+          // Add game end logic here
+        }
+      }
+    }, 1000);
+  } else if (gameLength === "medium") {
+    isGameTimed = true;
+    gameTimeRemaining = 60 * 60; // 1 hour in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        if (gameTimeRemaining <= 600) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+        }
+      }
+    }, 1000);
+  } else {
+    // Freeplay - show elapsed time
+    isGameTimed = false;
+    gameStartTime = Date.now();
+    updateElapsedTimeDisplay();
+    gameTimerInterval = setInterval(() => {
+      updateElapsedTimeDisplay();
+    }, 1000);
+  }
+}
+
+function updateGameTimerDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && isGameTimed) {
+    const minutes = Math.floor(gameTimeRemaining / 60);
+    const seconds = gameTimeRemaining % 60;
+    timerDisplay.textContent = `Time Remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function updateElapsedTimeDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && !isGameTimed && gameStartTime) {
+    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    timerDisplay.textContent = `Elapsed Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function stopGameTimer() {
+  if (gameTimerInterval) {
+    clearInterval(gameTimerInterval);
+    gameTimerInterval = null;
+  }
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay) timerDisplay.remove();
 }
 
 // File navigation, did not like js navigate function, now uses global

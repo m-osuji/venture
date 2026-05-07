@@ -26,6 +26,15 @@ const routes = {
   "/game": "pages/game.html"
 };
 
+const DEFAULT_TEAM_COLOURS = [
+  "#EE672B",
+  "#467096",
+  "#2A9D8F",
+  "#D62839",
+  "#7B2CBF",
+  "#F4A261"
+];
+
 let scrollHandlerAttached = false;
 
 function initScrollIndicator() {
@@ -424,7 +433,7 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
-function startGameHandler() {
+async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
   
@@ -439,19 +448,15 @@ function startGameHandler() {
   const includeAI = aiYesRadio ? aiYesRadio.checked : false;
 
   // Get difficulty (only if AI is included)
-  let difficulty = null;
+  let difficulty = "medium";
   
   if (includeAI) {
-    // Get the selected difficulty from the DOM instead of using a closure
     const selectedBtn = document.querySelector('.difficulty-btn.selected');
     if (selectedBtn) {
       difficulty = selectedBtn.getAttribute('data-difficulty');
-    } else {
-      difficulty = "medium"; // default
     }
   }
-  
-  // Store game configuration
+
   const gameConfig = {
     teamCount: teamCount,
     teamNames: teamNames,
@@ -460,20 +465,83 @@ function startGameHandler() {
     timestamp: new Date().toISOString()
   };
   
-  // Close the overlay
+  // Keep the local copy around for any still-unwired frontend flows.
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+
+  const backendTeams = teamNames.map((teamName, index) => ({
+    id: index + 1,
+    name: teamName,
+    colour: DEFAULT_TEAM_COLOURS[index] || "#467096",
+    is_ai: false
+  }));
+
+  if (includeAI) {
+    backendTeams.push({
+      id: backendTeams.length + 1,
+      name: "IBM Granite AI",
+      colour: "#1b9aaa",
+      is_ai: true
+    });
+  }
+
+  const backendPayload = {
+    teams: backendTeams,
+    difficulty: difficulty,
+    mode: "full"
+  };
+
+  const apiBase = window.VENTURE_API_BASE || "http://localhost:5000";
+  const demoMode = window.VENTURE_DEMO_MODE !== false;
+  const startEndpoint = demoMode
+    ? `${apiBase}/api/demo/start`
+    : `${apiBase}/api/game/start`;
+
+  // Close the overlay early so the UI feels responsive.
   const setupOverlay = document.getElementById("game-setup-overlay");
   if (setupOverlay) {
     setupOverlay.style.display = "none";
   }
-  
-  // Convert object to JSON string and save to browser's localStorage
-  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
-  
-  // You can add more game initialization logic here
-  console.log("Game configuration:", gameConfig);
 
-  // Explanation of initial quiz
-  initQuizSetup()
+  try {
+    const response = await fetch(startEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(backendPayload)
+    });
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => ({}));
+      throw new Error(errorPayload.error || "Failed to start game on backend");
+    }
+
+    const result = await response.json();
+    console.log("Game created on backend:", result);
+
+    if (currentGameModule?.fetchGameState) {
+      await currentGameModule.fetchGameState();
+    } else if (window.location.pathname !== "/game") {
+      window.navigate("/game");
+    }
+
+    const aiText = document.getElementById("AI-text");
+    const aiButton = document.getElementById("AI-confirm");
+    if (aiText) {
+      aiText.innerHTML = demoMode
+        ? "The scripted demo is live. Use the Next Stage button to walk through the round."
+        : "The game is live. Use the board to inspect markets and the Next Stage button to move the round on.";
+    }
+    if (aiButton) {
+      aiButton.textContent = "Ready";
+      aiButton.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Error starting game:", error);
+    alert("Failed to connect to the game server. Make sure the backend is running.");
+
+    if (setupOverlay) {
+      setupOverlay.style.display = "flex";
+    }
+  }
 }
 
 // Function to cancel game setup

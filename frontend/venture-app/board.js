@@ -5,7 +5,10 @@ let game = null;
 // Temporary gamestate dictionary
 // TODO: Adapt this with the database and backend logic
 let gameState = {
-    currentStage: 0
+    currentStage: 0,
+    teamModeActive: false,
+    currentTeamIndex: 0,
+    tournamentRankings: []
 };
 
 // Store the full backend data here so we can use it later (like updating territories)
@@ -20,16 +23,37 @@ export async function fetchGameState() {
         const data = await response.json();
         currentBackendState = data;
 
-        // Python sends the stage as an integer (1 = Plan, 2 = Negotiate, etc.)
-        // JS arrays start at 0, so we subtract 1 to match your STAGE_LABELS array!
-        gameState.currentStage = data.current_stage - 1;
+        console.log("📥 Backend Data:", data);
 
-        // Update the visual dots on the screen
+        // This map handles BOTH the string name and the Enum integer
+        // It converts them all to the 0-4 index JS needs for the UI
+        const stageMap = {
+            "PLAN": 0, 1: 0,
+            "NEGOTIATE": 1, 2: 1,
+            "ORDERS": 2, 3: 2,
+            "RESOLVE": 3, 4: 3,
+            "UPDATE": 4, 5: 4
+        };
+
+        const rawStage = data.current_stage;
+        
+        // If rawStage is "PLAN", lookup "PLAN". If it's 1, lookup 1.
+        const mappedIndex = stageMap[rawStage];
+
+        if (mappedIndex !== undefined) {
+            gameState.currentStage = mappedIndex;
+        } else {
+            console.warn("Unknown stage received from Python:", rawStage);
+            gameState.currentStage = 0; // Default to Plan
+        }
+
         updateStageIndicator();
 
-        console.log("📥 Backend State Synced:", data);
     } catch (error) {
-        console.error("Failed to sync game state:", error);
+        console.error("❌ Sync Failed:", error);
+        // Ensure UI doesn't show "Undefined" even if the API fails
+        gameState.currentStage = 0; 
+        updateStageIndicator();
     }
 }
 
@@ -48,6 +72,7 @@ export function startGame() {
 
     initLeaderboardUI(container);
     initTerritoryUI(container);
+    initTeamIndicatorDisplay(container);
     initStageProgressButton(container);
 
     // Define the game configuration
@@ -99,6 +124,9 @@ function initLeaderboardUI(container) {
 
     if (!button || !overlay) return;
 
+    // Hide leaderboard button initially (until tournament finishes)
+    button.style.display = 'none';
+
     container.style.position = container.style.position || 'relative';
 
     button.addEventListener('click', () => {
@@ -149,27 +177,49 @@ function initTerritoryUI(container) {
     });
 }
 
+function initTeamIndicatorDisplay(container) {
+    // Team indicator display will be shown/hidden by updateTeamIndicator
+    // based on whether team mode is active
+}
+
 function initStageProgressButton(container) {
     const button = document.getElementById('stage-progresser');
     if (!button) return;
 
+    const maxStage = STAGE_LABELS.length - 1;
+
     button.addEventListener('click', async () => {
         try {
-            // Prevent spam-clicking while the AI is thinking
+            // Prevent spam-clicking
             button.style.pointerEvents = 'none';
             button.style.opacity = '0.5';
 
-            // 1. Tell Python to push the clock forward (and trigger the AI)
+            // CASE 1: We are switching between teams in the SAME stage (Local Logic)
+            if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+                const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+
+                if (!isLastTeam) {
+                    gameState.currentTeamIndex++;
+                    updateTeamIndicator();
+                    return; // Stop here, don't talk to Python yet
+                }
+            }
+
+            // CASE 2: We are moving to the NEXT stage (Backend Logic)
+            // This runs if teamMode is off OR if it was the last team's turn
             const response = await fetch('http://localhost:5000/api/game/advance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
-            const result = await response.json();
-            console.log("⏩ Advanced Stage:", result);
 
-            // 2. Fetch the fresh state from the backend to update our UI
             if (response.ok) {
+                const result = await response.json();
+                console.log("⏩ Advanced Stage:", result);
+                
+                // Reset team tracking for the new stage
+                gameState.currentTeamIndex = 0;
+                
+                // Sync the UI with Python's new state
                 await fetchGameState();
             }
 
@@ -179,8 +229,11 @@ function initStageProgressButton(container) {
             // Re-enable the button
             button.style.pointerEvents = 'auto';
             button.style.opacity = '1';
+            updateButtonText();
         }
     });
+
+    updateButtonText();
 }
 
 const STAGE_LABELS = [
@@ -217,6 +270,109 @@ function updateStageIndicator() {
             line.classList.remove('active');
         }
     });
+}
+
+// Update the team indicator based on current team
+function updateTeamIndicator() {
+    const teamDisplay = document.getElementById('current-team-display');
+    const teamNameElement = document.getElementById('team-name');
+    
+    if (!gameState.teamModeActive || !gameState.tournamentRankings.length) {
+        if (teamDisplay) {
+            teamDisplay.style.display = 'none';
+        }
+        return;
+    }
+
+    if (!teamDisplay || !teamNameElement) return;
+
+    const currentTeamData = gameState.tournamentRankings[gameState.currentTeamIndex];
+    if (!currentTeamData) return;
+
+    // Update team name
+    teamNameElement.textContent = currentTeamData.team;
+
+    // Update button text
+    updateButtonText();
+
+    // Show team display
+    teamDisplay.style.display = 'block';
+}
+
+// Update the stage progresser button text
+function updateButtonText() {
+    const button = document.getElementById('stage-progresser');
+    if (!button) return;
+
+    if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+        const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+        button.textContent = isLastTeam ? 'Next Stage' : 'Next Team';
+    } else {
+        button.textContent = 'Next Stage';
+    }
+}
+
+// Enable team mode - called after tournament rankings are determined
+export function configureTeams() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                gameState.tournamentRankings = results.tournamentRankings;
+                gameState.teamModeActive = true;
+                gameState.currentTeamIndex = 0;
+                updateTeamIndicator();
+            }
+        } catch (e) {
+            console.error('Error loading tournament rankings:', e);
+        }
+    }
+}
+
+// Populate leaderboard with team rankings
+export function populateLeaderboard() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                const leaderboardContent = document.querySelector('.leaderboard-content ol');
+                if (leaderboardContent) {
+                    // Clear existing content
+                    leaderboardContent.innerHTML = '';
+                    
+                    // Populate with team rankings
+                    results.tournamentRankings.forEach((team, index) => {
+                        const li = document.createElement('li');
+                        li.textContent = `${index + 1}. ${team.team} - ${team.score} wins`;
+                        leaderboardContent.appendChild(li);
+                    });
+                    
+                    // Show leaderboard button
+                    const button = document.getElementById('leaderboard-button');
+                    if (button) {
+                        button.style.display = 'block';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error populating leaderboard:', e);
+        }
+    }
+}
+
+// Show game UI elements (stage indicator and progresser button)
+function showGameUI() {
+    const stageDisplay = document.getElementById('current-stage-display');
+    const progresserButton = document.getElementById('stage-progresser');
+    
+    if (stageDisplay) {
+        stageDisplay.style.display = 'block';
+    }
+    if (progresserButton) {
+        progresserButton.style.display = 'block';
+    }
 }
 
 // Reference dimensions for board scaling

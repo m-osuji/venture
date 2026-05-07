@@ -4,7 +4,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Blueprint, request, jsonify
 from helpers.db_helpers import fetch_all_markets
-from helpers.game_state_helpers import load_state, save_state, init_game_state, _get_frontend_states
+from helpers.game_state_helpers import load_state, save_state, init_game_state
+
+from helpers.game_state_helpers import (
+    load_state,
+    save_state,
+    init_game_state,
+    build_agent_context,
+    _get_frontend_states
+)
+
 from ai_opponent.agents.decision_maker import choose_action
 from helpers.gameplay_helpers import _empty_turn_log
 from enums import GameStage
@@ -52,16 +61,17 @@ def get_ai_decision():
         if game_state is None:
             return jsonify({'error': 'No active game found'}), 404
 
-        # Extract AI-relevant game state (this might need adjustment)
-        ai_context = {
-            'current_ip': 5,  # TODO: Get from actual game state
-            'owned_markets': [1],  # TODO: Get from actual game state
-            'enemy_markets': [2, 3],  # TODO: Get from actual game state
-            'market_states': {},  # TODO: Build from actual game state
-            'rules': game_state.get('rules', {})
-        }
+        ai_team = next(
+            (team for team in game_state.get('teams', []) if team.get('is_ai')),
+            None,
+        )
+        if ai_team is None:
+            return jsonify({'error': 'No AI team configured in game state'}), 400
 
-        decision = choose_action(ai_context, difficulty='medium')
+        ai_context = build_agent_context(game_state, team_id=ai_team['team_id'])
+        difficulty = request.args.get('difficulty', 'medium')
+
+        decision = choose_action(ai_context, difficulty=difficulty)
         return jsonify({'decision': decision})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

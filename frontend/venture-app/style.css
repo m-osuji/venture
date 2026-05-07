@@ -232,7 +232,7 @@ footer nav p {
 #stage-indicator {
   position: relative;
   width: 100%;
-  height: 32px;
+  height: 20px;
   margin-top: 12px;
   display: flex;
   align-items: center;
@@ -287,11 +287,65 @@ footer nav p {
   height: 14px;
 }
 
+/* Display showing the current team */
+.current-team-display {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 40;
+  background: #fff;
+  border-radius: 22px;
+  padding: 16px 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  color: var(--main-grey);
+  font-family: var(--content-font);
+  width: fit-content;
+  max-width: 300px;
+}
+
+.current-team-display h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-name {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--main-orange);
+}
+
+.current-team-display hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+.current-team-display .team-actions-title {
+  margin: 8px 0 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-actions-list {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--main-grey);
+}
+
+.current-team-display #team-actions-list li {
+  margin: 4px 0;
+}
+
 /* Leaderboard popup inside the game window */
 .leaderboard-button {
   position: absolute;
   top: 16px;
-  right: 16px;
+  right: 210px;
   z-index: 40;
   padding: 10px 16px;
   font-family: var(--content-font);
@@ -432,7 +486,7 @@ footer nav p {
   max-height: 90%;
   background: #fff;
   border-radius: 22px;
-  padding: 28px 24px 24px;
+  padding: 18px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
   overflow: auto;
   color: var(--main-grey);
@@ -481,6 +535,7 @@ footer nav p {
     flex-direction: row;
     align-items: end;
     gap: 0;
+    position: relative;
 }
 
 #AI {
@@ -490,7 +545,7 @@ footer nav p {
 
 #AI-text {
     background: var(--main-beige);
-    border-radius: 22px 22px 0 22px;
+    border-radius: 22px;
     padding: 16px 20px;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     color: var(--main-grey);
@@ -501,15 +556,19 @@ footer nav p {
 }
 
 #AI-confirm {
-    background: var(--main-beige);
-    color: var(--main-grey);
     font-family: var(--content-font);
-    font-size: 16px;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 0 10px 10px 0;
-    cursor: pointer;
+    font-size: 20px;
+    background: var(--main-orange);
+    color: #fff;
     height: min-content;
+    position: absolute;
+    top: -22px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
 #stage-progresser {
@@ -834,4 +893,195 @@ footer nav p {
 
 .btn-secondary:hover {
     background: #f0ede9;
+}
+
+/* Quiz Styles */
+.competition-option {
+    padding: 15px;
+    margin: 5px;
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+}
+
+.competition-option:hover {
+    background: #e0e0e0;
+    transform: scale(1.02);
+}
+
+#team1-panel, #team2-panel {
+    transition: all 0.3s ease;
+}
+
+#team1-panel:active, #team2-panel:active {
+    transform: scale(0.98);
+}
+
+.quiz-card {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.market-option {
+    transition: all 0.2s ease;
+}
+
+.market-option:hover {
+    transform: translateX(5px);
+}
+
+.select-market-btn {
+    transition: all 0.2s ease;
+}
+
+.select-market-btn:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+#buzzer-status {
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Tournament and Market Selection Additional Styles */
+.setup-card.quiz-card {
+    max-width: 700px;
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 150px;
+    margin-bottom: 10px;
+}
+
+.setup-card h2 {
+    text-align: center;
+}
+
+#tournament-progress {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#question-area {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+#question-text {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+#options-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#round-result {
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+#next-question-btn, #next-matchup-btn {
+    min-width: 150px;
+}
+
+/* Market Selection Draft Styles */
+#draft-progress {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#current-team {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#current-team-name {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+#markets-list {
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.market-option div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin: 10px 0;
+    background: #f9f9f9;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+}
+
+.market-option strong {
+    font-size: 18px;
+}
+
+.market-option span {
+    font-size: 14px;
+    color: #666;
+}
+
+#selection-feedback {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+/* Fix for correct answer text color */
+.competition-option[style*="background: #27ae60"],
+.competition-option[style*="background: rgb(39, 174, 96)"],
+.competition-option[style*="background-color: #27ae60"] {
+    color: white !important;
+}
+
+.competition-option[style*="background: #f0f0f0"],
+.competition-option[style*="background: rgb(240, 240, 240)"] {
+    color: var(--main-grey) !important;
+}
+
+#question-timer {
+  transition: background 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }

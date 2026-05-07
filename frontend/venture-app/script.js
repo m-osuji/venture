@@ -561,6 +561,7 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
+// Function to handle game start
 async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
@@ -593,23 +594,13 @@ async function startGameHandler() {
     }
   });
   
-  // Store game configuration
-  const gameConfig = {
-    teamCount: teamCount,
-    teamNames: teamNames,
-    includeAI: includeAI,
-    aiDifficulty: difficulty,
-    gameLength: gameLength,
-    timestamp: new Date().toISOString()
-  };
-
   // Format data for backend
   const backendTeams = [];
   for (let i = 0; i < teamNames.length; i++) {
     backendTeams.push({
       id: i + 1,
       name: teamNames[i],
-      colour: i === 0 ? "#FF0000" : "#0000FF", // Placeholder colors
+      colour: i === 0 ? "#FF0000" : "#0000FF",
       is_ai: false
     });
   }
@@ -631,15 +622,31 @@ async function startGameHandler() {
     mode: 'full'
   };
 
-  // Close the setup menu immediately so the screen doesn't freeze
-
+  // Close the setup menu immediately
   const setupOverlay = document.getElementById("game-setup-overlay");
   if (setupOverlay) {
     setupOverlay.style.display = "none";
   }
 
+  // Save the game config with the correct structure for the quiz
+  const gameConfigForQuiz = {
+    teamCount: teamCount,
+    teamNames: teamNames,
+    includeAI: includeAI,
+    aiDifficulty: difficulty,
+    gameLength: gameLength,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Save to localStorage for the quiz to use (ONLY ONCE, don't overwrite)
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfigForQuiz));
+  localStorage.setItem("backendGameConfig", JSON.stringify(backendPayload));
+  
+  // Start game timer immediately
+  startGameTimer(gameLength);
+
   // -----------------------------------------------
-  // FETCH: Send data to Python, THEN load the board
+  // FETCH: Send data to Python (don't affect quiz)
   // -----------------------------------------------
   try {
     const response = await fetch('http://localhost:5000/api/game/start', {
@@ -653,28 +660,15 @@ async function startGameHandler() {
     const result = await response.json();
     console.log("✅ Game created on backend!", result);
 
-    // Only navigate to the map after Python confirms the JSON is ready
-    window.navigate('/game');
-
   } catch (error) {
     console.error("Error starting game:", error);
-    alert("Failed to connect to the game server. Is your Python backend running?");
-    
-    // Un-hide the menu if it failed so they can try again
-    if (setupOverlay) setupOverlay.style.display = "flex";
+    alert("Failed to connect to the game server. Is your Python backend running?\n\nContinuing with local game.");
   }
   
-  // Convert object to JSON string and save to browser's localStorage
-  localStorage.setItem("ventureGameConfig", JSON.stringify(backendPayload));
-  
-  // You can add more game initialization logic here
-  console.log("Game configuration:", backendPayload);
+  console.log("Game configuration for quiz:", gameConfigForQuiz);
 
-  // Start game timer immediately
-  startGameTimer(gameLength);
-
-  // Explanation of initial quiz
-  initQuizSetup()
+  // Start the quiz (ONLY ONCE)
+  initQuizSetup();
 }
 
 // Function to cancel game setup
@@ -1763,7 +1757,7 @@ let isGameTimed = false;
 
 function startGameTimer(gameLength) {
   console.log("startGameTimer called with gameLength:", gameLength);
-  
+
   // Remove existing timer if any
   const existingTimer = document.getElementById("game-timer");
   if (existingTimer) existingTimer.remove();

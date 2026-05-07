@@ -1142,6 +1142,16 @@ function startTeamQuiz() {
       localStorage.setItem("tournamentResults", JSON.stringify(finalResults));
       localStorage.setItem("marketSelections", JSON.stringify(selectedMarkets));
       
+      // Enable team mode and populate leaderboard in the game if module is available
+      if (currentGameModule) {
+        if (currentGameModule.configureTeams) {
+          currentGameModule.configureTeams();
+        }
+        if (currentGameModule.populateLeaderboard) {
+          currentGameModule.populateLeaderboard();
+        }
+      }
+      
       marketOverlay.remove();
       
       // Update AI text

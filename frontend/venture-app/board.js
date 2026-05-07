@@ -78,6 +78,9 @@ function initLeaderboardUI(container) {
 
     if (!button || !overlay) return;
 
+    // Hide leaderboard button initially (until tournament finishes)
+    button.style.display = 'none';
+
     container.style.position = container.style.position || 'relative';
 
     button.addEventListener('click', () => {
@@ -138,22 +141,6 @@ function initStageProgressButton(container) {
     const button = document.getElementById('stage-progresser');
     
     if (!button) return;
-
-    // Load tournament rankings from localStorage
-    const savedResults = localStorage.getItem('tournamentResults');
-    if (savedResults) {
-        try {
-            const results = JSON.parse(savedResults);
-            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
-                gameState.tournamentRankings = results.tournamentRankings;
-                gameState.teamModeActive = true;
-                gameState.currentTeamIndex = 0;
-                updateTeamIndicator();
-            }
-        } catch (e) {
-            console.error('Error loading tournament rankings:', e);
-        }
-    }
 
     const maxStage = STAGE_LABELS.length - 1;
 
@@ -266,6 +253,69 @@ function updateButtonText() {
         button.textContent = isLastTeam ? 'Next Stage' : 'Next Team';
     } else {
         button.textContent = 'Next Stage';
+    }
+}
+
+// Enable team mode - called after tournament rankings are determined
+export function configureTeams() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                gameState.tournamentRankings = results.tournamentRankings;
+                gameState.teamModeActive = true;
+                gameState.currentTeamIndex = 0;
+                updateTeamIndicator();
+            }
+        } catch (e) {
+            console.error('Error loading tournament rankings:', e);
+        }
+    }
+}
+
+// Populate leaderboard with team rankings
+export function populateLeaderboard() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                const leaderboardContent = document.querySelector('.leaderboard-content ol');
+                if (leaderboardContent) {
+                    // Clear existing content
+                    leaderboardContent.innerHTML = '';
+                    
+                    // Populate with team rankings
+                    results.tournamentRankings.forEach((team, index) => {
+                        const li = document.createElement('li');
+                        li.textContent = `${index + 1}. ${team.team} - ${team.score} wins`;
+                        leaderboardContent.appendChild(li);
+                    });
+                    
+                    // Show leaderboard button
+                    const button = document.getElementById('leaderboard-button');
+                    if (button) {
+                        button.style.display = 'block';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error populating leaderboard:', e);
+        }
+    }
+}
+
+// Show game UI elements (stage indicator and progresser button)
+function showGameUI() {
+    const stageDisplay = document.getElementById('current-stage-display');
+    const progresserButton = document.getElementById('stage-progresser');
+    
+    if (stageDisplay) {
+        stageDisplay.style.display = 'block';
+    }
+    if (progresserButton) {
+        progresserButton.style.display = 'block';
     }
 }
 

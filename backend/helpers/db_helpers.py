@@ -76,3 +76,21 @@ def fetch_market_by_id(market_id: int) -> dict | None:
     """
     row = fetch_one('SELECT * FROM Market WHERE market_id = ?', (market_id,))
     return dict(row) if row else None
+
+def fetch_questions(topic=None, difficulty=None):
+    """
+    Fetch questions from the Question table.
+    Optionally filter by topic and/or difficulty_level.
+    Returns a list of dicts matching the quiz_helpers data contract.
+    """
+    query = "SELECT * FROM Question WHERE 1=1"
+    params = []
+
+    if topic is not None:
+        query += " AND topic = ?"
+        params.append(topic)
+    if difficulty is not None:
+        query += " AND difficulty_level = ?"
+        params.append(difficulty)
+
+    return fetch_all(query, params)

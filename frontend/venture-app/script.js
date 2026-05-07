@@ -561,11 +561,11 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
-function startGameHandler() {
+async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
   
-  // Collect all team names
+  // Collect all team names from the UI
   for (let i = 0; i < teamCount; i++) {
     const teamInput = document.getElementById(`teamName${i}`);
     const teamName = teamInput ? teamInput.value.trim() : `Team ${String.fromCharCode(65 + i)}`;
@@ -576,15 +576,11 @@ function startGameHandler() {
   const includeAI = aiYesRadio ? aiYesRadio.checked : false;
 
   // Get difficulty (only if AI is included)
-  let difficulty = null;
-  
+  let difficulty = "medium"; // default
   if (includeAI) {
-    // Get the selected difficulty from the DOM instead of using a closure
     const selectedBtn = document.querySelector('.difficulty-btn.selected');
     if (selectedBtn) {
       difficulty = selectedBtn.getAttribute('data-difficulty');
-    } else {
-      difficulty = "medium"; // default
     }
   }
 
@@ -606,18 +602,73 @@ function startGameHandler() {
     gameLength: gameLength,
     timestamp: new Date().toISOString()
   };
-  
-  // Close the overlay
+
+  // Format data for backend
+  const backendTeams = [];
+  for (let i = 0; i < teamNames.length; i++) {
+    backendTeams.push({
+      id: i + 1,
+      name: teamNames[i],
+      colour: i === 0 ? "#FF0000" : "#0000FF", // Placeholder colors
+      is_ai: false
+    });
+  }
+
+  // If the user selected AI, add the AI as the final team
+  if (includeAI) {
+    backendTeams.push({
+      id: backendTeams.length + 1,
+      name: "IBM Granite AI",
+      colour: "#00FF00",
+      is_ai: true
+    });
+  }
+
+  // Build the final payload for the Python backend
+  const backendPayload = {
+    teams: backendTeams,
+    difficulty: difficulty,
+    mode: 'full'
+  };
+
+  // Close the setup menu immediately so the screen doesn't freeze
+
   const setupOverlay = document.getElementById("game-setup-overlay");
   if (setupOverlay) {
     setupOverlay.style.display = "none";
   }
+
+  // -----------------------------------------------
+  // FETCH: Send data to Python, THEN load the board
+  // -----------------------------------------------
+  try {
+    const response = await fetch('http://localhost:5000/api/game/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(backendPayload)
+    });
+
+    if (!response.ok) throw new Error("Failed to start game on backend");
+
+    const result = await response.json();
+    console.log("✅ Game created on backend!", result);
+
+    // Only navigate to the map after Python confirms the JSON is ready
+    window.navigate('/game');
+
+  } catch (error) {
+    console.error("Error starting game:", error);
+    alert("Failed to connect to the game server. Is your Python backend running?");
+    
+    // Un-hide the menu if it failed so they can try again
+    if (setupOverlay) setupOverlay.style.display = "flex";
+  }
   
   // Convert object to JSON string and save to browser's localStorage
-  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfig));
+  localStorage.setItem("ventureGameConfig", JSON.stringify(backendPayload));
   
   // You can add more game initialization logic here
-  console.log("Game configuration:", gameConfig);
+  console.log("Game configuration:", backendPayload);
 
   // Start game timer immediately
   startGameTimer(gameLength);
@@ -1587,7 +1638,7 @@ function startTeamQuiz() {
   buzzerStatus.style.textAlign = "center";
   
   const questionArea = document.getElementById("question-area");
-  if (questionArea) {
+  if (questionArea && questionArea.parentNode) {
     questionArea.parentNode.insertBefore(buzzerStatus, questionArea);
   }
 

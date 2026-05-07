@@ -4,7 +4,6 @@ Handles the technical details for the Granite 4.0 LLM integration.
 Usage:
     Import `init_granite` to initialise a shared Mellea session.
 """
-import os
 from dotenv import load_dotenv
 
 # apply Hugging Face compatibility patches before importing any Mellea modules
@@ -30,13 +29,13 @@ def init_granite() -> MelleaSession:
 
     if SESSION is None:
         SESSION = MelleaSession(
-            # use the local Hugging Face backend with the Granite 4.0 hybrid micro model
+            # use the local Hugging Face backend with the Granite 4.0 hybrid tiny model
             LocalHFBackend(
-                model_ids.IBM_GRANITE_4_HYBRID_MICRO, 
+                model_ids.IBM_GRANITE_4_HYBRID_TINY, 
                 model_options={ModelOption.MAX_NEW_TOKENS: 256}, # limit the number of new tokens generated to 256
             )
         ) 
 
-        print('> [model] Granite 4.0 session initialised.')
+        print('[model_loader] Granite 4.0 session initialised.')
 
     return SESSION

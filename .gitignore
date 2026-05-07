@@ -6,3 +6,12 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# ignore game state json files
+backend/game_state.json
+backend/test_state.json
+backend/*_state.json
+
+.venv/
+__pycache__/
+.pytest_cache/

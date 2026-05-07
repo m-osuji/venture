@@ -203,7 +203,7 @@ footer nav p {
   position: absolute;
   top: 16px;
   left: 16px;
-  z-index: 40;
+  z-index: 35;  /* Match timer z-index */
   background: #fff;
   border-radius: 22px;
   padding: 16px 20px;
@@ -1075,6 +1075,7 @@ footer nav p {
 #question-timer {
   transition: background 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 35;
 }
 
 @keyframes pulse {
@@ -1084,4 +1085,109 @@ footer nav p {
   50% {
     transform: scale(1.05);
   }
+}
+
+/* Game Length Selector Styles */
+.game-length-selector {
+    margin: 20px 0 15px 0;
+}
+
+.game-length-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--main-grey);
+}
+
+.length-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.length-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--content-font);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.length-btn[data-length="short"]:hover,
+.length-btn[data-length="short"].selected {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.length-btn[data-length="medium"]:hover,
+.length-btn[data-length="medium"].selected {
+    background: #ff9800;
+    border-color: #ff9800;
+    color: white;
+}
+
+.length-btn[data-length="freeplay"]:hover,
+.length-btn[data-length="freeplay"].selected {
+    background: var(--main-blue);
+    border-color: var(--main-blue);
+    color: white;
+}
+
+.selected-length {
+    font-size: 13px;
+    color: var(--main-blue);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Game Timer Display */
+#game-timer {
+    position: absolute;
+    top: 150px;
+    left: 250px;  /* Position next to current stage display */
+    background: var(--main-orange);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: monospace;
+    z-index: 35;  /* Lower than overlays (which are z-index 40-200) */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#game-timer.warning {
+    background: #e74c3c;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Territory button ownership styling */
+.territory-button[style*="border: 2px solid gold"] {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.territory-button {
+    transition: all 0.3s ease;
+}
+
+.territory-button:hover {
+    transform: scale(1.05);
+    z-index: 50;
 }

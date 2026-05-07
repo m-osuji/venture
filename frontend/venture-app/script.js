@@ -332,6 +332,13 @@ async function loadRoute(path) {
       currentGameModule.startGame();
       //initLeaderboard();
       initAIInteraction();
+      // Also clear game timer
+      if (gameTimerInterval) {
+        clearInterval(gameTimerInterval);
+        gameTimerInterval = null;
+      }
+      const gameTimer = document.getElementById("game-timer");
+      if (gameTimer) gameTimer.remove();
     } else {
       if (currentGameModule) {
         currentGameModule.stopGame();
@@ -469,6 +476,41 @@ function setupDifficultyButtons() {
   return () => currentDifficulty;
 }
 
+// Function to setup game length buttons
+function setupGameLengthButtons() {
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  const selectedLengthDiv = document.getElementById("selected-length");
+  let currentLength = "freeplay";
+  
+  lengthBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      lengthBtns.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      currentLength = btn.getAttribute("data-length");
+      
+      if (selectedLengthDiv) {
+        const lengthText = {
+          short: "Short game - 20 minute time limit",
+          medium: "Medium game - 1 hour time limit",
+          freeplay: "Freeplay - No time limit"
+        };
+        selectedLengthDiv.textContent = lengthText[currentLength];
+      }
+    });
+  });
+  
+  // Set default selection (Freeplay)
+  const defaultBtn = document.querySelector('.length-btn[data-length="freeplay"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add("selected");
+    if (selectedLengthDiv) {
+      selectedLengthDiv.textContent = "Freeplay - No time limit";
+    }
+  }
+  
+  return () => currentLength;
+}
+
 // New function to set up game event listeners
 function setupGameEventListeners() {
   const teamCountSelect = document.getElementById("teamCountSelect");
@@ -484,6 +526,7 @@ function setupGameEventListeners() {
 
   setupAIOptionListener();
   setupDifficultyButtons();
+  setupGameLengthButtons();
   
   if (startButton) {
     startButton.removeEventListener("click", startGameHandler);
@@ -518,6 +561,7 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
+// Function to handle game start
 async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
@@ -541,13 +585,22 @@ async function startGameHandler() {
     }
   }
 
+  // Get game length
+  const lengthBtns = document.querySelectorAll(".length-btn");
+  let gameLength = "freeplay";
+  lengthBtns.forEach(btn => {
+    if (btn.classList.contains("selected")) {
+      gameLength = btn.getAttribute("data-length");
+    }
+  });
+  
   // Format data for backend
   const backendTeams = [];
   for (let i = 0; i < teamNames.length; i++) {
     backendTeams.push({
       id: i + 1,
       name: teamNames[i],
-      colour: i === 0 ? "#FF0000" : "#0000FF", // Placeholder colors
+      colour: i === 0 ? "#FF0000" : "#0000FF",
       is_ai: false
     });
   }
@@ -569,15 +622,31 @@ async function startGameHandler() {
     mode: 'full'
   };
 
-  // Close the setup menu immediately so the screen doesn't freeze
-
+  // Close the setup menu immediately
   const setupOverlay = document.getElementById("game-setup-overlay");
   if (setupOverlay) {
     setupOverlay.style.display = "none";
   }
 
+  // Save the game config with the correct structure for the quiz
+  const gameConfigForQuiz = {
+    teamCount: teamCount,
+    teamNames: teamNames,
+    includeAI: includeAI,
+    aiDifficulty: difficulty,
+    gameLength: gameLength,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Save to localStorage for the quiz to use (ONLY ONCE, don't overwrite)
+  localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfigForQuiz));
+  localStorage.setItem("backendGameConfig", JSON.stringify(backendPayload));
+  
+  // Start game timer immediately
+  startGameTimer(gameLength);
+
   // -----------------------------------------------
-  // FETCH: Send data to Python, THEN load the board
+  // FETCH: Send data to Python (don't affect quiz)
   // -----------------------------------------------
   try {
     const response = await fetch('http://localhost:5000/api/game/start', {
@@ -591,25 +660,15 @@ async function startGameHandler() {
     const result = await response.json();
     console.log("✅ Game created on backend!", result);
 
-    // Only navigate to the map after Python confirms the JSON is ready
-    window.navigate('/game');
-
   } catch (error) {
     console.error("Error starting game:", error);
-    alert("Failed to connect to the game server. Is your Python backend running?");
-    
-    // Un-hide the menu if it failed so they can try again
-    if (setupOverlay) setupOverlay.style.display = "flex";
+    alert("Failed to connect to the game server. Is your Python backend running?\n\nContinuing with local game.");
   }
   
-  // Convert object to JSON string and save to browser's localStorage
-  localStorage.setItem("ventureGameConfig", JSON.stringify(backendPayload));
-  
-  // You can add more game initialization logic here
-  console.log("Game configuration:", backendPayload);
+  console.log("Game configuration for quiz:", gameConfigForQuiz);
 
-  // Explanation of initial quiz
-  initQuizSetup()
+  // Start the quiz (ONLY ONCE)
+  initQuizSetup();
 }
 
 // Function to cancel game setup
@@ -1234,12 +1293,48 @@ function startTeamQuiz() {
 
   // Market selection after tournament
   function startMarketSelection(rankedTeams) {
+    // Updated markets with their attributes
     const markets = [
-      { id: "tech", name: "Technology Market", bonus: "Innovation boost - +2 research points per round" },
-      { id: "finance", name: "Finance Market", bonus: "Capital advantage - Start with 50% more currency" },
-      { id: "retail", name: "Retail Market", bonus: "Customer loyalty - 20% discount on all purchases" },
-      { id: "energy", name: "Energy Market", bonus: "Resource efficiency - 30% reduced operating costs" },
-      { id: "healthcare", name: "Healthcare Market", bonus: "Stability bonus - Immunity to market crashes" }
+      { 
+        id: "healthcare", 
+        name: "Healthcare Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "Low",
+        growth: "Medium"
+      },
+      { 
+        id: "finance", 
+        name: "Finance Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "High",
+        growth: "Medium"
+      },
+      { 
+        id: "energy", 
+        name: "Energy Market", 
+        size: "Large",
+        regulation: "Medium",
+        risk: "High",
+        growth: "High"
+      },
+      { 
+        id: "manufacturing", 
+        name: "Manufacturing Market", 
+        size: "Medium",
+        regulation: "Low",
+        risk: "Medium",
+        growth: "High"
+      },
+      { 
+        id: "agriculture", 
+        name: "Agriculture Market", 
+        size: "Medium",
+        regulation: "Low",
+        risk: "Low",
+        growth: "High"
+      }
     ];
     
     let currentTeamIndex = 0;
@@ -1250,7 +1345,7 @@ function startTeamQuiz() {
     marketOverlay.id = "market-overlay";
     marketOverlay.className = "game-setup-overlay";
     marketOverlay.innerHTML = `
-      <div id="market-selection" class="setup-card" style="max-width: 600px;">
+      <div id="market-selection" class="setup-card" style="max-width: 800px;">
         <h2>Market Selection Draft</h2>
         <div id="draft-progress" style="margin-bottom: 20px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">
           Team 1 of X
@@ -1259,18 +1354,27 @@ function startTeamQuiz() {
           <h3 id="current-team-name">Team Name</h3>
           <p>Select your starting market</p>
         </div>
-        <div id="markets-list" style="margin-bottom: 20px;">
+        <div id="markets-list" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
           <!-- Markets will be listed here -->
         </div>
         <div id="selection-feedback" style="text-align: center; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: none;"></div>
         <div class="setup-actions">
-          <button id="confirm-market-btn" class="setup-btn-primary" style="display: none;">Confirm Selection</button>
+          <button id="cancel-market-btn" class="setup-btn-secondary">Cancel</button>
         </div>
       </div>
     `;
     
     document.body.appendChild(marketOverlay);
     marketOverlay.style.display = "flex";
+    
+    // Cancel button functionality
+    const cancelMarketBtn = document.getElementById("cancel-market-btn");
+    if (cancelMarketBtn) {
+      cancelMarketBtn.onclick = () => {
+        marketOverlay.remove();
+        // Optionally restart tournament or go back
+      };
+    }
     
     function updateDraftProgress() {
       const progressDiv = document.getElementById("draft-progress");
@@ -1285,16 +1389,21 @@ function startTeamQuiz() {
       if (!marketsList) return;
       
       marketsList.innerHTML = "";
-      availableMarkets.forEach((market, index) => {
+      availableMarkets.forEach((market) => {
         const marketDiv = document.createElement("div");
         marketDiv.className = "market-option";
         marketDiv.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px; cursor: pointer;">
-            <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px; transition: all 0.2s ease;">
+            <div style="flex: 2;">
               <strong style="font-size: 18px;">${market.name}</strong><br>
-              <span style="font-size: 14px; color: #666;">${market.bonus}</span>
+              <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px;">
+                <span>📊 Size: ${market.size}</span>
+                <span>⚖️ Regulation: ${market.regulation}</span>
+                <span>⚠️ Risk: ${market.risk}</span>
+                <span>📈 Growth: ${market.growth}</span>
+              </div>
             </div>
-            <button class="select-market-btn" data-market-id="${market.id}" data-market-name="${market.name}" style="background: ${currentTeamIndex === 0 ? '#EE672B' : '#467096'}; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer;">Select</button>
+            <button class="select-market-btn" data-market-id="${market.id}" data-market-name="${market.name}" style="background: ${currentTeamIndex === 0 ? '#EE672B' : '#467096'}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold;">Select</button>
           </div>
         `;
         marketsList.appendChild(marketDiv);
@@ -1313,7 +1422,8 @@ function startTeamQuiz() {
     
     function selectMarket(marketId, marketName) {
       const currentTeam = rankedTeams[currentTeamIndex].team;
-      selectedMarkets[currentTeam] = { id: marketId, name: marketName };
+      const selectedMarket = availableMarkets.find(m => m.id === marketId);
+      selectedMarkets[currentTeam] = selectedMarket;
       
       // Remove selected market from available list
       const marketIndex = availableMarkets.findIndex(m => m.id === marketId);
@@ -1352,6 +1462,9 @@ function startTeamQuiz() {
       localStorage.setItem("tournamentResults", JSON.stringify(finalResults));
       localStorage.setItem("marketSelections", JSON.stringify(selectedMarkets));
       
+      // Update territory buttons with market selections
+      updateTerritoryButtonsWithMarketSelections();
+      
       // Enable team mode and populate leaderboard in the game if module is available
       if (currentGameModule) {
         if (currentGameModule.configureTeams) {
@@ -1364,15 +1477,24 @@ function startTeamQuiz() {
       
       marketOverlay.remove();
       
+      // Start the game timer based on selected length
+      // const savedGameConfig = localStorage.getItem("ventureGameConfig");
+      // if (savedGameConfig) {
+      //   const config = JSON.parse(savedGameConfig);
+      //   startGameTimer(config.gameLength);
+      // }
+      
       // Update AI text
       const aiText = document.getElementById("AI-text");
       if (aiText) {
         let rankingText = rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n");
-        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarkets have been selected. Click the button below to begin the game!`;
+        let marketText = Object.entries(selectedMarkets).map(([team, market]) => `${team}: ${market.name}`).join("\n");
+        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}\n\nClick the button below to begin the game!`;
       }
       
       // Show final results
-      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarkets have been assigned based on draft order.\n\nThe game will now begin!`);
+      let marketResults = Object.entries(selectedMarkets).map(([team, market]) => `${team} selected ${market.name}`).join("\n");
+      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarket Selections:\n${marketResults}\n\nThe game will now begin!`);
       
       // Re-enable the AI confirm button for game start
       const aiButton = document.getElementById("AI-confirm");
@@ -1382,6 +1504,84 @@ function startTeamQuiz() {
         newButton.textContent = "Start Game";
         newButton.addEventListener("click", () => {
           alert("Game is starting with your tournament rankings and market selections!");
+        });
+      }
+    }
+    
+    // Update territory buttons with market selections
+    function updateTerritoryButtonsWithMarketSelections() {
+      const marketSelections = localStorage.getItem("marketSelections");
+      if (!marketSelections) return;
+      
+      const selections = JSON.parse(marketSelections);
+      const territoryButtons = document.querySelectorAll('.territory-button');
+      
+      // Map market IDs to territory data attributes
+      const marketToTerritory = {
+        'healthcare': 'healthcare',
+        'finance': 'finance',
+        'energy': 'energy',
+        'manufacturing': 'manufacturing',
+        'agriculture': 'agriculture'
+      };
+      
+      territoryButtons.forEach(button => {
+        const territoryName = button.getAttribute('data-territory');
+        
+        // Find which team selected this territory's market
+        for (const [team, market] of Object.entries(selections)) {
+          const mappedTerritory = marketToTerritory[market.id];
+          if (mappedTerritory === territoryName) {
+            // Update button text to show ownership
+            const h3 = button.querySelector('h3');
+            const p = button.querySelector('p');
+            if (h3 && p) {
+              const currentText = p.textContent;
+              const valueMatch = currentText.match(/\d+$/);
+              const value = valueMatch ? valueMatch[0] : '';
+              p.innerHTML = `Owned by ${team} ⋅ ${value}`;
+              button.style.opacity = '0.85';
+              button.style.border = '3px solid gold';
+              button.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+            }
+            break;
+          }
+        }
+      });
+      
+      // Update leaderboard with market ownership
+      updateLeaderboardWithMarkets(selections);
+    }
+    
+    // Update leaderboard to show market ownership
+    function updateLeaderboardWithMarkets(selections) {
+      const leaderboardContent = document.querySelector('.leaderboard-content ol');
+      if (!leaderboardContent) return;
+      
+      // Group markets by team with attributes
+      const teamMarkets = {};
+      for (const [team, market] of Object.entries(selections)) {
+        if (!teamMarkets[team]) teamMarkets[team] = [];
+        teamMarkets[team].push({
+          name: market.name,
+          size: market.size,
+          regulation: market.regulation,
+          risk: market.risk,
+          growth: market.growth
+        });
+      }
+      
+      // Update existing leaderboard items
+      const existingItems = leaderboardContent.querySelectorAll('li');
+      if (existingItems.length > 0) {
+        existingItems.forEach(item => {
+          for (const [team, markets] of Object.entries(teamMarkets)) {
+            if (item.textContent.includes(team)) {
+              const marketsText = markets.map(m => `${m.name} (Size:${m.size}, Risk:${m.risk})`).join(', ');
+              item.textContent = item.textContent.split(' - Markets:')[0] + ` - Markets: ${marketsText}`;
+              break;
+            }
+          }
         });
       }
     }
@@ -1547,6 +1747,105 @@ function calculateQuizResults(teamScoresArg, allTeamResponsesArg, includeAI) {
       alert(`🎮 Game is ready!\n\nStarting Order:\n${teamOrder.map((t, i) => `${i+1}. ${t.team} (${t.score} points)`).join('\n')}\n\nThe board will now be set up according to your quiz results.`);
     };
   }
+}
+
+// Game timer variables
+let gameTimerInterval = null;
+let gameTimeRemaining = 0;
+let gameStartTime = null;
+let isGameTimed = false;
+
+function startGameTimer(gameLength) {
+  console.log("startGameTimer called with gameLength:", gameLength);
+
+  // Remove existing timer if any
+  const existingTimer = document.getElementById("game-timer");
+  if (existingTimer) existingTimer.remove();
+  
+  // Create timer display
+  const timerDisplay = document.createElement("div");
+  timerDisplay.id = "game-timer";
+  document.body.appendChild(timerDisplay);
+  
+  if (gameLength === "short") {
+    isGameTimed = true;
+    gameTimeRemaining = 20 * 60; // 20 minutes in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        // Warning when 5 minutes left
+        if (gameTimeRemaining <= 300) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+          // Add game end logic here
+        }
+      }
+    }, 1000);
+  } else if (gameLength === "medium") {
+    isGameTimed = true;
+    gameTimeRemaining = 60 * 60; // 1 hour in seconds
+    updateGameTimerDisplay();
+    gameTimerInterval = setInterval(() => {
+      if (gameTimeRemaining > 0) {
+        gameTimeRemaining--;
+        updateGameTimerDisplay();
+        
+        if (gameTimeRemaining <= 600) {
+          timerDisplay.classList.add("warning");
+        }
+        
+        if (gameTimeRemaining <= 0) {
+          clearInterval(gameTimerInterval);
+          gameTimerInterval = null;
+          alert("TIME'S UP! The game has ended.");
+        }
+      }
+    }, 1000);
+  } else {
+    // Freeplay - show elapsed time
+    isGameTimed = false;
+    gameStartTime = Date.now();
+    updateElapsedTimeDisplay();
+    gameTimerInterval = setInterval(() => {
+      updateElapsedTimeDisplay();
+    }, 1000);
+  }
+}
+
+function updateGameTimerDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && isGameTimed) {
+    const minutes = Math.floor(gameTimeRemaining / 60);
+    const seconds = gameTimeRemaining % 60;
+    timerDisplay.textContent = `Time Remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function updateElapsedTimeDisplay() {
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay && !isGameTimed && gameStartTime) {
+    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    timerDisplay.textContent = `Elapsed Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function stopGameTimer() {
+  if (gameTimerInterval) {
+    clearInterval(gameTimerInterval);
+    gameTimerInterval = null;
+  }
+  const timerDisplay = document.getElementById("game-timer");
+  if (timerDisplay) timerDisplay.remove();
 }
 
 // File navigation, did not like js navigate function, now uses global

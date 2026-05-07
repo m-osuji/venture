@@ -5,7 +5,10 @@ let game = null;
 // Temporary gamestate dictionary
 // TODO: Adapt this with the database and backend logic
 let gameState = {
-    currentStage: 0
+    currentStage: 0,
+    teamModeActive: false,
+    currentTeamIndex: 0,
+    tournamentRankings: []
 };
 
 export function startGame() {
@@ -23,6 +26,7 @@ export function startGame() {
 
     initLeaderboardUI(container);
     initTerritoryUI(container);
+    initTeamIndicatorDisplay(container);
     initStageProgressButton(container);
 
     // Define the game configuration
@@ -74,6 +78,9 @@ function initLeaderboardUI(container) {
 
     if (!button || !overlay) return;
 
+    // Hide leaderboard button initially (until tournament finishes)
+    button.style.display = 'none';
+
     container.style.position = container.style.position || 'relative';
 
     button.addEventListener('click', () => {
@@ -124,6 +131,11 @@ function initTerritoryUI(container) {
     });
 }
 
+function initTeamIndicatorDisplay(container) {
+    // Team indicator display will be shown/hidden by updateTeamIndicator
+    // based on whether team mode is active
+}
+
 function initStageProgressButton(container) {
 
     const button = document.getElementById('stage-progresser');
@@ -133,9 +145,39 @@ function initStageProgressButton(container) {
     const maxStage = STAGE_LABELS.length - 1;
 
     button.addEventListener('click', () => {
-        gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
-        updateStageIndicator();
+        if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+            const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+            
+            if (isLastTeam) {
+                // Move to next stage
+                gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
+                gameState.currentTeamIndex = 0;
+                gameState.teamModeActive = false;
+                
+                // Hide team indicator
+                const teamDisplay = document.getElementById('current-team-display');
+                if (teamDisplay) {
+                    teamDisplay.style.display = 'none';
+                }
+                
+                // Update button text back to "Next Stage"
+                button.textContent = 'Next Stage';
+                
+                updateStageIndicator();
+            } else {
+                // Move to next team
+                gameState.currentTeamIndex++;
+                updateTeamIndicator();
+            }
+        } else {
+            // Standard stage progression
+            gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
+            updateStageIndicator();
+        }
     });
+
+    // Initialize button text
+    updateButtonText();
 }
 
 const STAGE_LABELS = [
@@ -172,6 +214,109 @@ function updateStageIndicator() {
             line.classList.remove('active');
         }
     });
+}
+
+// Update the team indicator based on current team
+function updateTeamIndicator() {
+    const teamDisplay = document.getElementById('current-team-display');
+    const teamNameElement = document.getElementById('team-name');
+    
+    if (!gameState.teamModeActive || !gameState.tournamentRankings.length) {
+        if (teamDisplay) {
+            teamDisplay.style.display = 'none';
+        }
+        return;
+    }
+
+    if (!teamDisplay || !teamNameElement) return;
+
+    const currentTeamData = gameState.tournamentRankings[gameState.currentTeamIndex];
+    if (!currentTeamData) return;
+
+    // Update team name
+    teamNameElement.textContent = currentTeamData.team;
+
+    // Update button text
+    updateButtonText();
+
+    // Show team display
+    teamDisplay.style.display = 'block';
+}
+
+// Update the stage progresser button text
+function updateButtonText() {
+    const button = document.getElementById('stage-progresser');
+    if (!button) return;
+
+    if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+        const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+        button.textContent = isLastTeam ? 'Next Stage' : 'Next Team';
+    } else {
+        button.textContent = 'Next Stage';
+    }
+}
+
+// Enable team mode - called after tournament rankings are determined
+export function configureTeams() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                gameState.tournamentRankings = results.tournamentRankings;
+                gameState.teamModeActive = true;
+                gameState.currentTeamIndex = 0;
+                updateTeamIndicator();
+            }
+        } catch (e) {
+            console.error('Error loading tournament rankings:', e);
+        }
+    }
+}
+
+// Populate leaderboard with team rankings
+export function populateLeaderboard() {
+    const savedResults = localStorage.getItem('tournamentResults');
+    if (savedResults) {
+        try {
+            const results = JSON.parse(savedResults);
+            if (results.tournamentRankings && Array.isArray(results.tournamentRankings)) {
+                const leaderboardContent = document.querySelector('.leaderboard-content ol');
+                if (leaderboardContent) {
+                    // Clear existing content
+                    leaderboardContent.innerHTML = '';
+                    
+                    // Populate with team rankings
+                    results.tournamentRankings.forEach((team, index) => {
+                        const li = document.createElement('li');
+                        li.textContent = `${index + 1}. ${team.team} - ${team.score} wins`;
+                        leaderboardContent.appendChild(li);
+                    });
+                    
+                    // Show leaderboard button
+                    const button = document.getElementById('leaderboard-button');
+                    if (button) {
+                        button.style.display = 'block';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error populating leaderboard:', e);
+        }
+    }
+}
+
+// Show game UI elements (stage indicator and progresser button)
+function showGameUI() {
+    const stageDisplay = document.getElementById('current-stage-display');
+    const progresserButton = document.getElementById('stage-progresser');
+    
+    if (stageDisplay) {
+        stageDisplay.style.display = 'block';
+    }
+    if (progresserButton) {
+        progresserButton.style.display = 'block';
+    }
 }
 
 // Reference dimensions for board scaling

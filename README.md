@@ -1,64 +1,62 @@
-# Getting Started
+# 📈 Venture: A Market Strategy Game for Business Students
 
-## Frontend
+## First-Time Setup
+Before launching the app, you need to set up both the Python backend environment and the Vite frontend environment.
 
-To run the frontend:
-- Make sure you are in the `project\frontend` folder:
+1. **Set up the Python Virtual Environment**
+   Ensure you are in the root `project` folder and run:
 ```bash
-cd .\project\frontend\venture-app
+   python -m venv venv
 ```
 
-- Run the following command so it runs locally:
+Activate the virtual environment:
+- Windows: `.\venv\Scripts\activate`
+- Mac/Linux: `source venv/bin/activate`
+
+2. **Install Backend Dependencies**
 ```bash
-npm run dev
+   pip install -r requirements.txt
 ```
 
-- In your browser navigate to the relevant page, the one it gives, most likely:
+3. **Environment Variables**
+Create your local environment file:
 ```bash
-http://localhost:5173/
+   cp .env.example .env
 ```
+Or `copy .env.example .env` if you're working in a native Windows command prompt.
 
-- If you want to refresh use the command:
+Open the .env file and add your [HF_TOKEN](https://huggingface.co/settings/tokens).
+
+4. **Install Frontend & Launcher Dependencies**
 ```bash
-Ctrl + Shift + r
+   npm install
 ```
-
-## Backend
-
-To run the backend:
-- Ensure you are in the `project\backend` folder:
+Navigate to the frontend folder and install the UI packages:
 ```bash
-cd .\project\backend
+   cd frontend/venture-app
+   npm install
+   cd ../..
 ```
 
-- **(First-time running/once only!)** Create a virtual environment:
+## Launching Project
+Once setup is complete, you can launch both the backend and frontend simultaneously with a single command.
+
+1. Open a terminal in the root `project` folder.
+2. Ensure your virtual environment is activated (see the Python setup bullet point [above](#first-time-setup))
+3. Run the master launcher:
 ```bash
-python -m venv venv
+   npm run dev
 ```
+4. Open your browser and navigate to: **`http://localhost:5173/`**
 
-- Activate the virtual environment:
-```bash
-.\venv\Scripts\activate
-```
-*(Note: If on Mac/Linux, use `source venv/bin/activate` instead)*
-
-- Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-- Create your local environment file using `cp .env.example .env`, then add your [HF_TOKEN](https://huggingface.co/settings/tokens)
-
-- Start the local server (first navigate into `\project\backend`):
- ```bash
- flask run
-```
-which will be available at `http://127.0.0.1:5000`.
+*(Note: To hard-refresh the browser and clear the cache, use `Ctrl + Shift + R`).*
 
 ## Testing
-
 To verify the game state management and data extraction logic, navigate into the project root and run the state helper file directly:
 ```bash
 python -m backend.helpers.game_state_helpers
 ```
 
 This will initialise a mock game, save it to `game_state.json` and print the sanitised frontend view to terminal. This is to remove all sensitive information that could give players an unfair advantage from the frontend game state.
+
+For now, all other automated tests can be found in `project/backend/tests` and run individually using the `pytest` command.

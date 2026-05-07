@@ -1,6 +1,9 @@
 import * as Phaser from "phaser";
 
-const API_BASE = window.VENTURE_API_BASE || "http://localhost:5000";
+const API_BASE =
+    window.VENTURE_API_BASE ||
+    import.meta.env.VITE_VENTURE_API_BASE ||
+    "http://localhost:5000";
 const STAGE_SEQUENCE = ["PLAN", "NEGOTIATE", "ORDERS", "RESOLVE", "UPDATE"];
 const STAGE_LABELS = {
     PLAN: "Planning",
@@ -9,6 +12,49 @@ const STAGE_LABELS = {
     RESOLVE: "Resolving",
     UPDATE: "Updating",
 };
+
+function isDemoModeEnabled() {
+    const queryFlag = String(
+        new URLSearchParams(window.location.search).get("demo") || "",
+    ).toLowerCase();
+    if (queryFlag === "0" || queryFlag === "false") {
+        return false;
+    }
+    if (queryFlag === "1" || queryFlag === "true") {
+        return true;
+    }
+
+    const envFlag = String(import.meta.env.VITE_VENTURE_DEMO_MODE || "").toLowerCase();
+    if (envFlag === "0" || envFlag === "false") {
+        return false;
+    }
+    if (envFlag === "1" || envFlag === "true") {
+        return true;
+    }
+
+    if (window.VENTURE_DEMO_MODE === false || window.VENTURE_DEMO_MODE === "false") {
+        return false;
+    }
+    if (window.VENTURE_DEMO_MODE === true || window.VENTURE_DEMO_MODE === "true") {
+        return true;
+    }
+
+    try {
+        const savedFlag = String(window.localStorage.getItem("ventureDemoMode") || "").toLowerCase();
+        if (savedFlag === "0" || savedFlag === "false") {
+            return false;
+        }
+        if (savedFlag === "1" || savedFlag === "true") {
+            return true;
+        }
+    } catch {
+        // Ignore localStorage access issues and fall back to the branch default below.
+    }
+
+    return true;
+}
+
+const DEMO_MODE = isDemoModeEnabled();
 
 let game = null;
 let currentBackendState = null;
@@ -240,8 +286,7 @@ function initStageProgressButton() {
                 return;
             }
 
-            const demoMode =
-                currentBackendState?.demo_mode ?? (window.VENTURE_DEMO_MODE === true);
+            const demoMode = currentBackendState?.demo_mode ?? DEMO_MODE;
             const endpoint = demoMode
                 ? `${API_BASE}/api/demo/step`
                 : `${API_BASE}/api/game/advance`;

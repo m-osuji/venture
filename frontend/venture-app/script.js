@@ -35,11 +35,60 @@ const DEFAULT_TEAM_COLOURS = [
   "#F4A261"
 ];
 
+function isDemoModeEnabled() {
+  const queryFlag = String(
+    new URLSearchParams(window.location.search).get("demo") || "",
+  ).toLowerCase();
+  if (queryFlag === "0" || queryFlag === "false") {
+    return false;
+  }
+  if (queryFlag === "1" || queryFlag === "true") {
+    return true;
+  }
+
+  const envFlag = String(import.meta.env.VITE_VENTURE_DEMO_MODE || "").toLowerCase();
+  if (envFlag === "0" || envFlag === "false") {
+    return false;
+  }
+  if (envFlag === "1" || envFlag === "true") {
+    return true;
+  }
+
+  if (window.VENTURE_DEMO_MODE === false || window.VENTURE_DEMO_MODE === "false") {
+    return false;
+  }
+  if (window.VENTURE_DEMO_MODE === true || window.VENTURE_DEMO_MODE === "true") {
+    return true;
+  }
+
+  try {
+    const savedFlag = String(window.localStorage.getItem("ventureDemoMode") || "").toLowerCase();
+    if (savedFlag === "0" || savedFlag === "false") {
+      return false;
+    }
+    if (savedFlag === "1" || savedFlag === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore localStorage access issues and fall back to the branch default below.
+  }
+
+  return true;
+}
+
+const API_BASE =
+  window.VENTURE_API_BASE ||
+  import.meta.env.VITE_VENTURE_API_BASE ||
+  "http://localhost:5000";
+const DEMO_MODE = isDemoModeEnabled();
+
 // Question bank loaded from CSV format
 let questionBank = [];
+let questionBankPromise = null;
 
 // Load questions from the provided data
-function loadQuestionBank() {
+function loadFallbackQuestionBank() {
+  questionBank = [];
   const csvData = [
     ["SkillsBuild Course","question_id","topic","content","option_1","option_2","option_3","option_4","answer","difficulty_level"],
     ["AI in Legal: From Research to Results","2","AI in Law","A community center hires Rachel to assist multiple families appeal denied government benefits. With no additional staff to manage the caseload, she uses AI to autofill forms, flag missing data, and automate the sorting of case files based on deadlines. How is AI helping Rachel in this case to assist the families?","It is helping her skip the need for client interviews and documentation.","It is helping her guarantee successful outcomes for all benefit appeals.","It is helping her to automatically approve denied benefit applications.","It is helping her reduce costs and make services more affordable.","option_4","medium"],
@@ -84,6 +133,34 @@ function loadQuestionBank() {
   console.log(`Loaded ${questionBank.length} questions`);
 }
 
+async function loadQuestionBankFromBackend() {
+  const response = await fetch(`${API_BASE}/api/questions?shuffle=true`);
+  if (!response.ok) {
+    throw new Error("Failed to load questions from backend");
+  }
+
+  const payload = await response.json();
+  questionBank = Array.isArray(payload.questions) ? payload.questions : [];
+  console.log(`Loaded ${questionBank.length} questions from backend`);
+  return questionBank;
+}
+
+async function ensureQuestionBankLoaded() {
+  if (questionBank.length) {
+    return questionBank;
+  }
+
+  if (!questionBankPromise) {
+    questionBankPromise = loadQuestionBankFromBackend().catch((error) => {
+      console.warn("Falling back to bundled question bank:", error);
+      loadFallbackQuestionBank();
+      return questionBank;
+    });
+  }
+
+  return questionBankPromise;
+}
+
 // Helper function to get the correct option letter
 function getCorrectLetter(correctOption) {
   const mapping = {
@@ -112,7 +189,7 @@ function getRandomQuestions(count, difficulty = null) {
 }
 
 // Load questions at startup
-loadQuestionBank();
+void ensureQuestionBankLoaded();
 
 let scrollHandlerAttached = false;
 
@@ -631,8 +708,8 @@ async function startGameHandler() {
     mode: 'full'
   };
 
-  const apiBase = window.VENTURE_API_BASE || "http://localhost:5000";
-  const demoMode = window.VENTURE_DEMO_MODE === true;
+  const apiBase = API_BASE;
+  const demoMode = DEMO_MODE;
   const startEndpoint = demoMode
     ? `${apiBase}/api/demo/start`
     : `${apiBase}/api/game/start`;
@@ -764,13 +841,19 @@ function initQuizSetup() {
   aiButton.parentNode.replaceChild(newButton, aiButton);
   
   newButton.addEventListener("click", () => {
-    startTeamQuiz();
+    void startTeamQuiz();
   });
 }
 
 // Tournament system with round robin between all teams
-function startTeamQuiz() {  
+async function startTeamQuiz() {  
   if (window.location.pathname !== "/game") {
+    return;
+  }
+
+  await ensureQuestionBankLoaded();
+  if (!questionBank.length) {
+    alert("No quiz questions are available right now.");
     return;
   }
 

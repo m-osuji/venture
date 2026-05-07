@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 from typing import Any
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,7 +11,7 @@ from flask import Blueprint, jsonify, request
 
 from backend.ai_opponent.agents.decision_maker import choose_action, choose_orders
 from backend.helpers import gameplay_helpers
-from backend.helpers.db_helpers import fetch_all_markets
+from backend.helpers.db_helpers import fetch_all_markets, fetch_questions as fetch_db_questions
 from backend.services import game_service
 
 api = Blueprint("api", __name__)
@@ -21,6 +22,38 @@ def get_markets():
     """Get static market reference data from the database."""
     try:
         return jsonify({"markets": fetch_all_markets()})
+    except Exception as exc:
+        return _server_error(exc)
+
+
+@api.route("/api/questions", methods=["GET"])
+def get_questions():
+    """Return question data in the shape the frontend quiz expects."""
+    try:
+        topic = request.args.get("topic")
+        difficulty = request.args.get("difficulty")
+        limit = request.args.get("limit", type=int)
+        shuffle = str(request.args.get("shuffle") or "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+
+        rows = [dict(row) for row in fetch_db_questions(topic=topic, difficulty=difficulty)]
+        if shuffle:
+            random.shuffle(rows)
+        if limit is not None and limit > 0:
+            rows = rows[:limit]
+
+        questions = [_frontend_question_payload(row) for row in rows]
+        return jsonify(
+            {
+                "questions": questions,
+                "count": len(questions),
+                "topic": topic,
+                "difficulty": difficulty,
+            }
+        )
     except Exception as exc:
         return _server_error(exc)
 
@@ -352,6 +385,30 @@ def _normalise_team_payload(teams: list[dict[str, Any]]) -> list[dict[str, Any]]
             }
         )
     return normalised
+
+
+def _frontend_question_payload(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": int(row["question_id"]),
+        "question_id": int(row["question_id"]),
+        "course": row.get("skillsbuild_course"),
+        "topic": row["topic"],
+        "content": row["content"],
+        "options": {
+            "a": row["option_1"],
+            "b": row["option_2"],
+            "c": row["option_3"],
+            "d": row["option_4"],
+        },
+        "option_1": row["option_1"],
+        "option_2": row["option_2"],
+        "option_3": row["option_3"],
+        "option_4": row["option_4"],
+        "correct": row["answer"],
+        "answer": row["answer"],
+        "difficulty": row["difficulty_level"],
+        "difficulty_level": row["difficulty_level"],
+    }
 
 
 def _client_error(exc: Exception):

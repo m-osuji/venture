@@ -182,7 +182,6 @@ def test_game_service_persists_alliance_lifecycle(monkeypatch):
     offered_state = service.propose_alliance(
         1,
         2,
-        shared_market=2,
         protected_markets=[2],
     )
     offer_id = offered_state["turn_log"]["alliance_offers"][0]["offer_id"]

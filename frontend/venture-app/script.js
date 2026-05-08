@@ -35,52 +35,10 @@ const DEFAULT_TEAM_COLOURS = [
   "#F4A261"
 ];
 
-function isDemoModeEnabled() {
-  const queryFlag = String(
-    new URLSearchParams(window.location.search).get("demo") || "",
-  ).toLowerCase();
-  if (queryFlag === "0" || queryFlag === "false") {
-    return false;
-  }
-  if (queryFlag === "1" || queryFlag === "true") {
-    return true;
-  }
-
-  const envFlag = String(import.meta.env.VITE_VENTURE_DEMO_MODE || "").toLowerCase();
-  if (envFlag === "0" || envFlag === "false") {
-    return false;
-  }
-  if (envFlag === "1" || envFlag === "true") {
-    return true;
-  }
-
-  if (window.VENTURE_DEMO_MODE === false || window.VENTURE_DEMO_MODE === "false") {
-    return false;
-  }
-  if (window.VENTURE_DEMO_MODE === true || window.VENTURE_DEMO_MODE === "true") {
-    return true;
-  }
-
-  try {
-    const savedFlag = String(window.localStorage.getItem("ventureDemoMode") || "").toLowerCase();
-    if (savedFlag === "0" || savedFlag === "false") {
-      return false;
-    }
-    if (savedFlag === "1" || savedFlag === "true") {
-      return true;
-    }
-  } catch {
-    // Ignore localStorage access issues and fall back to the branch default below.
-  }
-
-  return true;
-}
-
 const API_BASE =
   window.VENTURE_API_BASE ||
   import.meta.env.VITE_VENTURE_API_BASE ||
   "http://localhost:5000";
-const DEMO_MODE = isDemoModeEnabled();
 
 // Question bank loaded from CSV format
 let questionBank = [];
@@ -709,10 +667,7 @@ async function startGameHandler() {
   };
 
   const apiBase = API_BASE;
-  const demoMode = DEMO_MODE;
-  const startEndpoint = demoMode
-    ? `${apiBase}/api/demo/start`
-    : `${apiBase}/api/game/start`;
+  const startEndpoint = `${apiBase}/api/game/start`;
 
   // Close the setup menu immediately
   const setupOverlay = document.getElementById("game-setup-overlay");
@@ -735,9 +690,7 @@ async function startGameHandler() {
   localStorage.setItem("backendGameConfig", JSON.stringify(backendPayload));
   
   // Start game timer immediately
-  if (!demoMode) {
-    startGameTimer(gameLength);
-  }
+  startGameTimer(gameLength);
 
   // -----------------------------------------------
   // FETCH: Send data to Python (don't affect quiz)
@@ -759,40 +712,13 @@ async function startGameHandler() {
 
   } catch (error) {
     console.error("Error starting game:", error);
-    if (demoMode) {
-      alert("Failed to connect to the game server. Make sure the backend is running.");
-      if (setupOverlay) {
-        setupOverlay.style.display = "flex";
-      }
-      return;
-    }
-
     alert("Failed to connect to the game server. Is your Python backend running?\n\nContinuing with local game.");
   }
   
   console.log("Game configuration for quiz:", gameConfigForQuiz);
-
-  if (demoMode) {
-    if (currentGameModule?.fetchGameState) {
-      await currentGameModule.fetchGameState();
-    } else if (window.location.pathname !== "/game") {
-      window.navigate("/game");
-    }
-
-    const aiText = document.getElementById("AI-text");
-    const aiButton = document.getElementById("AI-confirm");
-    if (aiText) {
-      aiText.innerHTML =
-        "The scripted demo is live. Use the Next Stage button to walk through the round.";
-    }
-    if (aiButton) {
-      aiButton.textContent = "Ready";
-      aiButton.style.display = "none";
-    }
-  } else {
-    // Start the quiz (ONLY ONCE)
-    initQuizSetup();
-  }
+  
+  // Start the quiz (ONLY ONCE)
+  initQuizSetup();
 }
 
 // Function to cancel game setup

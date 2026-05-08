@@ -264,7 +264,6 @@ def propose_alliance(
     recipient_team_id: int,
     *,
     alliance_type: str = "alliance",
-    shared_market: int | None = None,
     protected_markets: list[int] | None = None,
     notes: Any = None,
 ) -> dict[str, Any]:
@@ -279,12 +278,6 @@ def propose_alliance(
         raise ValueError("[gameplay_helpers] A team cannot propose an alliance to itself.")
 
     protected_market_ids = _normalise_market_id_list(protected_markets)
-    shared_market_id = _optional_int(shared_market)
-
-    if shared_market_id is not None:
-        _market_entry(game_state, shared_market_id)
-        if shared_market_id not in protected_market_ids:
-            protected_market_ids.append(shared_market_id)
 
     for market_id in protected_market_ids:
         _market_entry(game_state, market_id)
@@ -310,7 +303,6 @@ def propose_alliance(
         "recipient_team_id": int(recipient_team_id),
         "members": sorted([int(proposer_team_id), int(recipient_team_id)]),
         "type": str(alliance_type or "alliance").strip().lower(),
-        "shared_market": shared_market_id,
         "protected_markets": protected_market_ids,
         "notes": notes,
         "status": "pending",
@@ -329,7 +321,6 @@ def propose_alliance(
             "offer_id": offer_id,
             "proposer_team_id": int(proposer_team_id),
             "recipient_team_id": int(recipient_team_id),
-            "shared_market": shared_market_id,
             "protected_markets": list(protected_market_ids),
         },
     )
@@ -370,7 +361,6 @@ def accept_alliance_offer(
         "members": members,
         "type": offer.get("type", "alliance"),
         "formed_turn": current_round,
-        "shared_market": offer.get("shared_market"),
         "protected_markets": list(offer.get("protected_markets") or []),
         "notes": offer.get("notes"),
         "source_offer_id": offer_id,
@@ -1577,12 +1567,9 @@ def _apply_alliance_betrayal_penalties(
                 1,
                 current_round - int(alliance.get("formed_turn") or current_round) + 1,
             )
-            shared_market = _optional_int(alliance.get("shared_market"))
             protected_markets = set(
                 _normalise_market_id_list(alliance.get("protected_markets") or [])
             )
-            if shared_market is not None:
-                protected_markets.add(shared_market)
 
             penalty = 0.12 + min(0.18, 0.03 * alliance_turns)
             if int(move["target_market_id"]) in protected_markets:
@@ -1655,7 +1642,6 @@ def _extract_note_market_ids(notes: Any) -> set[int]:
         for key in (
             "target_market_id",
             "market_id",
-            "shared_market",
         ):
             value = notes.get(key)
             if value not in (None, ""):
@@ -1908,7 +1894,6 @@ def _build_commitments(
     """
     # markets owned by active allies should be avoided as attack targets
     avoid_attack_markets: list[int] = []
-    # markets that are shared as part of an active alliance should be avoided as attack targets
     protected_markets: list[int] = []
 
     for alliance in alliances:
@@ -1922,10 +1907,6 @@ def _build_commitments(
             owner = state.get("owner")
             if owner in members and owner != team_id:
                 avoid_attack_markets.append(market_id)
-
-        shared = alliance.get("shared_market")
-        if shared:
-            protected_markets.append(shared)
 
         protected_markets.extend(
             _normalise_market_id_list(alliance.get("protected_markets") or [])
@@ -2078,7 +2059,6 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "recipient_team_id": offer["recipient_team_id"],
                 "members": offer.get("members", []),
                 "type": offer.get("type", "alliance"),
-                "shared_market": offer.get("shared_market"),
                 "protected_markets": offer.get("protected_markets", []),
                 "status": offer.get("status", "pending"),
                 "proposed_turn": offer.get("proposed_turn"),
@@ -2096,7 +2076,6 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "members": a["members"],
                 "type": a["type"],
                 "formed_turn": a["formed_turn"],
-                "shared_market": a.get("shared_market"),
                 "protected_markets": a.get("protected_markets", []),
                 "status": a.get("status", "active"),
                 "broken_turn": a.get("broken_turn"),

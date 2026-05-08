@@ -226,7 +226,7 @@ def test_allied_attack_requires_break_alliance_flag(monkeypatch):
             "members": [1, 2],
             "type": "alliance",
             "formed_turn": 1,
-            "shared_market": 2,
+            "protected_markets": [2],
         }
     ]
     _team_entry(state, 1)["ip"] = 4
@@ -279,7 +279,7 @@ def test_alliance_betrayal_breaks_alliance_and_penalises_ethics(monkeypatch):
             "members": [1, 2],
             "type": "alliance",
             "formed_turn": 1,
-            "shared_market": 2,
+            "protected_markets": [2],
         }
     ]
     _team_entry(state, 1)["ip"] = 4
@@ -415,7 +415,6 @@ def test_alliance_offers_must_be_resolved_before_leaving_negotiate(monkeypatch):
         state,
         1,
         2,
-        shared_market=2,
         protected_markets=[3],
         notes="Let's avoid fighting over these markets.",
     )
@@ -451,8 +450,7 @@ def test_accepting_and_breaking_alliance_updates_commitments(monkeypatch):
         state,
         1,
         2,
-        shared_market=2,
-        protected_markets=[3],
+        protected_markets=[2, 3],
     )
     alliance = gph.accept_alliance_offer(state, offer["offer_id"], 2)
 

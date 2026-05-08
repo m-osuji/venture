@@ -84,7 +84,6 @@ def propose_alliance(
     recipient_team_id: int,
     *,
     alliance_type: str = "alliance",
-    shared_market: int | None = None,
     protected_markets: list[int] | None = None,
     notes: Any = None,
 ) -> dict[str, Any]:
@@ -97,7 +96,6 @@ def propose_alliance(
         proposer_team_id,
         recipient_team_id,
         alliance_type=alliance_type,
-        shared_market=shared_market,
         protected_markets=protected_markets,
         notes=notes,
     )

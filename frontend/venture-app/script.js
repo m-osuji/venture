@@ -330,7 +330,6 @@ async function loadRoute(path) {
     if (path === "/game") {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
-      //initLeaderboard();
       initAIInteraction();
     } else {
       if (currentGameModule) {
@@ -1312,11 +1311,23 @@ function startTeamQuiz() {
       
       // Enable team mode and populate leaderboard in the game if module is available
       if (currentGameModule) {
+        
         if (currentGameModule.configureTeams) {
-          currentGameModule.configureTeams();
+          // Delay until the game module is ready
+          setTimeout(() => {
+            if (currentGameModule.configureTeams) {
+              currentGameModule.configureTeams();
+            }
+          }, 0);
         }
+
         if (currentGameModule.populateLeaderboard) {
-          currentGameModule.populateLeaderboard();
+          // Delay until the game module is ready
+          setTimeout(() => {
+            if (currentGameModule.populateLeaderboard) {
+              currentGameModule.populateLeaderboard();
+            }
+          }, 0);
         }
       }
       

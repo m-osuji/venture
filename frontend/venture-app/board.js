@@ -27,6 +27,7 @@ export function startGame() {
     initLeaderboardUI(container);
     initTerritoryUI(container);
     initTeamIndicatorDisplay(container);
+    initStageIndicator(container);
     initStageProgressButton(container);
 
     // Define the game configuration
@@ -132,7 +133,7 @@ function initTerritoryUI(container) {
 }
 
 function initTeamIndicatorDisplay(container) {
-    // Team indicator display will be shown/hidden by updateTeamIndicator
+    // Team indicator display will be shown/hidden by initTeamIndicator
     // based on whether team mode is active
 }
 
@@ -141,6 +142,8 @@ function initStageProgressButton(container) {
     const button = document.getElementById('stage-progresser');
     
     if (!button) return;
+
+    button.style.display = 'none'; // Initially hidden until game starts
 
     const maxStage = STAGE_LABELS.length - 1;
 
@@ -167,7 +170,7 @@ function initStageProgressButton(container) {
             } else {
                 // Move to next team
                 gameState.currentTeamIndex++;
-                updateTeamIndicator();
+                initTeamIndicator();
             }
         } else {
             // Standard stage progression
@@ -187,6 +190,17 @@ const STAGE_LABELS = [
     'Resolving',
     'Updating'
 ];
+
+function initStageIndicator(container) {
+
+    const indicator = document.getElementById('current-stage-display');
+    
+    if (!indicator) return;
+
+    indicator.style.display = 'none'; // Initially hidden until game starts
+    
+    updateButtonText(); // Initialize button text
+}
 
 // Update the stage indicator based on the current stage
 function updateStageIndicator() {
@@ -217,7 +231,7 @@ function updateStageIndicator() {
 }
 
 // Update the team indicator based on current team
-function updateTeamIndicator() {
+function initTeamIndicator() {
     const teamDisplay = document.getElementById('current-team-display');
     const teamNameElement = document.getElementById('team-name');
     
@@ -266,7 +280,10 @@ export function configureTeams() {
                 gameState.tournamentRankings = results.tournamentRankings;
                 gameState.teamModeActive = true;
                 gameState.currentTeamIndex = 0;
-                updateTeamIndicator();
+                initTeamIndicator();
+
+                // Display game UI elements after team rankings are determined
+                showGameUI();
             }
         } catch (e) {
             console.error('Error loading tournament rankings:', e);
@@ -310,12 +327,14 @@ export function populateLeaderboard() {
 function showGameUI() {
     const stageDisplay = document.getElementById('current-stage-display');
     const progresserButton = document.getElementById('stage-progresser');
+
+    console.log("showGameUI called. gameState.teamModeActive:", gameState.teamModeActive);
     
     if (stageDisplay) {
-        stageDisplay.style.display = 'block';
+        stageDisplay.style.display = gameState.teamModeActive ? 'block' : 'none';
     }
     if (progresserButton) {
-        progresserButton.style.display = 'block';
+        progresserButton.style.display = gameState.teamModeActive ? 'block' : 'none';
     }
 }
 

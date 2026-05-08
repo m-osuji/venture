@@ -8,41 +8,238 @@
         <div id="scroll-ball"></div>
         <div id="scroll-markers"></div>
     </div>
+
     <div id="tutorial-text">
         <h1>How to Play Venture</h1>
-        <p>Venture is a fun, interactive board game you can play online with friends. It’s all about exploring the world of AI in a business setting, but with a twist; think Risk and Diplomacy, but with brains and bold moves. Your goal? Conquer as many territories on the game map as you can by using your points wisely and outsmarting your rivals.</p>
-        <p>Each player starts out with their own unique market, each with their own opportunities and challenges right from the beginning. As you play, you’ll face off against others, answering multiple-choice questions to grab new markets, expand your influence, and defend your markets. The mix of strategy, quick thinking, and friendly competition makes every round exciting and unpredictable. If you’re curious about AI and love a good game with friends, Venture is the perfect pick.</p>
-        <h2>Stages of Play</h2>
-        <p>To start the game off, each team chooses a distinct name and colour then goes head-to-head in a challenge to determine playing order, think of it as the first chance to prove yourself as the best team. Once that’s settled, the game follows a cyclic structure where all teams move between the five phases all together, so each team has opportunities to strategise and make their mark.</p>
-        <h3>Plan</h3>
-        <p>During the plan phase, each team takes a few minutes to talk privately and decide what they want to do that round. This might be to decide which of their markets to Expand or where to Attack next, or on what they want to research or Defend by allocating their Influence Points around they map. These decisions are only verbal between the team in the game as their provisional choices but nothing is set in stone yet.</p>
-        <h3>Negotiate</h3>
-        <p>Teams are now allowed to talk to each other to Make Alliances, Arrange Deals and Agree on Trades. This is where teams can start trusting or tricking each other for their own benefits. Decisions here are now locked in by passing the device the game is being played on around to every team based on playing order.</p>
-        <h3>Orders</h3>
-        <p>After every team has decided what they want to do, every team’s moves are revealed. This is where the decisions you make along the game will bite you in the back as these decisions will change each team’s points and will count at the end. </p>
-        <p>The decisions can either be attacking another team’s market, expanding into a neutral territory, defending your own market or investing in research for your market.</p>
-        <h3>Conflict Resolution</h3>
-        <p>If two or more teams try to claim the same market, then a quiz is used to resolve the conflict between them and decide who owns the market at the end of the round. The winner is determined by how well the team performs on the quiz overall – how many questions they answered right – any market defence bonuses or regulations and security modifiers as well as the synergies of the markets themselves.</p>
-        <p>All of this is explained in the Point System section of the tutorial below.</p>
-        <h3>Update</h3>
-        <p>At the end of the round the map and leaderboard are updated with the new owners of markets and how many points each team has after their markets grow. The growth – or decline – of each team is displayed to everyone to keep everyone updated and see the progress of the game.</p>
-        <h2>How to win in Venture</h2>
-        <p>During each round of the game, you will be earning, losing and spending something called Influence Points. But what exactly are Influence Points? In the game, every market you control comes with its own set of attributes. These attributes – such as size, growth potential, regulation level and security risk – determine how many Influence Points you can collect at the end of each round. The value of these points is linked to the real-world value of the markets, so some markets will be worth more than others.</p>
-        <p>Influence Points are important because you can use them to expand your control over different markets. You also have the option to invest your points in researching your own markets. This means you can take quizzes about your market, and if you do well, you will be able to grow your market and make it stronger. As your markets improve, you will earn even more Influence Points in future rounds.</p>
-        <p>The overall goal of Venture is to outscore your rivals by either having the highest number of Influence Points by the end of the game, or by owning more markets than any other team. You’ll need to plan carefully, make smart moves and decide whether to focus on strengthening your existing markets or branching out to new ones. The team that manages their points best and chooses the right markets will have the best chance to win.</p>
-        <h2>Point System</h2>
+        <p>
+            Venture is a strategy game about controlling markets, building influence, and
+            outplaying your rivals. It takes inspiration from Risk and Diplomacy, but
+            replaces luck with business knowledge. When two teams clash over a market,
+            the winner is decided by quiz performance and smart preparation rather than
+            dice rolls.
+        </p>
+        <p>
+            Your job is to grow your influence, protect valuable markets, and choose the
+            right moments to negotiate, invest, and strike. Every round matters because
+            your short-term choices shape your long-term position on the board.
+        </p>
+
+        <div class="tutorial-quickstart">
+            <div class="tutorial-quickstep">
+                <span class="quickstep-number">1</span>
+                <h3>Allocate IP</h3>
+                <p>Place Influence Points into the markets you control.</p>
+            </div>
+            <div class="tutorial-quickstep">
+                <span class="quickstep-number">2</span>
+                <h3>Negotiate</h3>
+                <p>Make alliances, promises, bluffs, and deals.</p>
+            </div>
+            <div class="tutorial-quickstep">
+                <span class="quickstep-number">3</span>
+                <h3>Lock Orders</h3>
+                <p>Commit your real attack, research, or hold decisions.</p>
+            </div>
+            <div class="tutorial-quickstep">
+                <span class="quickstep-number">4</span>
+                <h3>Resolve Quizzes</h3>
+                <p>Win contested markets through stronger quiz performance.</p>
+            </div>
+            <div class="tutorial-quickstep">
+                <span class="quickstep-number">5</span>
+                <h3>Update Board</h3>
+                <p>Collect IP, apply upgrades, and refresh the leaderboard.</p>
+            </div>
+        </div>
+
+        <h2>What To Know First</h2>
+        <div class="tutorial-panel">
+            <p>Before you start, keep these core ideas in mind:</p>
+            <ul>
+                <li>Markets generate Influence Points, or IP, at the end of each round.</li>
+                <li>IP is allocated to markets during the plan stage.</li>
+                <li>There is no separate defend action. A market is defended by the IP already placed on it.</li>
+                <li>Attacks are launched from markets where you have already invested IP.</li>
+                <li>Negotiation matters because what you say you will do and what you actually do can affect your ethical score.</li>
+            </ul>
+        </div>
+        <div class="tutorial-callout">
+            <h3>Core Rule</h3>
+            <p>
+                There is no separate defend action in Venture. If you want to protect a
+                market, you must place IP there during the plan stage.
+            </p>
+        </div>
+
+        <h2>Round Structure</h2>
+        <p>
+            Each game begins with a quick opening quiz to decide team order. After that,
+            every round follows the same five-stage cycle. All teams move through the
+            stages together, so timing, planning, and negotiation all matter.
+        </p>
+        <div class="stage-card-grid">
+            <section class="stage-card stage-plan">
+                <span class="stage-chip">Plan</span>
+                <p>
+                    Allocate IP across your markets. That IP both protects the market it
+                    sits on and gives you the power to attack from it later.
+                </p>
+                <ul>
+                    <li>Choose where to build strength.</li>
+                    <li>Note your intended strategy for the round.</li>
+                    <li>Set up both attack options and defense.</li>
+                </ul>
+            </section>
+
+            <section class="stage-card stage-negotiate">
+                <span class="stage-chip">Negotiate</span>
+                <p>
+                    Talk to other teams, build alliances, make promises, or bluff your
+                    way into a better position.
+                </p>
+                <ul>
+                    <li>Declare what you say you will do.</li>
+                    <li>Offer alliances, support, or deals.</li>
+                    <li>Remember that betrayal can hurt your ethics.</li>
+                </ul>
+            </section>
+
+            <section class="stage-card stage-orders">
+                <span class="stage-chip">Orders</span>
+                <p>
+                    Lock in your real moves. These are the actions that actually happen
+                    once negotiation ends.
+                </p>
+                <ul>
+                    <li>Attack from a market with allocated IP.</li>
+                    <li>Research one of your own markets.</li>
+                    <li>Hold if you want to conserve position.</li>
+                </ul>
+            </section>
+
+            <section class="stage-card stage-resolve">
+                <span class="stage-chip">Resolve</span>
+                <p>
+                    Contested markets are settled by quiz performance plus the board
+                    state you built earlier in the round.
+                </p>
+                <ul>
+                    <li>Answer market-themed questions.</li>
+                    <li>Use preparation to boost your effective strength.</li>
+                    <li>Win the market if your side comes out ahead.</li>
+                </ul>
+            </section>
+
+            <section class="stage-card stage-update">
+                <span class="stage-chip">Update</span>
+                <p>
+                    The game state refreshes. Ownership changes, research applies, and
+                    fresh IP is distributed.
+                </p>
+                <ul>
+                    <li>Refresh the leaderboard.</li>
+                    <li>Apply upgrades and synergies.</li>
+                    <li>Record ethical consequences from the round.</li>
+                </ul>
+            </section>
+        </div>
+
+        <h2>Actions And IP</h2>
+        <p>
+            Influence Points are the main resource in Venture. You earn them from the
+            markets you control, spend them to strengthen your position, and commit them
+            when you attack or invest in research.
+        </p>
+        <div class="tutorial-panel">
+            <p>In practical terms, IP is used in three main ways:</p>
+            <ul>
+                <li><strong>Allocation:</strong> place IP into your markets during planning.</li>
+                <li><strong>Attack commitment:</strong> use allocated IP from a source market to contest another market.</li>
+                <li><strong>Research:</strong> spend IP to improve a market you already control.</li>
+            </ul>
+        </div>
+        <p>
+            The key idea is that IP on the board matters just as much as IP in reserve.
+            Over-invest in one area and you may become vulnerable elsewhere. Spread too
+            thin and you may lack the strength to win important contests.
+        </p>
+
+        <h2>Market Attributes</h2>
+        <p>
+            Every market has its own mix of value, risk, and strategic importance. These
+            attributes shape how rewarding a market is and how difficult it is to hold.
+        </p>
+
         <h3>Size</h3>
-        <p>The size attribute determines the base income you receive from each market: larger markets yield more Influence Points per round. Securing a big market boosts your score and strengthens your position, but it might also attract more competition or stricter regulations, so strategic planning is essential.</p>
+        <p>
+            Size determines the base amount of IP a market generates. Larger markets are
+            more valuable, but they are also more likely to become targets.
+        </p>
+
         <h3>Growth Potential</h3>
-        <p>A market’s growth potential shows how much it can grow and earn more Influence Points in the future if you invest in it. Focusing your resources on markets with high growth potential can lead to greater rewards, but it requires strategic thinking. Consider the risks and compare prospects with your other markets to decide where to concentrate your efforts and outpace your competitors.</p>
-        <h3>Regulation level</h3>
-        <p>Regulation Level represents the legal challenges, compliance expenses and bureaucratic hurdles that come with controlling a market. Markets with higher regulation are more difficult to enter, expand or upgrade, and while regulation does not reduce the income you earn, it does increase the cost of conducting research. Importantly, higher regulation also offers defensive benefits: medium regulation grants defenders an extra point of strength, while high regulation adds two. These compliance barriers act as a shield for established players, making regulated markets harder to conquer and providing greater stability once controlled. Such markets reward teams that plan for the long term and are prepared to invest in overcoming obstacles for lasting success.</p>
-        <h3>Security Risk level</h3>
-        <p>Security Risk Level describes the instability, vulnerability to cyber threats and fraud, and weaknesses in infrastructure that may affect a market. High-risk markets are less stable but offer greater potential rewards, introducing controlled variability in production rather than unpredictable penalties. The effects of risk are tiered: low-risk markets provide stable income, medium risk grants a bonus Influence Point if successfully defended, and high risk applies both a defence penalty and a bonus reward. However, higher risk also means greater defensive vulnerability—medium-risk markets reduce defender strength, while high-risk markets reduce it further, making them harder to hold. On the other hand, successfully defending a high-risk market earns extra Influence Points and temporary fortification in the next turn, encouraging strategic defence. Furthermore, high-risk markets attract more attackers, who receive an additional point of strength when contesting these markets, naturally creating conflict hotspots.</p>
-        <h3>Research & Market Development</h3>
-        <p>Rather than launching an attack, players have the option to conduct research on a market they already control. Research allows them to enhance a single attribute of that market, choosing from a range of strategic improvements. The available research options include increasing production to gain an additional Influence Point each turn, reducing the regulatory burden to lower upgrade costs by one, improving security to eliminate defence penalties, or fortifying the market for a permanent boost of one to defence strength. Each research action comes at a base cost of two Influence Points, requiring careful consideration of resource allocation and long-term benefits.</p>
+        <p>
+            Growth potential reflects how much a market can improve over time. High
+            growth markets may become much stronger if you invest in them, making them
+            powerful long-term assets.
+        </p>
+
+        <h3>Regulation Level</h3>
+        <p>
+            Regulation represents legal complexity and compliance pressure. Highly
+            regulated markets are harder to improve, but they are also harder to take,
+            which makes them useful defensive anchors.
+        </p>
+
+        <h3>Security Risk</h3>
+        <p>
+            Security risk represents instability and vulnerability. Riskier markets can
+            become hotspots for conflict because they offer attractive rewards, but they
+            are harder to defend consistently.
+        </p>
+
+        <h3>Research And Development</h3>
+        <p>
+            Research lets you improve a market instead of launching an attack. Depending
+            on the option chosen, research can increase production, reduce regulatory
+            burden, improve security, or permanently fortify a market.
+        </p>
+
         <h3>Market Synergies</h3>
-        <p>Market synergies are all about getting extra perks when you own markets that are connected, like Finance, Real Estate, and Energy. The more you group similar markets together, the bigger the bonuses—such as increased defence, lower costs, or extra points each turn. For example, grabbing all three nets you a +2 defence boost. In short, selecting markets that complement each other leads to greater rewards and strengthens your overall strategic position.</p>
+        <p>
+            Some markets work especially well together. Owning connected markets can
+            unlock synergy bonuses such as extra IP, stronger positions, or other
+            strategic advantages. This rewards players who pursue a coherent market plan
+            rather than capturing territories at random.
+        </p>
+
+        <h2>How To Win</h2>
+        <p>
+            Venture rewards more than brute expansion. To win, you need to balance
+            growth, defense, timing, and diplomacy. Strong players know when to bank IP,
+            when to invest it, when to negotiate honestly, and when to take a calculated
+            risk.
+        </p>
+        <p>
+            The final result is based on overall performance across the game, including
+            IP, market control, and ethical score. That means reckless betrayal may help
+            in the short term, but it can still cost you in the final standings.
+        </p>
+        <div class="tutorial-panel">
+            <p>A strong Venture strategy usually does three things well:</p>
+            <ul>
+                <li>builds a stable IP economy</li>
+                <li>contests the right markets at the right time</li>
+                <li>uses negotiation without losing control of the bigger picture</li>
+            </ul>
+        </div>
+        <div class="tutorial-tips">
+            <h3>Winning Tips</h3>
+            <ul>
+                <li>Do not spread your IP too thin unless the board is quiet.</li>
+                <li>Use negotiation to shape the round, but expect promises to be tested.</li>
+                <li>Target markets that improve your long-term synergy, not just your short-term score.</li>
+            </ul>
+        </div>
     </div>
 </div>
 

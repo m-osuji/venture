@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from helpers.db_helpers import fetch_questions as db_fetch_questions
+from backend.helpers.db_helpers import fetch_questions as db_fetch_questions
 
 
 QUIZ_DIFFICULTY_ORDER = ("easy", "medium", "hard")

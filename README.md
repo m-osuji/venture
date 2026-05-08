@@ -23,9 +23,7 @@ Create your local environment file:
 ```bash
    cp .env.example .env
 ```
-Or `copy .env.example .env` if you're working in a native Windows command prompt.
-
-Open the .env file and add your [HF_TOKEN](https://huggingface.co/settings/tokens).
+Or `copy .env.example .env` if you're working in a native Windows command prompt. Then open the .env file and add your [HF_TOKEN](https://huggingface.co/settings/tokens).
 
 4. **Install Frontend & Launcher Dependencies**
 ```bash

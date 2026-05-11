@@ -1756,6 +1756,9 @@ let gameStartTime = null;
 let isGameTimed = false;
 
 function startGameTimer(gameLength) {
+  if (window.location.pathname !== "/game") {
+    return
+  }
   console.log("startGameTimer called with gameLength:", gameLength);
 
   // Remove existing timer if any

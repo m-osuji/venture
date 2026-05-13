@@ -1,4 +1,7 @@
 import os
+# ensure environment variable is toggled
+os.environ["TORCHDYNAMO_DISABLE"] = "1"
+
 import sys
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -11,6 +11,52 @@ let gameState = {
     tournamentRankings: []
 };
 
+// Store the full backend data here so we can use it later (like updating territories)
+let currentBackendState = null;
+
+// The Bridge to Python: Fetches the latest state and updates the UI
+export async function fetchGameState() {
+    try {
+        const response = await fetch('http://localhost:5000/api/game/state');
+        if (!response.ok) throw new Error("No active game found on backend");
+
+        const data = await response.json();
+        currentBackendState = data;
+
+        console.log("📥 Backend Data:", data);
+
+        // This map handles BOTH the string name and the Enum integer
+        // It converts them all to the 0-4 index JS needs for the UI
+        const stageMap = {
+            "PLAN": 0, 1: 0,
+            "NEGOTIATE": 1, 2: 1,
+            "ORDERS": 2, 3: 2,
+            "RESOLVE": 3, 4: 3,
+            "UPDATE": 4, 5: 4
+        };
+
+        const rawStage = data.current_stage;
+        
+        // If rawStage is "PLAN", lookup "PLAN". If it's 1, lookup 1.
+        const mappedIndex = stageMap[rawStage];
+
+        if (mappedIndex !== undefined) {
+            gameState.currentStage = mappedIndex;
+        } else {
+            console.warn("Unknown stage received from Python:", rawStage);
+            gameState.currentStage = 0; // Default to Plan
+        }
+
+        updateStageIndicator();
+
+    } catch (error) {
+        console.error("❌ Sync Failed:", error);
+        // Ensure UI doesn't show "Undefined" even if the API fails
+        gameState.currentStage = 0; 
+        updateStageIndicator();
+    }
+}
+
 export function startGame() {
 
     // Prevent multiple instances
@@ -138,48 +184,58 @@ function initTeamIndicatorDisplay(container) {
 }
 
 function initStageProgressButton(container) {
-
     const button = document.getElementById('stage-progresser');
-    
     if (!button) return;
 
     button.style.display = 'none'; // Initially hidden until game starts
 
     const maxStage = STAGE_LABELS.length - 1;
 
-    button.addEventListener('click', () => {
-        if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
-            const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
-            
-            if (isLastTeam) {
-                // Move to next stage
-                gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
-                gameState.currentTeamIndex = 0;
-                gameState.teamModeActive = false;
-                
-                // Hide team indicator
-                const teamDisplay = document.getElementById('current-team-display');
-                if (teamDisplay) {
-                    teamDisplay.style.display = 'none';
+    button.addEventListener('click', async () => {
+        try {
+            // Prevent spam-clicking
+            button.style.pointerEvents = 'none';
+            button.style.opacity = '0.5';
+
+            // CASE 1: We are switching between teams in the SAME stage (Local Logic)
+            if (gameState.teamModeActive && gameState.tournamentRankings.length > 0) {
+                const isLastTeam = gameState.currentTeamIndex >= gameState.tournamentRankings.length - 1;
+
+                if (!isLastTeam) {
+                    gameState.currentTeamIndex++;
+                    updateTeamIndicator();
+                    return; // Stop here, don't talk to Python yet
                 }
-                
-                // Update button text back to "Next Stage"
-                button.textContent = 'Next Stage';
-                
-                updateStageIndicator();
-            } else {
-                // Move to next team
-                gameState.currentTeamIndex++;
-                initTeamIndicator();
             }
-        } else {
-            // Standard stage progression
-            gameState.currentStage = gameState.currentStage >= maxStage ? 0 : gameState.currentStage + 1;
-            updateStageIndicator();
+
+            // CASE 2: We are moving to the NEXT stage (Backend Logic)
+            // This runs if teamMode is off OR if it was the last team's turn
+            const response = await fetch('http://localhost:5000/api/game/advance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log("⏩ Advanced Stage:", result);
+                
+                // Reset team tracking for the new stage
+                gameState.currentTeamIndex = 0;
+                
+                // Sync the UI with Python's new state
+                await fetchGameState();
+            }
+
+        } catch (error) {
+            console.error("Error advancing stage:", error);
+        } finally {
+            // Re-enable the button
+            button.style.pointerEvents = 'auto';
+            button.style.opacity = '1';
+            updateButtonText();
         }
     });
 
-    // Initialize button text
     updateButtonText();
 }
 
@@ -204,7 +260,7 @@ function initStageIndicator(container) {
 
 // Update the stage indicator based on the current stage
 function updateStageIndicator() {
-    
+
     const dots = document.querySelectorAll('.stage-dot');
     const lines = document.querySelectorAll('.stage-line');
     const stageText = document.querySelector('#current-stage-display p');
@@ -406,7 +462,7 @@ function create() {
         console.log(`Clicked at: ${pointer.x}, ${pointer.y}`);
     });
 
-    updateStageIndicator();
+    fetchGameState();
 }
 
 // Update the game loop

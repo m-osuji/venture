@@ -49,7 +49,11 @@ Once setup is complete, you can launch both the backend and frontend simultaneou
 
 *(Note: To hard-refresh the browser and clear the cache, use `Ctrl + Shift + R`).*
 
-## Testing
+## Testing 
+All automated tests can be found in `project/backend/tests` and run from **root** using `python -m pytest backend/tests/ -m "not slow" -v`.
+
+For coverage, run `python -m pytest backend/tests/ -m "not slow" -v --cov=backend --cov-report=term-missing`
+
 To verify the game state management and data extraction logic, navigate into the project root and run the state helper file directly:
 ```bash
 python -m backend.helpers.game_state_helpers
@@ -57,4 +61,3 @@ python -m backend.helpers.game_state_helpers
 
 This will initialise a mock game, save it to `game_state.json` and print the sanitised frontend view to terminal. This is to remove all sensitive information that could give players an unfair advantage from the frontend game state.
 
-For now, all other automated tests can be found in `project/backend/tests` and run individually using the `pytest` command.

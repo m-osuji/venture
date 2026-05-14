@@ -26,6 +26,7 @@ const routes = {
   "/game": "pages/game.html"
 };
 
+// Team colours if nothing is selected
 const DEFAULT_TEAM_COLOURS = [
   "#EE672B",
   "#467096",
@@ -438,7 +439,7 @@ function initAIInteraction() {
   });
 }
 
-// New function to update team name inputs based on selected count
+// Function to update team name inputs based on selected count as well as team colours
 function updateTeamNameInputs() {
   const teamCountSelect = document.getElementById("teamCountSelect");
   const teamNamesContainer = document.getElementById("teamNamesContainer");
@@ -448,14 +449,46 @@ function updateTeamNameInputs() {
   const teamCount = parseInt(teamCountSelect.value);
   teamNamesContainer.innerHTML = "";
   
+  // Predefined color options for teams
+  const colorOptions = [
+    "#EE672B", // Orange
+    "#467096", // Blue
+    "#2A9D8F", // Teal
+    "#D62839", // Red
+    "#7B2CBF", // Purple
+    "#F4A261"  // Gold
+  ];
+  
   for (let i = 0; i < teamCount; i++) {
     const teamDiv = document.createElement("div");
     teamDiv.className = "team-input-group";
+    teamDiv.style.display = "flex";
+    teamDiv.style.alignItems = "center";
+    teamDiv.style.gap = "10px";
+    teamDiv.style.marginBottom = "12px";
+    
     teamDiv.innerHTML = `
       <span class="team-number">Team ${i + 1}:</span>
-      <input type="text" id="teamName${i}" placeholder="Enter team name" value="Team ${String.fromCharCode(65 + i)}">
+      <input type="text" id="teamName${i}" placeholder="Enter team name" value="Team ${String.fromCharCode(65 + i)}" style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px;">
+      <div class="team-color-picker" style="position: relative;">
+        <div class="color-preview" data-team-index="${i}" style="width: 40px; height: 40px; border-radius: 8px; background: ${colorOptions[i % colorOptions.length]}; cursor: pointer; border: 2px solid #ddd; transition: all 0.2s ease;"></div>
+        <input type="color" id="teamColor${i}" value="${colorOptions[i % colorOptions.length]}" style="position: absolute; opacity: 0; width: 40px; height: 40px; cursor: pointer; top: 0; left: 0;">
+      </div>
     `;
+    
     teamNamesContainer.appendChild(teamDiv);
+    
+    // Color picker functionality
+    const colorInput = teamDiv.querySelector(`#teamColor${i}`);
+    const colorPreview = teamDiv.querySelector('.color-preview');
+    
+    colorInput.addEventListener('input', (e) => {
+      colorPreview.style.background = e.target.value;
+    });
+    
+    colorPreview.addEventListener('click', () => {
+      colorInput.click();
+    });
   }
 }
 
@@ -605,16 +638,20 @@ function overlayClickHandler(event) {
 }
 
 // Function to handle game start
-// Function to handle game start
 async function startGameHandler() {
   const teamCount = parseInt(document.getElementById("teamCountSelect").value);
   const teamNames = [];
+  const teamColors = [];
   
-  // Collect all team names from the UI
+  // Collect all team names and colors from the UI
   for (let i = 0; i < teamCount; i++) {
     const teamInput = document.getElementById(`teamName${i}`);
     const teamName = teamInput ? teamInput.value.trim() : `Team ${String.fromCharCode(65 + i)}`;
     teamNames.push(teamName || `Team ${String.fromCharCode(65 + i)}`);
+    
+    const colorInput = document.getElementById(`teamColor${i}`);
+    const teamColor = colorInput ? colorInput.value : DEFAULT_TEAM_COLOURS[i % DEFAULT_TEAM_COLOURS.length];
+    teamColors.push(teamColor);
   }
 
   const aiYesRadio = document.getElementById("AI-player-yes");
@@ -679,13 +716,14 @@ async function startGameHandler() {
   const gameConfigForQuiz = {
     teamCount: teamCount,
     teamNames: teamNames,
+    teamColors: teamColors,
     includeAI: includeAI,
     aiDifficulty: difficulty,
     gameLength: gameLength,
     timestamp: new Date().toISOString()
   };
   
-  // Save to localStorage for the quiz to use (ONLY ONCE, don't overwrite)
+  // Save to localStorage for the quiz to use
   localStorage.setItem("ventureGameConfig", JSON.stringify(gameConfigForQuiz));
   localStorage.setItem("backendGameConfig", JSON.stringify(backendPayload));
   
@@ -693,7 +731,7 @@ async function startGameHandler() {
   startGameTimer(gameLength);
 
   // -----------------------------------------------
-  // FETCH: Send data to Python (don't affect quiz)
+  // FETCH: Send data to Python
   // -----------------------------------------------
   try {
     const response = await fetch(startEndpoint, {
@@ -717,7 +755,7 @@ async function startGameHandler() {
   
   console.log("Game configuration for quiz:", gameConfigForQuiz);
   
-  // Start the quiz (ONLY ONCE)
+  // Start the quiz
   initQuizSetup();
 }
 
@@ -1352,20 +1390,12 @@ async function startTeamQuiz() {
     // Updated markets with their attributes
     const markets = [
       { 
-        id: "healthcare", 
-        name: "Healthcare Market", 
-        size: "Large",
-        regulation: "High",
+        id: "agriculture", 
+        name: "Agriculture Market", 
+        size: "Medium",
+        regulation: "Low",
         risk: "Low",
-        growth: "Medium"
-      },
-      { 
-        id: "finance", 
-        name: "Finance Market", 
-        size: "Large",
-        regulation: "High",
-        risk: "High",
-        growth: "Medium"
+        growth: "High"
       },
       { 
         id: "energy", 
@@ -1376,6 +1406,22 @@ async function startTeamQuiz() {
         growth: "High"
       },
       { 
+        id: "finance", 
+        name: "Finance Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "High",
+        growth: "Medium"
+      },
+      { 
+        id: "healthcare", 
+        name: "Healthcare Market", 
+        size: "Large",
+        regulation: "High",
+        risk: "Low",
+        growth: "Medium"
+      },
+      { 
         id: "manufacturing", 
         name: "Manufacturing Market", 
         size: "Medium",
@@ -1384,11 +1430,11 @@ async function startTeamQuiz() {
         growth: "High"
       },
       { 
-        id: "agriculture", 
-        name: "Agriculture Market", 
+        id: "technology", 
+        name: "Technology Market", 
         size: "Medium",
         regulation: "Low",
-        risk: "Low",
+        risk: "High",
         growth: "High"
       }
     ];
@@ -1576,13 +1622,27 @@ async function startTeamQuiz() {
       }
     }
     
-    // Update territory buttons with market selections
+    // Update territory buttons with market selections using team colors
     function updateTerritoryButtonsWithMarketSelections() {
       const marketSelections = localStorage.getItem("marketSelections");
       if (!marketSelections) return;
       
       const selections = JSON.parse(marketSelections);
       const territoryButtons = document.querySelectorAll('.territory-button');
+      
+      // Get team colors from saved game config
+      const savedGameConfig = localStorage.getItem("ventureGameConfig");
+      let teamColors = {};
+      
+      if (savedGameConfig) {
+        const gameConfig = JSON.parse(savedGameConfig);
+        if (gameConfig.teamColors && gameConfig.teamNames) {
+          // Create a mapping of team name to color
+          for (let i = 0; i < gameConfig.teamNames.length; i++) {
+            teamColors[gameConfig.teamNames[i]] = gameConfig.teamColors[i];
+          }
+        }
+      }
       
       // Map market IDs to territory data attributes
       const marketToTerritory = {
@@ -1600,6 +1660,9 @@ async function startTeamQuiz() {
         for (const [team, market] of Object.entries(selections)) {
           const mappedTerritory = marketToTerritory[market.id];
           if (mappedTerritory === territoryName) {
+            // Get the team's color
+            const teamColor = teamColors[team] || DEFAULT_TEAM_COLOURS[0];
+            
             // Update button text to show ownership
             const h3 = button.querySelector('h3');
             const p = button.querySelector('p');
@@ -1608,9 +1671,10 @@ async function startTeamQuiz() {
               const valueMatch = currentText.match(/\d+$/);
               const value = valueMatch ? valueMatch[0] : '';
               p.innerHTML = `Owned by ${team} ⋅ ${value}`;
-              button.style.opacity = '0.85';
-              button.style.border = '3px solid gold';
-              button.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+              button.style.opacity = '0.9';
+              // Use the team's color for the border
+              button.style.border = `3px solid ${teamColor}`;
+              button.style.boxShadow = `0 0 10px ${teamColor}`;
             }
             break;
           }
@@ -1621,10 +1685,25 @@ async function startTeamQuiz() {
       updateLeaderboardWithMarkets(selections);
     }
     
-    // Update leaderboard to show market ownership
+    // Update leaderboard to show market ownership with team colors
     function updateLeaderboardWithMarkets(selections) {
       const leaderboardContent = document.querySelector('.leaderboard-content ol');
       if (!leaderboardContent) return;
+      
+      // Get team colors from saved game config
+      const savedGameConfig = localStorage.getItem("ventureGameConfig");
+      let teamColors = {};
+      let teamNames = [];
+      
+      if (savedGameConfig) {
+        const gameConfig = JSON.parse(savedGameConfig);
+        if (gameConfig.teamColors && gameConfig.teamNames) {
+          for (let i = 0; i < gameConfig.teamNames.length; i++) {
+            teamColors[gameConfig.teamNames[i]] = gameConfig.teamColors[i];
+            teamNames.push(gameConfig.teamNames[i]);
+          }
+        }
+      }
       
       // Group markets by team with attributes
       const teamMarkets = {};
@@ -1639,19 +1718,35 @@ async function startTeamQuiz() {
         });
       }
       
-      // Update existing leaderboard items
-      const existingItems = leaderboardContent.querySelectorAll('li');
-      if (existingItems.length > 0) {
-        existingItems.forEach(item => {
-          for (const [team, markets] of Object.entries(teamMarkets)) {
-            if (item.textContent.includes(team)) {
-              const marketsText = markets.map(m => `${m.name} (Size:${m.size}, Risk:${m.risk})`).join(', ');
-              item.textContent = item.textContent.split(' - Markets:')[0] + ` - Markets: ${marketsText}`;
-              break;
-            }
-          }
-        });
+      // Clear and rebuild leaderboard with team colors
+      leaderboardContent.innerHTML = '';
+      
+      // Sort teams by tournament ranking if available
+      const savedResults = localStorage.getItem("tournamentResults");
+      let orderedTeams = teamNames;
+      
+      if (savedResults) {
+        const results = JSON.parse(savedResults);
+        if (results.tournamentRankings) {
+          orderedTeams = results.tournamentRankings.map(r => r.team);
+        }
       }
+      
+      orderedTeams.forEach(team => {
+        const markets = teamMarkets[team];
+        if (markets) {
+          const teamColor = teamColors[team] || DEFAULT_TEAM_COLOURS[0];
+          const marketsText = markets.map(m => `${m.name} (Size:${m.size}, Risk:${m.risk})`).join(', ');
+          
+          const li = document.createElement('li');
+          li.style.borderLeft = `4px solid ${teamColor}`;
+          li.style.paddingLeft = '12px';
+          li.style.marginBottom = '12px';
+          li.style.listStyle = 'none';
+          li.innerHTML = `<strong style="color: ${teamColor};">${team}</strong> - Markets: ${marketsText}`;
+          leaderboardContent.appendChild(li);
+        }
+      });
     }
     
     updateDraftProgress();

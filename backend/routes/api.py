@@ -135,60 +135,6 @@ def start_game():
         return _server_error(exc)
 
 
-@api.route("/api/demo/start", methods=["POST"])
-def start_demo():
-    """
-    Start a seeded one-round demo that the frontend can walk through stage by stage.
-    """
-    try:
-        data = _json_payload()
-        teams = _normalise_team_payload(data.get("teams") or [])
-        if not teams:
-            teams = [
-                {"id": 1, "name": "Red Rockets", "colour": "#EE672B", "is_ai": False},
-                {"id": 2, "name": "Blue Sparks", "colour": "#467096", "is_ai": False},
-            ]
-
-        state = game_service.create_demo_game(
-            teams=teams,
-            game_mode=str(data.get("mode") or "speedrun").strip().lower(),
-            difficulty=str(data.get("difficulty") or "medium").strip().lower(),
-            team_order=data.get("team_order"),
-        )
-        return jsonify(
-            {
-                "status": "demo_started",
-                "session_uuid": state["session_uuid"],
-                "game_state": gameplay_helpers.get_frontend_state(state),
-            }
-        )
-    except ValueError as exc:
-        return _client_error(exc)
-    except Exception as exc:
-        return _server_error(exc)
-
-
-@api.route("/api/demo/step", methods=["POST"])
-def run_demo_step():
-    """
-    Advance the small scripted browser demo by one stage-aware step.
-    """
-    try:
-        state = game_service.run_demo_step()
-        public_state = gameplay_helpers.get_frontend_state(state)
-        return jsonify(
-            {
-                "status": "demo_step_applied",
-                "message": public_state.get("demo_message"),
-                "game_state": public_state,
-            }
-        )
-    except ValueError as exc:
-        return _client_error(exc)
-    except Exception as exc:
-        return _server_error(exc)
-
-
 @api.route("/api/game/team-order", methods=["POST"])
 def set_team_order_endpoint():
     try:

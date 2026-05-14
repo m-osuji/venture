@@ -1836,7 +1836,9 @@ function startGameTimer(gameLength) {
   // Create timer display
   const timerDisplay = document.createElement("div");
   timerDisplay.id = "game-timer";
-  document.body.appendChild(timerDisplay);
+  
+  const stageIndicator = document.getElementById("stage-indicator");
+  stageIndicator.appendChild(timerDisplay);
   
   if (gameLength === "short") {
     isGameTimed = true;

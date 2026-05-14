@@ -626,6 +626,11 @@ footer nav p {
   line-height: 1.6;
 }
 
+.leaderboard-content li {
+    list-style: none;
+    padding-left: 0;
+}
+
 .leaderboard-dialog ol {
   margin: 14px 0 0 20px;
 }
@@ -1376,8 +1381,8 @@ footer nav p {
 /* Game Timer Display */
 #game-timer {
     position: absolute;
-    top: 150px;
-    left: 250px;  /* Position next to current stage display */
+    top: calc(100% + 32px); /* Position below stage indicator */
+    left: -20px;
     background: var(--main-orange);
     color: white;
     padding: 10px 20px;

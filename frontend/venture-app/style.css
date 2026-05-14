@@ -178,6 +178,9 @@ footer nav p {
     max-width: 920px;
     margin: 0 auto;
     line-height: 1.75;
+    max-width: 920px;
+    margin: 0 auto;
+    line-height: 1.75;
 }
 
 #tutorial-text p {
@@ -1417,66 +1420,4 @@ footer nav p {
 .territory-button:hover {
     transform: scale(1.05);
     z-index: 50;
-}
-
-/* Team color picker styles */
-.team-color-picker {
-    position: relative;
-}
-
-.color-preview {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 2px solid #ddd;
-    transition: all 0.2s ease;
-}
-
-.color-preview:hover {
-    transform: scale(1.05);
-    border-color: var(--main-orange);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.team-input-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.team-number {
-    font-weight: bold;
-    color: var(--main-blue);
-    min-width: 30px;
-}
-
-.team-input-group input[type="text"] {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: var(--content-font);
-}
-
-/* Territory button styling with team colors */
-.territory-button {
-    transition: all 0.3s ease;
-    position: absolute;
-}
-
-.territory-button:hover {
-    transform: scale(1.05);
-    z-index: 50;
-    filter: brightness(0.95);
-}
-
-/* Leaderboard team color styling */
-.leaderboard-content li {
-    transition: all 0.2s ease;
-}
-
-.leaderboard-content li:hover {
-    transform: translateX(5px);
 }

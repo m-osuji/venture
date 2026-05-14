@@ -368,10 +368,6 @@ def _build_commitments(
             if owner in members and owner != team_id:
                 avoid_attack_markets.append(market_id)
 
-        shared = alliance.get("shared_market")
-        if shared:
-            protected_markets.append(shared)
-
     return {
         "avoid_attack_markets": list(set(avoid_attack_markets)),
         "protected_markets": list(set(protected_markets)),

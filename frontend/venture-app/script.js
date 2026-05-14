@@ -36,11 +36,18 @@ const DEFAULT_TEAM_COLOURS = [
   "#F4A261"
 ];
 
+const API_BASE =
+  window.VENTURE_API_BASE ||
+  import.meta.env.VITE_VENTURE_API_BASE ||
+  "http://localhost:5000";
+
 // Question bank loaded from CSV format
 let questionBank = [];
+let questionBankPromise = null;
 
 // Load questions from the provided data
-function loadQuestionBank() {
+function loadFallbackQuestionBank() {
+  questionBank = [];
   const csvData = [
     ["SkillsBuild Course","question_id","topic","content","option_1","option_2","option_3","option_4","answer","difficulty_level"],
     ["AI in Legal: From Research to Results","2","AI in Law","A community center hires Rachel to assist multiple families appeal denied government benefits. With no additional staff to manage the caseload, she uses AI to autofill forms, flag missing data, and automate the sorting of case files based on deadlines. How is AI helping Rachel in this case to assist the families?","It is helping her skip the need for client interviews and documentation.","It is helping her guarantee successful outcomes for all benefit appeals.","It is helping her to automatically approve denied benefit applications.","It is helping her reduce costs and make services more affordable.","option_4","medium"],
@@ -85,6 +92,34 @@ function loadQuestionBank() {
   console.log(`Loaded ${questionBank.length} questions`);
 }
 
+async function loadQuestionBankFromBackend() {
+  const response = await fetch(`${API_BASE}/api/questions?shuffle=true`);
+  if (!response.ok) {
+    throw new Error("Failed to load questions from backend");
+  }
+
+  const payload = await response.json();
+  questionBank = Array.isArray(payload.questions) ? payload.questions : [];
+  console.log(`Loaded ${questionBank.length} questions from backend`);
+  return questionBank;
+}
+
+async function ensureQuestionBankLoaded() {
+  if (questionBank.length) {
+    return questionBank;
+  }
+
+  if (!questionBankPromise) {
+    questionBankPromise = loadQuestionBankFromBackend().catch((error) => {
+      console.warn("Falling back to bundled question bank:", error);
+      loadFallbackQuestionBank();
+      return questionBank;
+    });
+  }
+
+  return questionBankPromise;
+}
+
 // Helper function to get the correct option letter
 function getCorrectLetter(correctOption) {
   const mapping = {
@@ -113,7 +148,7 @@ function getRandomQuestions(count, difficulty = null) {
 }
 
 // Load questions at startup
-loadQuestionBank();
+void ensureQuestionBankLoaded();
 
 let scrollHandlerAttached = false;
 
@@ -340,7 +375,6 @@ async function loadRoute(path) {
     if (path === "/game") {
       currentGameModule = await import("/board.js");
       currentGameModule.startGame();
-      //initLeaderboard();
       initAIInteraction();
       // Also clear game timer
       if (gameTimerInterval) {
@@ -364,7 +398,8 @@ async function loadRoute(path) {
       });
     });
 
-  } catch {
+  } catch (error) {
+    console.error("Error loading page:", error);
     document.getElementById("content").innerHTML = "<h2>404 - Page not found</h2>";
   }
 }
@@ -646,7 +681,7 @@ async function startGameHandler() {
     backendTeams.push({
       id: i + 1,
       name: teamNames[i],
-      colour: teamColors[i],
+      colour: DEFAULT_TEAM_COLOURS[i] || "#467096",
       is_ai: false
     });
   }
@@ -667,6 +702,9 @@ async function startGameHandler() {
     difficulty: difficulty,
     mode: 'full'
   };
+
+  const apiBase = API_BASE;
+  const startEndpoint = `${apiBase}/api/game/start`;
 
   // Close the setup menu immediately
   const setupOverlay = document.getElementById("game-setup-overlay");
@@ -696,13 +734,16 @@ async function startGameHandler() {
   // FETCH: Send data to Python
   // -----------------------------------------------
   try {
-    const response = await fetch('http://localhost:5000/api/game/start', {
+    const response = await fetch(startEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(backendPayload)
     });
 
-    if (!response.ok) throw new Error("Failed to start game on backend");
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => ({}));
+      throw new Error(errorPayload.error || "Failed to start game on backend");
+    }
 
     const result = await response.json();
     console.log("✅ Game created on backend!", result);
@@ -713,7 +754,7 @@ async function startGameHandler() {
   }
   
   console.log("Game configuration for quiz:", gameConfigForQuiz);
-
+  
   // Start the quiz
   initQuizSetup();
 }
@@ -764,13 +805,19 @@ function initQuizSetup() {
   aiButton.parentNode.replaceChild(newButton, aiButton);
   
   newButton.addEventListener("click", () => {
-    startTeamQuiz();
+    void startTeamQuiz();
   });
 }
 
 // Tournament system with round robin between all teams
-function startTeamQuiz() {  
+async function startTeamQuiz() {  
   if (window.location.pathname !== "/game") {
+    return;
+  }
+
+  await ensureQuestionBankLoaded();
+  if (!questionBank.length) {
+    alert("No quiz questions are available right now.");
     return;
   }
 
@@ -1522,11 +1569,23 @@ function startTeamQuiz() {
       
       // Enable team mode and populate leaderboard in the game if module is available
       if (currentGameModule) {
+        
         if (currentGameModule.configureTeams) {
-          currentGameModule.configureTeams();
+          // Delay until the game module is ready
+          setTimeout(() => {
+            if (currentGameModule.configureTeams) {
+              currentGameModule.configureTeams();
+            }
+          }, 0);
         }
+
         if (currentGameModule.populateLeaderboard) {
-          currentGameModule.populateLeaderboard();
+          // Delay until the game module is ready
+          setTimeout(() => {
+            if (currentGameModule.populateLeaderboard) {
+              currentGameModule.populateLeaderboard();
+            }
+          }, 0);
         }
       }
       

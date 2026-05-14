@@ -15,3 +15,6 @@ backend/*_state.json
 .venv/
 __pycache__/
 .pytest_cache/
+
+# ignore the node modules
+node_modules/

@@ -10,8 +10,11 @@ if PROJECT_ROOT not in sys.path:
 from flask import Blueprint, jsonify, request
 
 from backend.ai_opponent.agents.decision_maker import choose_action, choose_orders
+from backend.ai_opponent.agents.commentator import get_commentary
+
 from backend.helpers import gameplay_helpers
 from backend.helpers.db_helpers import fetch_all_markets, fetch_questions as fetch_db_questions
+
 from backend.services import game_service
 
 api = Blueprint("api", __name__)
@@ -295,6 +298,27 @@ def resolve_pending_quizzes_endpoint():
     except Exception as exc:
         return _server_error(exc)
 
+
+@api.route("/api/ai/commentary", methods=["GET"])
+def get_commentary_endpoint():
+    """Triggers the Granite AI to generate narrative based on current state."""
+    try:
+        # get the full state (needed for the context highlights)
+        full_state = game_service.get_game_state()
+        if not full_state:
+            return jsonify({"error": "No active game session"}), 404
+
+        # call Mellea-wrapped agent, returning headline, summary, and taunt
+        commentary = get_commentary(full_state)
+
+        return jsonify({
+            "status": "success",
+            "commentary": commentary
+        })
+    
+    except Exception as exc:
+        # catch Granite timeouts or Mellea parsing errors
+        return _server_error(exc)
 
 @api.route("/api/ai/context/<int:team_id>", methods=["GET"])
 def get_ai_context(team_id: int):

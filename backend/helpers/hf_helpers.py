@@ -5,6 +5,10 @@ Importing this file automatically applies the necessary runtime patches
 Tracking:
     github.com/huggingface/transformers + github.com/generative-computing/mellea
 """
+import torch._dynamo
+# disable torch compile on Windows since cl.exe unavailable
+torch._dynamo.disable()
+
 import transformers.utils.peft_utils
 import transformers.integrations.peft
 import transformers.tokenization_utils_base

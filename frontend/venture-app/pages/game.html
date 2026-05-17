@@ -30,10 +30,25 @@
             <h3>Current Team: </h3>
             <p id="team-name">Team Name</p>
             <hr>
-            <p class="team-actions-title">Actions:</p>
-            <ul id="team-actions-list">
-                <li>Action placeholder 1</li>
-                <li>Action placeholder 2</li>
+            <div class="current-team-display-score">
+                <p class="current-team-display-title">Available IP: </p>
+                <div class="current-team-display-ip-score">
+                    <p>1300</p>
+                </div>
+            </div>
+            <div class="current-team-display-score">
+                <p class="current-team-display-title">Ethical Score: </p>
+                <div class="current-team-display-ethical-score">
+                    <p>700</p>
+                </div>
+            </div>
+            <hr>
+            <p class="current-team-display-title">Actions:</p>
+            <ul id="current-team-display-list">
+                <li>Contest Market: Energy</li>
+                <li>Contest Market: Technology</li>
+                <li>Defend Market: Agriculture</li>
+                <li>Research</li>
             </ul>
         </div>
         <button id="leaderboard-button" type="button" class="leaderboard-button">Leaderboard</button>
@@ -41,6 +56,7 @@
             <div class="leaderboard-dialog">
                 <button type="button" class="leaderboard-close" aria-label="Close leaderboard">×</button>
                 <h3>Leaderboard</h3>
+                <hr>
                 <div class="leaderboard-content">
                     <ol>
                         <li>John M - 2500 - 11</li>

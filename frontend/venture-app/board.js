@@ -138,8 +138,8 @@ export function populateLeaderboard() {
 
         const items = results.tournamentRankings
             .map(
-                (team, index) =>
-                    `<li>${index + 1}. <strong>${escapeHtml(team.team)}</strong> - ${team.score} wins</li>`,
+                (team) =>
+                    `<li><strong>${escapeHtml(team.team)}</strong> - ${team.score} wins</li>`,
             )
             .join("");
         content.innerHTML = `<ol>${items}</ol>`;

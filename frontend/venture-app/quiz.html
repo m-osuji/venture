@@ -1,0 +1,35 @@
+<div id="tournament-overlay" class="game-setup-overlay" style="display: none;">
+    <div class="setup-card quiz-card">
+        <div style="position: relative;">
+            <h2>TOURNAMENT CHALLENGE</h2>
+            <div id="question-timer" class="question-timer">Time: 30s</div>
+        </div>
+        <div id="tournament-progress" class="tournament-progress">Matchup X of Y</div>
+        <div class="teams-panel">
+            <div id="team1-panel" class="team-panel team1-panel">
+                <h3>TEAM 1</h3>
+                <div class="team-score">Score: <span id="team1-score">0</span></div>
+                <div class="team-keys">Use keys: 1 2 3 4</div>
+            </div>
+            <div id="team2-panel" class="team-panel team2-panel">
+                <h3>TEAM 2</h3>
+                <div class="team-score">Score: <span id="team2-score">0</span></div>
+                <div class="team-keys">Use keys: 6 7 8 9</div>
+            </div>
+        </div>
+        <div id="question-area" class="question-area">
+            <div id="question-text" class="question-text">Loading question...</div>
+            <div id="options-area" class="options-area">
+                <div id="option-a" class="competition-option" data-option="a">A. </div>
+                <div id="option-b" class="competition-option" data-option="b">B. </div>
+                <div id="option-c" class="competition-option" data-option="c">C. </div>
+                <div id="option-d" class="competition-option" data-option="d">D. </div>
+            </div>
+        </div>
+        <div id="round-result" class="round-result" style="display: none;"></div>
+        <div class="setup-actions">
+            <button id="next-question-btn" class="setup-btn-primary" style="display: none;">Next Question</button>
+            <button id="next-matchup-btn" class="setup-btn-primary" style="display: none;">Next Matchup</button>
+        </div>
+    </div>
+</div>

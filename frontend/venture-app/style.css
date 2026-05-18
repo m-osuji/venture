@@ -23,21 +23,6 @@
   z-index: 999;
 }
 
-#loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--content-font);
-  font-size: 20px;
-  z-index: 999;
-}
-
 body {
     margin: 0px;
 }
@@ -175,9 +160,6 @@ footer nav p {
     padding: 100px;
     font-family: var(--content-font);
     color: var(--main-grey);
-    max-width: 920px;
-    margin: 0 auto;
-    line-height: 1.75;
     max-width: 920px;
     margin: 0 auto;
     line-height: 1.75;
@@ -419,9 +401,6 @@ footer nav p {
 }
 
 #board-container {
-  width: 100%;
-  height: 140vh;
-  position: relative;
   width: 100%;
   height: 140vh;
   position: relative;
@@ -669,11 +648,10 @@ footer nav p {
     top: 16px;
     right: 16px;
     z-index: 45;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: flex-end;
     gap: 12px;
-    display: none;
 }
 
 #right-panel.active {
@@ -953,6 +931,7 @@ footer nav p {
     align-items: center;
     justify-content: center;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .setup-card::-webkit-scrollbar {
@@ -1244,37 +1223,12 @@ footer nav p {
 }
 
 /* Quiz Styles */
-.competition-option {
-    padding: 15px;
-    margin: 5px;
-    background: #f0f0f0;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    cursor: not-allowed;
-    transition: all 0.2s ease;
-    font-size: 16px;
-}
-
-/* .competition-option:hover {
-    background: #e0e0e0;
-    transform: scale(1.02);
-} */
-
 #team1-panel, #team2-panel {
     transition: all 0.3s ease;
 }
 
 #team1-panel:active, #team2-panel:active {
     transform: scale(0.98);
-}
-
-.quiz-card {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 .select-market-btn {
@@ -1286,24 +1240,7 @@ footer nav p {
     transform: scale(1.05);
 }
 
-#buzzer-status {
-    transition: all 0.3s ease;
-    margin-bottom: 20px;
-    padding: 15px;
-    border-radius: 10px;
-    font-weight: bold;
-    text-align: center;
-}
-
 /* Tournament and Market Selection Additional Styles */
-.setup-card.quiz-card {
-    max-width: 700px;
-    max-height: 500px;
-    overflow-y: auto;
-    margin-top: 150px;
-    margin-bottom: 10px;
-}
-
 .setup-card h2 {
     text-align: center;
 }
@@ -1325,8 +1262,8 @@ footer nav p {
 }
 
 #question-text {
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 16px;
+    /* font-weight: bold; */
     margin-bottom: 20px;
 }
 
@@ -1529,4 +1466,207 @@ footer nav p {
 .territory-button:hover {
     transform: scale(1.05);
     z-index: 50;
+}
+
+/* Tournament Challenge Styles */
+.team1-panel {
+    background: #e8f4f8;
+}
+
+.team2-panel {
+    background: #f8e8e8;
+}
+
+.team-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+}
+
+.team-score {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.team-keys {
+    font-size: 14px;
+    background: #2c3e50;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.question-area {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.question-text {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.options-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.competition-option {
+    padding: 15px;
+    margin: 5px;
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    cursor: default;
+    pointer-events: none;
+}
+
+.competition-option[style*="background: #27ae60"],
+.competition-option[style*="background-color: #27ae60"] {
+    color: white !important;
+}
+
+.round-result {
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+#buzzer-status {
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#next-question-btn, #next-matchup-btn {
+    min-width: 150px;
+}
+
+.quiz-card {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.setup-card.quiz-card {
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin-top: 125px;
+}
+
+/* Tournament Layout - Three column design */
+.tournament-layout {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    max-width: 1400px;
+    width: 90%;
+    margin: 0 auto;
+}
+
+/* Team Panel Styles */
+.tournament-team-panel {
+    flex: 0 0 200px;
+    text-align: center;
+    padding: 30px 20px;
+    border-radius: 22px;
+    background: var(--main-beige);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    font-family: var(--content-font);
+}
+
+.team1-panel {
+    border: 3px solid #e8f4f8;
+    background: linear-gradient(145deg, #e8f4f8, #d4e6ed);
+}
+
+.team2-panel {
+    border: 3px solid #f8e8e8;
+    background: linear-gradient(145deg, #f8e8e8, #eedddd);
+}
+
+.tournament-team-panel h3 {
+    font-size: 24px;
+    margin: 0 0 15px 0;
+    color: var(--main-grey);
+}
+
+.tournament-team-panel .team-score {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 15px 0;
+    color: var(--main-orange);
+}
+
+.tournament-team-panel .team-keys {
+    font-size: 14px;
+    background: #2c3e50;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+/* Quiz Card - Center panel */
+.setup-card.quiz-card {
+    flex: 1;
+    max-width: 700px;
+    max-height: none;
+    overflow-y: scroll;
+    margin: 0;
+    margin-top: 115px;
+    position: relative;
+}
+
+/* Quiz Header - Title and timer side by side */
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.quiz-header h2 {
+    margin: 0;
+    color: var(--main-orange);
+}
+
+.question-timer {
+    position: relative;
+    top: auto;
+    right: auto;
+    background: var(--main-orange);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Tournament progress */
+.tournament-progress {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
 }

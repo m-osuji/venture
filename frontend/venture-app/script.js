@@ -792,7 +792,7 @@ function initQuizSetup() {
   if (!aiText || !aiButton) return;
 
   // Change AI text to explain the quiz
-  aiText.innerHTML = "Take quiz to decide game order";
+  aiText.innerHTML = "The game begins with a structured quiz to establish the sequence of team participation. Teams will be evaluated on both speed and accuracy, and those demonstrating the strongest performance will be granted first choice of market entry. This approach ensures a fair and merit-based process as you progress through the initial stages of Venture.";
 
   // Make sure text and button are visible
   aiText.style.display = "block";
@@ -1495,7 +1495,7 @@ async function startTeamQuiz() {
         const marketDiv = document.createElement("div");
         marketDiv.className = "market-option";
         marketDiv.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px; transition: all 0.2s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px;">
             <div style="flex: 2;">
               <strong style="font-size: 18px;">${market.name}</strong><br>
               <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px;">
@@ -1603,19 +1603,17 @@ async function startTeamQuiz() {
       if (aiText) {
         let rankingText = rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n");
         let marketText = Object.entries(selectedMarkets).map(([team, market]) => `${team}: ${market.name}`).join("\n");
-        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}\n\nClick the button below to begin the game!`;
+        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}.\n\nClick the Next Team button to begin the game`;
       }
       
       // Show final results
       let marketResults = Object.entries(selectedMarkets).map(([team, market]) => `${team} selected ${market.name}`).join("\n");
-      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarket Selections:\n${marketResults}\n\nThe game will now begin!`);
       
       // Re-enable the AI confirm button for game start
       const aiButton = document.getElementById("AI-confirm");
       if (aiButton) {
         const newButton = aiButton.cloneNode(true);
         aiButton.parentNode.replaceChild(newButton, aiButton);
-        newButton.textContent = "Start Game";
         newButton.addEventListener("click", () => {
           alert("Game is starting with your tournament rankings and market selections!");
         });

@@ -145,8 +145,15 @@ export function populateLeaderboard() {
         content.innerHTML = `<ol>${items}</ol>`;
 
         const button = document.getElementById("leaderboard-button");
+        const rightPanel = document.getElementById("right-panel");
+        
         if (button) {
             button.style.display = "block";
+        }
+        
+        // Show right panel when leaderboard is populated
+        if (rightPanel && gameState.teamModeActive) {
+            rightPanel.classList.add('active');
         }
     } catch (error) {
         console.error("Error populating leaderboard:", error);
@@ -422,14 +429,81 @@ function renderMarketState(state) {
     });
 }
 
+// Initialize team info button
+function initTeamInfoButton() {
+    const teamInfoButton = document.getElementById("team-info-button");
+    const teamDisplay = document.getElementById("current-team-display");
+    const closeButton = document.getElementById("close-team-display");
+    
+    if (!teamInfoButton || !teamDisplay) return;
+    
+    // Remove any existing event listeners to prevent duplicates
+    const newButton = teamInfoButton.cloneNode(true);
+    teamInfoButton.parentNode.replaceChild(newButton, teamInfoButton);
+    
+    const updatedButton = document.getElementById("team-info-button");
+    const updatedCloseButton = document.getElementById("close-team-display");
+    
+    // Click handler for pinning/unpinning
+    updatedButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        
+        if (teamDisplay.classList.contains("pinned")) {
+            // Unpin
+            teamDisplay.classList.remove("pinned");
+            if (updatedCloseButton) {
+                updatedCloseButton.style.display = "none";
+            }
+        } else {
+            // Pin and show
+            teamDisplay.classList.add("pinned");
+            if (updatedCloseButton) {
+                updatedCloseButton.style.display = "flex";
+            }
+        }
+    });
+    
+    // Close button handler
+    if (updatedCloseButton) {
+        updatedCloseButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            teamDisplay.classList.remove("pinned");
+            updatedCloseButton.style.display = "none";
+        });
+    }
+    
+    // Prevent mouseleave from hiding pinned display
+    const container = document.getElementById("team-info-container");
+    if (container) {
+        container.addEventListener("mouseleave", () => {
+            if (!teamDisplay.classList.contains("pinned")) {
+                teamDisplay.style.display = "none";
+            }
+        });
+        
+        container.addEventListener("mouseenter", () => {
+            if (!teamDisplay.classList.contains("pinned")) {
+                teamDisplay.style.display = "block";
+            }
+        });
+    }
+}
+
 // Update the team indicator based on current team
 function updateTeamIndicator() {
     const teamDisplay = document.getElementById("current-team-display");
     const teamNameElement = document.getElementById("team-name");
+    const rightPanel = document.getElementById("right-panel");
 
     if (!gameState.teamModeActive || !gameState.tournamentRankings.length) {
         if (teamDisplay) {
+            teamDisplay.classList.remove("pinned");
             teamDisplay.style.display = "none";
+            const closeButton = document.getElementById("close-team-display");
+            if (closeButton) closeButton.style.display = "none";
+        }
+        if (rightPanel) {
+            rightPanel.classList.remove('active');
         }
         return;
     }
@@ -440,7 +514,16 @@ function updateTeamIndicator() {
     if (!currentTeamData) return;
 
     teamNameElement.textContent = currentTeamData.team;
-    teamDisplay.style.display = "block";
+    
+    // Don't auto-show, just update content
+    if (!teamDisplay.classList.contains("pinned")) {
+        teamDisplay.style.display = "none";
+    }
+    
+    // Ensure right panel is visible when team mode is active
+    if (rightPanel && gameState.teamModeActive) {
+        rightPanel.classList.add('active');
+    }
 }
 
 function updateButtonText() {
@@ -480,6 +563,8 @@ function toTitleCase(value) {
 function showGameUI() {
     const stageDisplay = document.getElementById('current-stage-display');
     const progresserButton = document.getElementById('stage-progresser');
+    const rightPanel = document.getElementById('right-panel');
+    
     console.log("showGameUI called. gameState.teamModeActive:", gameState.teamModeActive);
     
     if (stageDisplay) {
@@ -487,6 +572,15 @@ function showGameUI() {
     }
     if (progresserButton) {
         progresserButton.style.display = gameState.teamModeActive ? 'block' : 'none';
+    }
+    if (rightPanel) {
+        if (gameState.teamModeActive) {
+            rightPanel.classList.add('active');
+            // Initialize team info button when game starts
+            initTeamInfoButton();
+        } else {
+            rightPanel.classList.remove('active');
+        }
     }
 }
 

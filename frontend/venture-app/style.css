@@ -518,20 +518,91 @@ footer nav p {
   height: 14px;
 }
 
+/* Team info button - icon button like leaderboard */
+.team-info-button {
+    position: relative;
+    top: auto;
+    right: auto;
+    padding: 8px;
+    background: var(--main-beige);
+    border: none;
+    border-radius: 20%;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.team-info-button:hover {
+    filter: brightness(1.05);
+    transform: scale(1.05);
+}
+
+.team-info-icon {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+
+/* Team info container for positioning */
+#team-info-container {
+    position: relative;
+}
+
+/* Show when pinned (clicked) */
+.current-team-display.pinned {
+    display: block;
+}
+
+/* Close button for the team display */
+.team-display-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: var(--main-orange);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.team-display-close:hover {
+    background: var(--main-orange);
+    transform: scale(1.05);
+}
+
+/* When pinned, show on hover as well */
+.current-team-display.pinned:hover {
+    display: block;
+}
+
 /* Display showing the current team */
 .current-team-display {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 40;
-  background: #fff;
-  border-radius: 22px;
-  padding: 16px 20px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-  color: var(--main-grey);
-  font-family: var(--content-font);
-  width: fit-content;
-  max-width: 300px;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 12px;
+    background: #fff;
+    border-radius: 22px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    color: var(--main-grey);
+    font-family: var(--content-font);
+    width: 260px;
+    max-width: 300px;
+    z-index: 50;
+    display: none;
 }
 
 .current-team-display h3 {
@@ -592,25 +663,51 @@ footer nav p {
   margin: 4px 0;
 }
 
+/* Right panel container - holds leaderboard button and team display */
+#right-panel {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 45;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    display: none;
+}
+
+#right-panel.active {
+    display: flex;
+}
+
 /* Leaderboard popup inside the game window */
 .leaderboard-button {
-  position: absolute;
-  top: 16px;
-  right: 210px;
-  z-index: 40;
-  padding: 10px 16px;
-  font-family: var(--content-font);
-  font-size: 16px;
-  color: #fff;
-  background: var(--main-orange);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    position: relative;
+    top: auto;
+    right: auto;
+    padding: 8px;
+    background: var(--main-orange);
+    border: none;
+    border-radius: 20%;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .leaderboard-button:hover {
-  filter: brightness(1.05);
+    filter: brightness(1.05);
+    transform: scale(1.05);
+}
+
+.leaderboard-icon {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
 }
 
 .leaderboard-overlay {
@@ -1153,15 +1250,15 @@ footer nav p {
     background: #f0f0f0;
     border: 2px solid #ddd;
     border-radius: 8px;
-    cursor: pointer;
+    cursor: not-allowed;
     transition: all 0.2s ease;
     font-size: 16px;
 }
 
-.competition-option:hover {
+/* .competition-option:hover {
     background: #e0e0e0;
     transform: scale(1.02);
-}
+} */
 
 #team1-panel, #team2-panel {
     transition: all 0.3s ease;
@@ -1178,14 +1275,6 @@ footer nav p {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-.market-option {
-    transition: all 0.2s ease;
-}
-
-.market-option:hover {
-    transform: translateX(5px);
 }
 
 .select-market-btn {

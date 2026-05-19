@@ -1,0 +1,464 @@
+.orders-page,
+.orders-page * {
+    box-sizing: border-box;
+}
+
+.orders-page {
+    min-height: calc(100vh - 220px);
+    padding: 36px 48px 48px;
+    background:
+        radial-gradient(circle at top left, rgba(238, 103, 43, 0.14), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(70, 112, 150, 0.10), transparent 30%),
+        linear-gradient(180deg, #f7f2eb 0%, #efe8de 100%);
+}
+
+.orders-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 0 auto 26px;
+    max-width: 1220px;
+    padding: 28px 30px;
+    background: rgba(255, 252, 248, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.52);
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+    position: relative;
+}
+
+.orders-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto 30px 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(238, 103, 43, 0), rgba(238, 103, 43, 0.95), rgba(70, 112, 150, 0.9), rgba(70, 112, 150, 0));
+    transform: scaleX(0);
+    transform-origin: center;
+    animation: ordersUnderline 1s ease forwards;
+}
+
+@keyframes ordersUnderline {
+    to {
+        transform: scaleX(1);
+    }
+}
+
+.orders-kicker {
+    display: inline-flex;
+    margin-bottom: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ee672b;
+    color: #fffcf8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.orders-hero h1 {
+    margin: 0 0 10px;
+    font-family: "Playfair Display", serif;
+    font-size: clamp(40px, 5vw, 58px);
+    font-weight: 500;
+    color: #434343;
+}
+
+.orders-hero p {
+    max-width: 720px;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.65;
+    color: rgba(67, 67, 67, 0.82);
+}
+
+.orders-hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.orders-btn {
+    border: 0;
+    border-radius: 16px;
+    padding: 12px 18px;
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.orders-btn:hover {
+    transform: translateY(-1px);
+}
+
+.orders-btn-primary {
+    background: #ee672b;
+    color: #fffcf8;
+    box-shadow: 0 16px 30px rgba(238, 103, 43, 0.22);
+}
+
+.orders-btn-secondary {
+    background: rgba(67, 67, 67, 0.08);
+    color: #434343;
+}
+
+.orders-summary,
+.orders-grid {
+    max-width: 1220px;
+    margin: 0 auto;
+}
+
+.orders-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.orders-stat-card {
+    padding: 18px 18px 16px;
+    border-radius: 22px;
+    background: rgba(255, 252, 248, 0.74);
+    border: 1px solid rgba(255, 255, 255, 0.56);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.06);
+    opacity: 0;
+    transform: translateY(18px);
+    animation: ordersCardIn 0.55s ease forwards;
+}
+
+.orders-stat-card:nth-child(1) { animation-delay: 0.08s; }
+.orders-stat-card:nth-child(2) { animation-delay: 0.16s; }
+.orders-stat-card:nth-child(3) { animation-delay: 0.24s; }
+.orders-stat-card:nth-child(4) { animation-delay: 0.32s; }
+
+@keyframes ordersCardIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.orders-stat-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(67, 67, 67, 0.6);
+}
+
+.orders-stat-value {
+    font-family: "Playfair Display", serif;
+    font-size: clamp(34px, 4vw, 44px);
+    font-weight: 600;
+    color: #434343;
+}
+
+.orders-empty-state.hidden {
+    display: none;
+}
+
+.orders-empty-state {
+    max-width: 1220px;
+    margin: 0 auto 24px;
+}
+
+.orders-empty-card {
+    padding: 28px 30px;
+    border-radius: 24px;
+    background: rgba(255, 252, 248, 0.74);
+    border: 1px dashed rgba(67, 67, 67, 0.2);
+    text-align: center;
+}
+
+.orders-empty-card h2 {
+    margin: 0 0 10px;
+    font-family: "Playfair Display", serif;
+    font-size: 32px;
+    color: #434343;
+}
+
+.orders-empty-card p {
+    margin: 0;
+    color: rgba(67, 67, 67, 0.76);
+    line-height: 1.6;
+}
+
+.orders-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.orders-team-card {
+    --card-glow: rgba(70, 112, 150, 0.12);
+    position: relative;
+    padding: 24px 24px 22px;
+    border-radius: 28px;
+    background: rgba(255, 252, 248, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    opacity: 0;
+    transform: translateY(24px);
+    animation: ordersTeamReveal 0.6s ease forwards;
+    animation-delay: var(--order-delay, 0ms);
+    overflow: hidden;
+}
+
+.orders-team-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, var(--card-glow), transparent 45%);
+    pointer-events: none;
+}
+
+.orders-team-card.is-betrayal {
+    --card-glow: rgba(214, 40, 57, 0.22);
+    border-color: rgba(214, 40, 57, 0.24);
+    animation: ordersTeamReveal 0.6s ease forwards, betrayalPulse 1.4s ease 0.75s 1;
+}
+
+@keyframes ordersTeamReveal {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes betrayalPulse {
+    0%, 100% { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08), 0 0 0 0 rgba(214, 40, 57, 0.18); }
+    50% { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08), 0 0 0 12px rgba(214, 40, 57, 0); }
+}
+
+.orders-team-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.orders-team-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.orders-team-emblem {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fffcf8;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.orders-team-name {
+    margin: 0 0 4px;
+    font-family: "Playfair Display", serif;
+    font-size: 28px;
+    font-weight: 500;
+    color: #434343;
+}
+
+.orders-team-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: rgba(67, 67, 67, 0.66);
+}
+
+.orders-status-badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.status-kept {
+    background: #d9f0e2;
+    color: #215d3a;
+}
+
+.status-changed {
+    background: #fde8d8;
+    color: #a03a0a;
+}
+
+.status-betrayal {
+    background: #f8d9df;
+    color: #a51f37;
+}
+
+.status-silent {
+    background: #ece8e2;
+    color: #5d5750;
+}
+
+.orders-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.orders-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 100%;
+    padding: 16px 16px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(67, 67, 67, 0.08);
+}
+
+.orders-panel-title {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(67, 67, 67, 0.58);
+}
+
+.orders-allocation-list,
+.orders-move-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.orders-allocation-item,
+.orders-move-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 12px;
+    min-height: 98px;
+    border-radius: 14px;
+    background: rgba(250, 246, 241, 0.96);
+    border: 1px solid rgba(67, 67, 67, 0.06);
+    opacity: 0;
+    transform: translateY(10px);
+    animation: ordersItemIn 0.45s ease forwards;
+    animation-delay: calc(var(--order-delay, 0ms) + var(--item-delay, 0ms));
+}
+
+@keyframes ordersItemIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.orders-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.chip-attack { background: #fbe0d4; color: #a03a0a; }
+.chip-defend { background: #d8e8f7; color: #1a5c8a; }
+.chip-research { background: #efe4f9; color: #6b2db0; }
+.chip-hold { background: #ece8e2; color: #5d5750; }
+.chip-intent { background: #e2eef9; color: #2a587c; }
+.chip-actual { background: #fde9db; color: #9c3c13; }
+
+.orders-item-copy strong,
+.orders-item-copy span {
+    display: block;
+}
+
+.orders-item-copy {
+    min-width: 0;
+}
+
+.orders-item-copy strong {
+    font-size: 14px;
+    color: #434343;
+    margin-bottom: 3px;
+    line-height: 1.35;
+}
+
+.orders-item-copy span {
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(67, 67, 67, 0.74);
+}
+
+.orders-item-empty {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(250, 246, 241, 0.74);
+    color: rgba(67, 67, 67, 0.62);
+    font-size: 13px;
+}
+
+.orders-card-footer {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(67, 67, 67, 0.08);
+    font-size: 13px;
+    color: rgba(67, 67, 67, 0.74);
+}
+
+.orders-card-footer strong {
+    color: #434343;
+}
+
+@media (max-width: 1000px) {
+    .orders-summary,
+    .orders-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .orders-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .orders-page {
+        padding: 20px 16px 36px;
+    }
+
+    .orders-hero {
+        padding: 22px 20px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .orders-summary,
+    .orders-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .orders-team-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

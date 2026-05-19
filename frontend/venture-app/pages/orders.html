@@ -1,0 +1,46 @@
+<div class="orders-page">
+    <section class="orders-hero">
+        <div class="orders-hero-copy">
+            <span class="orders-kicker">Stage 3 of 5</span>
+            <h1>Orders Revealed</h1>
+            <p id="orders-stage-message">
+                Locked allocations and final decisions are shown here once the round reaches Orders.
+            </p>
+        </div>
+        <div class="orders-hero-actions">
+            <button id="orders-refresh-btn" class="orders-btn orders-btn-primary" type="button">Refresh reveal</button>
+            <button id="orders-continue-btn" class="orders-btn orders-btn-primary" type="button">Resolve round</button>
+            <button id="orders-back-btn" class="orders-btn orders-btn-secondary" type="button">Back to board</button>
+        </div>
+    </section>
+
+    <section class="orders-summary" id="orders-summary">
+        <article class="orders-stat-card">
+            <span class="orders-stat-label">Teams Revealed</span>
+            <strong class="orders-stat-value" data-count-target="0">0</strong>
+        </article>
+        <article class="orders-stat-card">
+            <span class="orders-stat-label">Promises Kept</span>
+            <strong class="orders-stat-value" data-count-target="0">0</strong>
+        </article>
+        <article class="orders-stat-card">
+            <span class="orders-stat-label">Changed Plans</span>
+            <strong class="orders-stat-value" data-count-target="0">0</strong>
+        </article>
+        <article class="orders-stat-card">
+            <span class="orders-stat-label">Betrayals</span>
+            <strong class="orders-stat-value" data-count-target="0">0</strong>
+        </article>
+    </section>
+
+    <section class="orders-empty-state hidden" id="orders-empty-state">
+        <div class="orders-empty-card">
+            <h2>No reveal yet</h2>
+            <p id="orders-empty-copy">
+                There are no revealed orders to show yet. Advance the game to the Orders stage, then refresh this page.
+            </p>
+        </div>
+    </section>
+
+    <section class="orders-grid" id="orders-grid"></section>
+</div>

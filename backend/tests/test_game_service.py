@@ -202,6 +202,85 @@ def test_game_service_persists_alliance_lifecycle(monkeypatch):
     assert broken_state["alliances"][0]["broken_by_team_id"] == 1
 
 
+def test_game_service_persists_plan_allocations_and_replaces_them(monkeypatch):
+    _stub_reference_data(monkeypatch)
+    _stub_persistence(monkeypatch)
+
+    service.create_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00"},
+            {"id": 2, "name": "Blue", "colour": "#00f"},
+        ],
+        team_order=[1, 2],
+    )
+
+    state = service.get_game_state()
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 1
+    state["teams"][0]["ip"] = 5
+    service.gameplay_helpers.save_state(state)
+
+    updated = service.submit_plan_allocations(
+        1,
+        [
+            {"market_id": 1, "ip_allocated": 2},
+            {"market_id": 2, "ip_allocated": 1},
+        ],
+    )
+
+    assert updated["teams"][0]["ip"] == 2
+    assert updated["market_state"]["1"]["allocated_ip"] == 2
+    assert updated["market_state"]["2"]["allocated_ip"] == 1
+    assert updated["turn_log"]["plan_allocations"]["1"] == [
+        {"market_id": 1, "ip_allocated": 2},
+        {"market_id": 2, "ip_allocated": 1},
+    ]
+
+    updated = service.submit_plan_allocations(
+        1,
+        [
+            {"market_id": 2, "ip_allocated": 4},
+        ],
+    )
+
+    assert updated["teams"][0]["ip"] == 1
+    assert updated["market_state"]["1"]["allocated_ip"] == 0
+    assert updated["market_state"]["2"]["allocated_ip"] == 4
+    assert updated["turn_log"]["plan_allocations"]["1"] == [
+        {"market_id": 2, "ip_allocated": 4},
+    ]
+
+
+def test_game_service_can_advance_plan_with_allocations_only(monkeypatch):
+    _stub_reference_data(monkeypatch)
+    _stub_persistence(monkeypatch)
+
+    service.create_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00"},
+            {"id": 2, "name": "Blue", "colour": "#00f"},
+        ],
+        team_order=[1, 2],
+    )
+
+    state = service.get_game_state()
+    state["market_state"]["1"]["owner"] = 1
+    state["market_state"]["2"]["owner"] = 2
+    state["teams"][0]["ip"] = 2
+    state["teams"][1]["ip"] = 2
+    service.gameplay_helpers.save_state(state)
+
+    service.submit_plan_allocations(1, [{"market_id": 1, "ip_allocated": 2}])
+    service.submit_plan_allocations(2, [])
+
+    next_state = service.advance_stage()
+
+    assert next_state["current_stage"] == GameStage.NEGOTIATE
+    public_state = service.get_public_game_state()
+    assert public_state["plan_allocations"] == {}
+    assert public_state["plan_allocations_submitted_team_ids"] == [1, 2]
+
+
 def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
     _stub_reference_data(monkeypatch)
     storage = _stub_persistence(monkeypatch)

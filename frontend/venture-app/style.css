@@ -566,14 +566,343 @@ footer nav p {
 }
 
 .current-team-display #team-actions-list li {
-  margin: 4px 0;
+    margin: 4px 0;
+}
+
+/* Planning panel on board */
+.planning-board-panel {
+    position: absolute;
+    top: 96px;
+    right: 16px;
+    z-index: 41;
+    width: min(360px, calc(100vw - 32px));
+    padding: 18px;
+    border-radius: 24px;
+    background: rgba(255, 252, 248, 0.94);
+    color: var(--main-grey);
+    font-family: var(--content-font);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(12px);
+}
+
+.planning-board-panel.hidden,
+.planning-board-status.hidden {
+    display: none;
+}
+
+.planning-board-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.planning-board-kicker {
+    display: inline-flex;
+    margin-bottom: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(238, 103, 43, 0.14);
+    color: var(--main-orange);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.planning-board-header h3 {
+    margin: 0 0 6px;
+    font-family: var(--heading-font);
+    font-size: 30px;
+    font-weight: 500;
+}
+
+.planning-board-header p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(67, 67, 67, 0.72);
+}
+
+.planning-board-remaining {
+    flex: 0 0 auto;
+    min-width: 96px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(70, 112, 150, 0.08);
+    text-align: right;
+}
+
+.planning-board-remaining span,
+.planning-board-section-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(67, 67, 67, 0.56);
+}
+
+.planning-board-remaining strong {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--heading-font);
+    font-size: 28px;
+    font-weight: 500;
+}
+
+.planning-board-team-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.planning-board-team-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: calc(50% - 5px);
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(67, 67, 67, 0.08);
+    border-radius: 16px;
+    background: white;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.planning-board-team-tab:hover {
+    transform: translateY(-1px);
+}
+
+.planning-board-team-tab.is-active {
+    border-color: rgba(238, 103, 43, 0.34);
+    box-shadow: 0 10px 20px rgba(238, 103, 43, 0.12);
+}
+
+.planning-board-team-chip {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.planning-board-team-copy {
+    min-width: 0;
+}
+
+.planning-board-team-copy strong,
+.planning-board-team-copy span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.planning-board-team-copy strong {
+    font-size: 13px;
+}
+
+.planning-board-team-copy span {
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(67, 67, 67, 0.6);
+}
+
+.planning-board-status {
+    margin-bottom: 12px;
+}
+
+.planning-board-status-card {
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.planning-board-status-card.is-success {
+    background: rgba(223, 245, 229, 0.92);
+    color: #215d3a;
+}
+
+.planning-board-status-card.is-error {
+    background: rgba(249, 224, 228, 0.96);
+    color: #8d2641;
+}
+
+.planning-board-selected,
+.planning-board-summary {
+    margin-top: 12px;
+}
+
+.planning-board-market-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 8px;
+    padding: 14px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid rgba(67, 67, 67, 0.07);
+}
+
+.planning-board-market-card strong {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.planning-board-market-card p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgba(67, 67, 67, 0.66);
+}
+
+.planning-board-allocation-pill {
+    flex: 0 0 auto;
+    min-width: 76px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(238, 103, 43, 0.08);
+    text-align: center;
+}
+
+.planning-board-allocation-pill strong,
+.planning-board-allocation-pill span {
+    display: block;
+}
+
+.planning-board-allocation-pill strong {
+    font-family: var(--heading-font);
+    font-size: 28px;
+    font-weight: 500;
+}
+
+.planning-board-allocation-pill span {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(67, 67, 67, 0.62);
+}
+
+.planning-board-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.planning-board-step-btn {
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 16px;
+    background: rgba(67, 67, 67, 0.08);
+    color: var(--main-grey);
+    font-size: 28px;
+    cursor: pointer;
+    transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.planning-board-step-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: rgba(238, 103, 43, 0.16);
+}
+
+.planning-board-step-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.planning-board-market-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.planning-board-market-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(67, 67, 67, 0.08);
+    background: white;
+    cursor: pointer;
+    text-align: left;
+}
+
+.planning-board-market-item.is-active {
+    border-color: rgba(238, 103, 43, 0.3);
+    background: rgba(238, 103, 43, 0.08);
+}
+
+.planning-board-market-item strong,
+.planning-board-market-item span {
+    display: block;
+}
+
+.planning-board-market-item strong {
+    font-size: 13px;
+}
+
+.planning-board-market-item span {
+    font-size: 11px;
+    color: rgba(67, 67, 67, 0.6);
+}
+
+.planning-board-market-value {
+    flex: 0 0 auto;
+    min-width: 54px;
+    text-align: right;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--main-grey);
+}
+
+.planning-board-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.planning-board-btn {
+    flex: 1;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--content-font);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.planning-board-btn-primary {
+    background: var(--main-orange);
+    color: white;
+}
+
+.planning-board-btn-secondary {
+    background: rgba(67, 67, 67, 0.08);
+    color: var(--main-grey);
 }
 
 /* Leaderboard popup inside the game window */
 .leaderboard-button {
-  position: absolute;
-  top: 16px;
-  right: 210px;
+    position: absolute;
+    top: 16px;
+    right: 210px;
   z-index: 40;
   padding: 10px 16px;
   font-family: var(--content-font);
@@ -654,10 +983,10 @@ footer nav p {
 
 /* Territory info popup inside the game window */
 .territory-button {
-  position: absolute;
-  z-index: 40;
-  padding: 8x 10px;
-  font-family: var(--content-font);
+    position: absolute;
+    z-index: 40;
+    padding: 8x 10px;
+    font-family: var(--content-font);
   color: var(--main-grey);
   background: var(--main-beige);
   border: none;
@@ -677,13 +1006,37 @@ footer nav p {
 }
 
 .territory-button:hover {
-  filter: brightness(1.05);
+    filter: brightness(1.05);
+}
+
+.territory-ip-badge {
+    display: inline-flex;
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(238, 103, 43, 0.14);
+    color: var(--main-orange);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.territory-button.planning-selectable {
+    border: 2px solid rgba(238, 103, 43, 0.45);
+    box-shadow: 0 0 0 5px rgba(238, 103, 43, 0.18);
+}
+
+.territory-button.planning-selected {
+    transform: scale(1.06);
+    z-index: 55;
+    box-shadow: 0 0 0 6px rgba(70, 112, 150, 0.25);
 }
 
 .territory-action-button {
-  z-index: 40;
-  padding: 8px 14px;
-  font-family: var(--content-font);
+    z-index: 40;
+    padding: 8px 14px;
+    font-family: var(--content-font);
   font-size: 14px;
   color: #fff;
   background: var(--main-orange);
@@ -1417,4 +1770,20 @@ footer nav p {
 .territory-button:hover {
     transform: scale(1.05);
     z-index: 50;
+}
+
+@media (max-width: 980px) {
+    .planning-board-panel {
+        top: auto;
+        right: 16px;
+        left: 16px;
+        bottom: 84px;
+        width: auto;
+        max-height: 58vh;
+        overflow-y: auto;
+    }
+
+    .planning-board-team-tab {
+        width: 100%;
+    }
 }

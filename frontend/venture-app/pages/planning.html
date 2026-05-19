@@ -1,0 +1,71 @@
+<div class="planning-page">
+    <section class="planning-hero">
+        <div class="planning-hero-copy">
+            <span class="planning-kicker">Stage 1 of 5</span>
+            <h1>Allocate IP</h1>
+            <p id="planning-stage-message">
+                Choose how much Influence Point reserve each team places into its owned markets before negotiation begins.
+            </p>
+        </div>
+        <div class="planning-hero-actions">
+            <button id="planning-refresh-btn" class="planning-btn planning-btn-secondary" type="button">Refresh</button>
+            <button id="planning-back-btn" class="planning-btn planning-btn-secondary" type="button">Back to board</button>
+        </div>
+    </section>
+
+    <section class="planning-steps" aria-label="Planning steps">
+        <article class="planning-step-card">
+            <span class="planning-step-number">1</span>
+            <div>
+                <h2>Choose Team</h2>
+                <p>Pick the team whose markets you want to allocate this round.</p>
+            </div>
+        </article>
+        <article class="planning-step-card">
+            <span class="planning-step-number">2</span>
+            <div>
+                <h2>Use + / -</h2>
+                <p>Add or remove IP from each owned market until the remaining pool looks right.</p>
+            </div>
+        </article>
+        <article class="planning-step-card">
+            <span class="planning-step-number">3</span>
+            <div>
+                <h2>Save Plan</h2>
+                <p>Submit the allocations to lock in that team&apos;s planning-stage placements.</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="planning-toolbar">
+        <div class="planning-team-tabs" id="planning-team-tabs"></div>
+        <div class="planning-pool-card">
+            <span class="planning-pool-label">IP remaining</span>
+            <strong class="planning-pool-value" id="planning-ip-remaining">0</strong>
+            <span class="planning-pool-help">This updates live as you tap the controls.</span>
+        </div>
+    </section>
+
+    <section class="planning-status hidden" id="planning-status"></section>
+
+    <section class="planning-empty hidden" id="planning-empty">
+        <div class="planning-empty-card">
+            <h2>No owned markets yet</h2>
+            <p id="planning-empty-copy">
+                The selected team does not control any markets yet, so there is nothing to allocate.
+            </p>
+        </div>
+    </section>
+
+    <section class="planning-grid" id="planning-grid"></section>
+
+    <section class="planning-footer">
+        <div class="planning-footer-note">
+            Planning allocations are private. Only the selected team's market placements are being edited here.
+        </div>
+        <div class="planning-footer-actions">
+            <button id="planning-reset-btn" class="planning-btn planning-btn-secondary" type="button">Reset draft</button>
+            <button id="planning-submit-btn" class="planning-btn planning-btn-primary" type="button">Save allocations</button>
+        </div>
+    </section>
+</div>

@@ -1,0 +1,184 @@
+<div class="negotiation-page">
+    <section class="neg-shell">
+        <header class="neg-hero">
+            <div>
+                <span class="neg-kicker">Stage 2 of 5</span>
+                <h1>Negotiation and Locked Decisions</h1>
+                <p id="negotiation-stage-message">
+                    Save each team&apos;s public move and private locked move here, then reveal the round.
+                </p>
+            </div>
+            <div class="neg-hero-actions">
+                <button id="negotiation-refresh-btn" class="neg-btn neg-btn-secondary" type="button">Refresh state</button>
+                <button id="negotiation-back-btn" class="neg-btn neg-btn-secondary" type="button">Back to board</button>
+            </div>
+        </header>
+
+        <section id="negotiation-empty-state" class="neg-empty-card hidden">
+            <h2>Negotiation is not active yet</h2>
+            <p id="negotiation-empty-copy">
+                Open the board and advance the round to the negotiation stage first.
+            </p>
+        </section>
+
+        <section id="negotiation-workspace" class="neg-workspace hidden">
+            <div class="neg-meta-strip">
+                <div class="neg-meta-card">
+                    <span>Round</span>
+                    <strong id="negotiation-round-value">1</strong>
+                </div>
+                <div class="neg-meta-card">
+                    <span>Teams saved</span>
+                    <strong id="negotiation-saved-value">0 / 0</strong>
+                </div>
+                <div class="neg-meta-card">
+                    <span>Live stage</span>
+                    <strong id="negotiation-stage-value">NEGOTIATE</strong>
+                </div>
+            </div>
+
+            <div id="negotiation-status" class="neg-status hidden" aria-live="polite"></div>
+
+            <div id="negotiation-team-tabs" class="neg-team-tabs"></div>
+
+            <section class="neg-team-shell">
+                <div class="neg-team-summary">
+                    <div>
+                        <span class="neg-section-label">Selected team</span>
+                        <h2 id="negotiation-team-name">Choose a team</h2>
+                        <p id="negotiation-team-meta">Select a team tab to enter its moves.</p>
+                    </div>
+                    <span id="negotiation-team-save-badge" class="neg-save-badge">Not saved</span>
+                </div>
+
+                <div class="neg-form-grid">
+                    <section class="neg-card">
+                        <div class="neg-card-header">
+                            <div>
+                                <span class="neg-section-label">Public move</span>
+                                <h3>What this team says</h3>
+                            </div>
+                            <p>Everyone can compare this against the locked move later.</p>
+                        </div>
+
+                        <div class="neg-form-stack">
+                            <label class="neg-field">
+                                <span>Action</span>
+                                <select id="declared-action-type" class="neg-select">
+                                    <option value="hold">Hold</option>
+                                    <option value="attack">Attack</option>
+                                    <option value="research">Research</option>
+                                </select>
+                            </label>
+
+                            <div id="declared-attack-fields" class="neg-conditional-fields hidden">
+                                <label class="neg-field">
+                                    <span>Source market</span>
+                                    <select id="declared-source-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>Target market</span>
+                                    <select id="declared-target-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>IP committed</span>
+                                    <input id="declared-ip-spent" class="neg-input" type="number" min="1" step="1" value="1">
+                                </label>
+                            </div>
+
+                            <div id="declared-research-fields" class="neg-conditional-fields hidden">
+                                <label class="neg-field">
+                                    <span>Target market</span>
+                                    <select id="declared-research-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>Research type</span>
+                                    <select id="declared-research-option" class="neg-select">
+                                        <option value="increase_production">Increase production</option>
+                                        <option value="reduce_regulation_burden">Reduce regulation burden</option>
+                                        <option value="improve_security">Improve security</option>
+                                        <option value="fortify_market">Fortify market</option>
+                                    </select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>IP committed</span>
+                                    <input id="declared-research-ip" class="neg-input" type="number" min="1" step="1" value="2">
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="neg-card">
+                        <div class="neg-card-header">
+                            <div>
+                                <span class="neg-section-label">Locked move</span>
+                                <h3>What this team actually does</h3>
+                            </div>
+                            <p>This gets submitted once the round is revealed into Orders.</p>
+                        </div>
+
+                        <div class="neg-form-stack">
+                            <label class="neg-field">
+                                <span>Action</span>
+                                <select id="actual-action-type" class="neg-select">
+                                    <option value="hold">Hold</option>
+                                    <option value="attack">Attack</option>
+                                    <option value="research">Research</option>
+                                </select>
+                            </label>
+
+                            <div id="actual-attack-fields" class="neg-conditional-fields hidden">
+                                <label class="neg-field">
+                                    <span>Source market</span>
+                                    <select id="actual-source-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>Target market</span>
+                                    <select id="actual-target-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>IP committed</span>
+                                    <input id="actual-ip-spent" class="neg-input" type="number" min="1" step="1" value="1">
+                                </label>
+                                <label class="neg-checkbox">
+                                    <input id="actual-break-alliance" type="checkbox">
+                                    <span>Break an alliance if this target is protected by one</span>
+                                </label>
+                            </div>
+
+                            <div id="actual-research-fields" class="neg-conditional-fields hidden">
+                                <label class="neg-field">
+                                    <span>Target market</span>
+                                    <select id="actual-research-market" class="neg-select"></select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>Research type</span>
+                                    <select id="actual-research-option" class="neg-select">
+                                        <option value="increase_production">Increase production</option>
+                                        <option value="reduce_regulation_burden">Reduce regulation burden</option>
+                                        <option value="improve_security">Improve security</option>
+                                        <option value="fortify_market">Fortify market</option>
+                                    </select>
+                                </label>
+                                <label class="neg-field">
+                                    <span>IP committed</span>
+                                    <input id="actual-research-ip" class="neg-input" type="number" min="1" step="1" value="2">
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="neg-footer">
+                    <div class="neg-helper-copy">
+                        Save every team on this screen once before revealing the round. Changing a form marks that team as unsaved again.
+                    </div>
+                    <div class="neg-footer-actions">
+                        <button id="negotiation-save-team-btn" class="neg-btn neg-btn-secondary" type="button">Save team decisions</button>
+                        <button id="negotiation-complete-btn" class="neg-btn neg-btn-primary" type="button">Reveal orders</button>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </section>
+</div>

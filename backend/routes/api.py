@@ -147,12 +147,43 @@ def set_team_order_endpoint():
         return _server_error(exc)
 
 
+@api.route("/api/game/opening-setup", methods=["POST"])
+def configure_opening_setup_endpoint():
+    try:
+        data = _json_payload()
+        state = game_service.configure_opening_setup(
+            [int(team_id) for team_id in data["team_order"]],
+            list(data.get("opening_assignments") or []),
+        )
+        return jsonify(_state_response("opening_setup_configured", state))
+    except (KeyError, TypeError, ValueError) as exc:
+        return _client_error(exc)
+    except Exception as exc:
+        return _server_error(exc)
+
+
 @api.route("/api/game/plan-notes", methods=["POST"])
 def submit_plan_notes_endpoint():
     try:
         data = _json_payload()
         state = game_service.submit_plan_notes(int(data["team_id"]), data.get("notes"))
         return jsonify(_state_response("plan_notes_recorded", state))
+    except (KeyError, TypeError, ValueError) as exc:
+        return _client_error(exc)
+    except Exception as exc:
+        return _server_error(exc)
+
+
+@api.route("/api/game/plan-allocation", methods=["POST"])
+@api.route("/api/game/plan-allocations", methods=["POST"])
+def submit_plan_allocations_endpoint():
+    try:
+        data = _json_payload()
+        state = game_service.submit_plan_allocations(
+            int(data["team_id"]),
+            list(data.get("allocations") or []),
+        )
+        return jsonify(_state_response("plan_allocations_recorded", state))
     except (KeyError, TypeError, ValueError) as exc:
         return _client_error(exc)
     except Exception as exc:

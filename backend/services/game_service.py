@@ -60,12 +60,33 @@ def set_team_order(team_order: list[int]) -> dict[str, Any]:
     return _save_and_return(state)
 
 
+def configure_opening_setup(
+    team_order: list[int],
+    opening_assignments: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Persist opening turn order and starting market ownership after the tournament.
+    """
+    state = _load_required_state()
+    gameplay_helpers.configure_opening_setup(state, team_order, opening_assignments)
+    return _save_and_return(state)
+
+
 def submit_plan_notes(team_id: int, notes: Any) -> dict[str, Any]:
     """
     Persist one team's plan-stage notes.
     """
     state = _load_required_state()
     gameplay_helpers.submit_plan_notes(state, team_id, notes)
+    return _save_and_return(state)
+
+
+def submit_plan_allocations(team_id: int, allocations: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Persist one team's planning-stage IP allocations.
+    """
+    state = _load_required_state()
+    gameplay_helpers.submit_plan_allocations(state, team_id, allocations)
     return _save_and_return(state)
 
 

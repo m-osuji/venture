@@ -23,7 +23,16 @@ async function init() {
 const routes = {
   "/": "home.html",
   "/tutorial": "pages/tutorial.html",
-  "/game": "pages/game.html"
+  "/game": "pages/game.html",
+  "/planning": "pages/planning.html",
+  "/negotiator": "pages/negotiator.html",
+  "/orders": "pages/orders.html"
+};
+
+const routeStylesheets = {
+  "/planning": "/pages/planning.css",
+  "/negotiator": "/pages/negotiator.css",
+  "/orders": "/pages/orders.css"
 };
 
 const DEFAULT_TEAM_COLOURS = [
@@ -344,6 +353,36 @@ function initScrollIndicator() {
 
 // Asynch to load all page elements at the same time, less jumpy
 let currentGameModule = null;
+let currentPageCleanup = null;
+let currentRouteStylesheet = null;
+
+function applyRouteStylesheet(path) {
+  const href = routeStylesheets[path] || null;
+
+  if (!href) {
+    if (currentRouteStylesheet) {
+      currentRouteStylesheet.remove();
+      currentRouteStylesheet = null;
+    }
+    return;
+  }
+
+  if (currentRouteStylesheet?.dataset.routeHref === href) {
+    return;
+  }
+
+  if (currentRouteStylesheet) {
+    currentRouteStylesheet.remove();
+  }
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  link.dataset.routeHref = href;
+  document.head.appendChild(link);
+  currentRouteStylesheet = link;
+}
+
 async function loadRoute(path) {
   // Remove tournament and market overlays when changing pages
   const tournamentOverlay = document.getElementById("tournament-overlay");
@@ -365,6 +404,13 @@ async function loadRoute(path) {
   const page = routes[path] || "home.html";
 
   try {
+    if (typeof currentPageCleanup === "function") {
+      currentPageCleanup();
+      currentPageCleanup = null;
+    }
+
+    applyRouteStylesheet(path);
+
     const res = await fetch("/" + page);
     if (!res.ok) throw new Error("Page not found");
 
@@ -388,6 +434,21 @@ async function loadRoute(path) {
         currentGameModule.stopGame();
         currentGameModule = null;
       }
+    }
+
+    if (path === "/negotiator") {
+      const negotiatorModule = await import("/pages/negotiator.js");
+      currentPageCleanup = negotiatorModule.initNegotiatorPage?.() || null;
+    }
+
+    if (path === "/planning") {
+      const planningModule = await import("/pages/planning.js");
+      currentPageCleanup = planningModule.initPlanningPage?.() || null;
+    }
+
+    if (path === "/orders") {
+      const ordersModule = await import("/pages/orders.js");
+      currentPageCleanup = ordersModule.initOrdersPage?.() || null;
     }
 
     initScrollIndicator();
@@ -719,6 +780,55 @@ async function startGameHandler() {
   
   // Start the quiz (ONLY ONCE)
   initQuizSetup();
+}
+
+async function applyOpeningSetupToBackend(rankedTeams, selectedMarkets) {
+  const savedBackendConfig = localStorage.getItem("backendGameConfig");
+  if (!savedBackendConfig) {
+    throw new Error("Missing backend game configuration.");
+  }
+
+  const backendConfig = JSON.parse(savedBackendConfig);
+  const backendTeams = Array.isArray(backendConfig.teams) ? backendConfig.teams : [];
+  const teamIdByName = new Map(
+    backendTeams.map((team) => [String(team.name), Number(team.id)])
+  );
+
+  const orderedTeamIds = rankedTeams
+    .map((entry) => teamIdByName.get(String(entry.team)))
+    .filter((teamId) => Number.isInteger(teamId));
+
+  backendTeams.forEach((team) => {
+    const numericId = Number(team.id);
+    if (!orderedTeamIds.includes(numericId)) {
+      orderedTeamIds.push(numericId);
+    }
+  });
+
+  const openingAssignments = Object.entries(selectedMarkets).map(([teamName, market]) => ({
+    team_id: teamIdByName.get(String(teamName)),
+    market_slug: market?.id
+  })).filter((entry) => Number.isInteger(entry.team_id) && entry.market_slug);
+
+  const response = await fetch(`${API_BASE}/api/game/opening-setup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      team_order: orderedTeamIds,
+      opening_assignments: openingAssignments
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || payload?.message || "Could not apply opening setup to backend.");
+  }
+
+  if (currentGameModule?.fetchGameState) {
+    await currentGameModule.fetchGameState();
+  }
+
+  return payload;
 }
 
 // Function to cancel game setup
@@ -1507,7 +1617,7 @@ async function startTeamQuiz() {
       }
     }
     
-    function finishMarketSelection() {
+    async function finishMarketSelection() {
       const finalResults = {
         tournamentRankings: rankedTeams,
         marketSelections: selectedMarkets,
@@ -1530,6 +1640,13 @@ async function startTeamQuiz() {
           currentGameModule.populateLeaderboard();
         }
       }
+
+      try {
+        await applyOpeningSetupToBackend(rankedTeams, selectedMarkets);
+      } catch (error) {
+        console.error("Failed to apply opening setup:", error);
+        alert("The tournament results were saved locally, but the backend opening setup failed. Planning and stage flow may not work until this is fixed.");
+      }
       
       marketOverlay.remove();
       
@@ -1542,25 +1659,26 @@ async function startTeamQuiz() {
       
       // Update AI text
       const aiText = document.getElementById("AI-text");
+      const aiContainer = document.getElementById("AI-container");
+      const aiButton = document.getElementById("AI-confirm");
       if (aiText) {
         let rankingText = rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n");
         let marketText = Object.entries(selectedMarkets).map(([team, market]) => `${team}: ${market.name}`).join("\n");
-        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}\n\nClick the button below to begin the game!`;
+        aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket selections:\n${marketText}\n\nPlanning is now live on the board. Allocate IP for each team, then press Next Stage to open negotiation.`;
       }
-      
-      // Show final results
-      let marketResults = Object.entries(selectedMarkets).map(([team, market]) => `${team} selected ${market.name}`).join("\n");
-      alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.score} wins)`).join("\n")}\n\nMarket Selections:\n${marketResults}\n\nThe game will now begin!`);
-      
-      // Re-enable the AI confirm button for game start
-      const aiButton = document.getElementById("AI-confirm");
       if (aiButton) {
         const newButton = aiButton.cloneNode(true);
         aiButton.parentNode.replaceChild(newButton, aiButton);
-        newButton.textContent = "Start Game";
+        newButton.textContent = "Hide";
         newButton.addEventListener("click", () => {
-          alert("Game is starting with your tournament rankings and market selections!");
+          if (aiContainer) {
+            aiContainer.style.display = "none";
+          }
         });
+      }
+
+      if (currentGameModule?.fetchGameState) {
+        void currentGameModule.fetchGameState();
       }
     }
     
@@ -1812,6 +1930,10 @@ let gameStartTime = null;
 let isGameTimed = false;
 
 function startGameTimer(gameLength) {
+  if (window.location.pathname !== "/game") {
+    return;
+  }
+
   console.log("startGameTimer called with gameLength:", gameLength);
 
   // Remove existing timer if any
@@ -1905,9 +2027,39 @@ function stopGameTimer() {
 }
 
 // File navigation, did not like js navigate function, now uses global
+function routeForGameStage(stage) {
+  const stageName = String(stage || "PLAN").toUpperCase();
+  if (stageName === "NEGOTIATE") return "/negotiator";
+  if (stageName === "ORDERS") return "/orders";
+  return "/game";
+}
+
+async function fetchBackendGameState() {
+  const response = await fetch(`${API_BASE}/api/game/state`);
+  if (!response.ok) {
+    return null;
+  }
+  return response.json();
+}
+
 window.navigate = function (path) {
   history.pushState({}, "", path);
   loadRoute(path);
+};
+
+window.routeForGameStage = routeForGameStage;
+window.fetchBackendGameState = fetchBackendGameState;
+window.navigateToGameStage = async function (state = null) {
+  const nextState = state || await fetchBackendGameState();
+  if (!nextState) {
+    return null;
+  }
+
+  const nextPath = routeForGameStage(nextState.current_stage);
+  if (window.location.pathname !== nextPath) {
+    window.navigate(nextPath);
+  }
+  return nextState;
 };
 
 window.onpopstate = () => {

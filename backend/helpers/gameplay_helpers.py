@@ -182,6 +182,7 @@ def _empty_turn_log() -> dict[str, Any]:
     return {
         "decisions_confirmed": False,
         "plan_notes": {},
+        "plan_allocations": {},
         "declared_moves": {},
         "alliance_offers": [],
         "actual_moves": {},
@@ -221,6 +222,62 @@ def set_team_order(game_state: dict[str, Any], team_order: list[int]) -> dict[st
     return game_state
 
 
+def configure_opening_setup(
+    game_state: dict[str, Any],
+    team_order: list[int],
+    opening_assignments: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Apply the opening tournament outcome to a fresh session.
+
+    This persists the initial turn order, assigns starting markets, and seeds each
+    owning team with opening reserve IP equal to the income of the markets they
+    drafted.
+    """
+    _require_stage(game_state, GameStage.PLAN)
+    set_team_order(game_state, team_order)
+
+    assignments = opening_assignments or []
+    market_state = game_state.get("market_state", {}) or {}
+
+    for state in market_state.values():
+        state["owner"] = None
+        state["allocated_ip"] = 0
+        state["contested"] = False
+        state["supporting_teams"] = []
+
+    for team in game_state.get("teams", []):
+        team["ip"] = 0
+        team["ip_spent_this_turn"] = 0
+
+    used_market_ids: set[int] = set()
+    for assignment in assignments:
+        team_id = int(assignment["team_id"])
+        _get_team_entry(game_state, team_id)
+
+        market_id = _resolve_opening_market_id(
+            game_state,
+            market_id=assignment.get("market_id"),
+            market_slug=assignment.get("market_slug"),
+            used_market_ids=used_market_ids,
+        )
+        market_entry = _market_entry(game_state, market_id)
+        market_entry["owner"] = team_id
+        used_market_ids.add(market_id)
+
+    for team in game_state.get("teams", []):
+        team_id = int(team["team_id"])
+        team["ip"] = sum(
+            _market_income(state)
+            for state in market_state.values()
+            if int(state.get("owner") or 0) == team_id
+        )
+
+    game_state["active_synergies"] = []
+    _refresh_market_estimates(game_state)
+    return game_state
+
+
 def submit_plan_notes(game_state: dict[str, Any], team_id: int, notes: Any) -> dict[str, Any]:
     """
     Record a team's private planning notes for the current round.
@@ -230,6 +287,52 @@ def submit_plan_notes(game_state: dict[str, Any], team_id: int, notes: Any) -> d
 
     turn_log = game_state.setdefault("turn_log", _empty_turn_log())
     turn_log.setdefault("plan_notes", {})[str(team_id)] = notes
+    return game_state
+
+
+def submit_plan_allocations(
+    game_state: dict[str, Any], team_id: int, allocations: list[dict[str, Any]] | None
+) -> dict[str, Any]:
+    """
+    Record one team's planning-stage IP allocations into owned markets.
+
+    The latest submission replaces any previous PLAN allocations from that same
+    team for the current round, refunding the prior allocation back to team IP
+    before applying the new one.
+    """
+    _require_stage(game_state, GameStage.PLAN)
+    team = _get_team_entry(game_state, team_id)
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    allocation_store = turn_log.setdefault("plan_allocations", {})
+    market_state = game_state.get("market_state", {}) or {}
+
+    prior_allocations = allocation_store.get(str(team_id), []) or []
+    _refund_plan_allocations(team, market_state, prior_allocations)
+
+    normalised_allocations = _normalise_plan_allocations(allocations)
+    total_ip = sum(entry["ip_allocated"] for entry in normalised_allocations)
+    available_ip = int(team.get("ip", 0))
+    if total_ip > available_ip:
+        raise ValueError(
+            f"[gameplay_helpers] Team {team_id} cannot allocate {total_ip} IP during PLAN; "
+            f"only {available_ip} IP available."
+        )
+
+    for allocation in normalised_allocations:
+        market_id = allocation["market_id"]
+        market_entry = _market_entry(game_state, market_id)
+        if market_entry.get("owner") != int(team_id):
+            raise ValueError(
+                f"[gameplay_helpers] Team {team_id} can only allocate IP to owned markets. "
+                f"Market {market_id} is not owned by that team."
+            )
+
+    for allocation in normalised_allocations:
+        market_entry = _market_entry(game_state, allocation["market_id"])
+        market_entry["allocated_ip"] = int(market_entry.get("allocated_ip", 0)) + allocation["ip_allocated"]
+
+    team["ip"] = available_ip - total_ip
+    allocation_store[str(team_id)] = normalised_allocations
     return game_state
 
 
@@ -619,10 +722,10 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
     current_stage = GameStage(int(game_state.get("current_stage", GameStage.PLAN)))
 
     if current_stage == GameStage.PLAN:
-        missing = _missing_submissions(game_state, "plan_notes")
+        missing = _missing_plan_submissions(game_state)
         if missing and not force:
             raise ValueError(
-                f"[gameplay_helpers] Cannot leave PLAN stage; missing notes for teams {missing}."
+                f"[gameplay_helpers] Cannot leave PLAN stage; missing plan submissions for teams {missing}."
             )
         game_state["current_stage"] = GameStage.NEGOTIATE
         return game_state
@@ -644,6 +747,7 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
                 f"[gameplay_helpers] Cannot leave ORDERS stage; missing orders for teams {missing}."
             )
         prepare_resolution_state(game_state)
+        start_resolution_quizzes(game_state)
         game_state["current_stage"] = GameStage.RESOLVE
         return game_state
 
@@ -899,6 +1003,17 @@ def _missing_submissions(game_state: dict[str, Any], field_name: str) -> list[in
     ]
 
 
+def _missing_plan_submissions(game_state: dict[str, Any]) -> list[int]:
+    turn_log = game_state.get("turn_log", {}) or {}
+    notes = turn_log.get("plan_notes", {}) or {}
+    allocations = turn_log.get("plan_allocations", {}) or {}
+    return [
+        team_id
+        for team_id in _all_team_ids(game_state)
+        if str(team_id) not in notes and str(team_id) not in allocations
+    ]
+
+
 def _missing_quiz_results(game_state: dict[str, Any]) -> list[int]:
     turn_log = game_state.get("turn_log", {}) or {}
     active_quizzes = turn_log.get("active_quizzes", []) or []
@@ -958,6 +1073,68 @@ def _normalise_moves(moves: list[dict[str, Any]] | None) -> list[dict[str, Any]]
             }
         )
     return normalised
+
+
+def _normalise_plan_allocations(
+    allocations: list[dict[str, Any]] | None,
+) -> list[dict[str, int]]:
+    if not allocations:
+        return []
+
+    aggregated: dict[int, int] = defaultdict(int)
+    for raw_allocation in allocations:
+        market_id = _optional_int(
+            raw_allocation.get("market_id", raw_allocation.get("target_market_id"))
+        )
+        if market_id is None:
+            raise ValueError(
+                f"[gameplay_helpers] Plan allocation missing market_id/target_market_id: {raw_allocation}"
+            )
+
+        ip_allocated_raw = raw_allocation.get(
+            "ip_allocated",
+            raw_allocation.get("ip", raw_allocation.get("amount", 0)),
+        )
+        ip_allocated = int(ip_allocated_raw)
+        if ip_allocated < 0:
+            raise ValueError(
+                f"[gameplay_helpers] Plan allocation cannot be negative: {raw_allocation}"
+            )
+        if ip_allocated == 0:
+            continue
+
+        aggregated[int(market_id)] += ip_allocated
+
+    return [
+        {"market_id": market_id, "ip_allocated": ip_allocated}
+        for market_id, ip_allocated in sorted(aggregated.items())
+    ]
+
+
+def _refund_plan_allocations(
+    team: dict[str, Any],
+    market_state: dict[str, Any],
+    prior_allocations: list[dict[str, Any]] | None,
+) -> None:
+    if not prior_allocations:
+        return
+
+    refunded_total = 0
+    for allocation in prior_allocations:
+        market_id = int(allocation["market_id"])
+        ip_allocated = int(allocation.get("ip_allocated", 0))
+        if ip_allocated <= 0:
+            continue
+
+        state_entry = market_state.get(str(market_id))
+        if state_entry is not None:
+            state_entry["allocated_ip"] = max(
+                0,
+                int(state_entry.get("allocated_ip", 0)) - ip_allocated,
+            )
+        refunded_total += ip_allocated
+
+    team["ip"] = int(team.get("ip", 0)) + refunded_total
 
 
 def _optional_int(value: Any) -> int | None:
@@ -1029,6 +1206,37 @@ def _market_entry(game_state: dict[str, Any], market_id: int) -> dict[str, Any]:
         return game_state["market_state"][str(int(market_id))]
     except KeyError as exc:
         raise ValueError(f"[gameplay_helpers] Unknown market_id {market_id}.") from exc
+
+
+def _slugify_market_name(value: Any) -> str:
+    return re.sub(r"^-+|-+$", "", re.sub(r"[^a-z0-9]+", "-", str(value or "").lower().replace("&", "and")))
+
+
+def _resolve_opening_market_id(
+    game_state: dict[str, Any],
+    *,
+    market_id: Any = None,
+    market_slug: Any = None,
+    used_market_ids: set[int] | None = None,
+) -> int:
+    if market_id is not None:
+        resolved_market_id = int(market_id)
+        _market_entry(game_state, resolved_market_id)
+        return resolved_market_id
+
+    slug = _slugify_market_name(market_slug)
+    if not slug:
+        raise ValueError("[gameplay_helpers] Opening setup assignment requires market_id or market_slug.")
+
+    taken = used_market_ids or set()
+    for key, state in (game_state.get("market_state") or {}).items():
+        resolved_market_id = int(key)
+        if resolved_market_id in taken:
+            continue
+        if _slugify_market_name(state.get("_market_name")) == slug:
+            return resolved_market_id
+
+    raise ValueError(f"[gameplay_helpers] Could not resolve opening market slug '{slug}'.")
 
 
 def _get_active_quiz(turn_log: dict[str, Any], market_id: int) -> dict[str, Any]:
@@ -1998,6 +2206,8 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
     # ensure frontend has readable string version of game stage
     stage_str = GameStage(stage_int).name if stage_int in GameStage._value2member_map_ else "UNKNOWN"
     leaderboard = _build_leaderboard(game_state)
+    reveal_orders = bool(stage_int >= GameStage.ORDERS or is_finished)
+    turn_log = game_state.get("turn_log", {}) or {}
 
     return {
         "session_uuid": game_state.get("session_uuid"),
@@ -2033,6 +2243,8 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "colour": _get_owner_colour(state.get("owner"), teams),
                 "market_name": state.get("_market_name"),
                 "size": state.get("_size"),
+                "allocated_ip": int(state.get("allocated_ip", 0)),
+                "supporting_teams": list(state.get("supporting_teams", [])),
                 "research_upgrades": state.get("research_upgrades", []),
             }
             for market_id, state in market_state.items()
@@ -2042,13 +2254,13 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
         "active_synergies": game_state.get("active_synergies", []),
         "active_quizzes": [
             quiz_helpers.to_public_quiz_payload(quiz)
-            for quiz in (game_state.get("turn_log", {}).get("active_quizzes") or [])
+            for quiz in (turn_log.get("active_quizzes") or [])
         ],
         "quiz_results_submitted_markets": sorted(
             int(market_id)
-            for market_id in (game_state.get("turn_log", {}).get("quiz_results") or {}).keys()
+            for market_id in (turn_log.get("quiz_results") or {}).keys()
         ),
-        "resolution_outcomes": game_state.get("turn_log", {}).get("resolution_outcomes", []),
+        "resolution_outcomes": turn_log.get("resolution_outcomes", []),
         "alliance_offers": [
             {
                 "offer_id": offer["offer_id"],
@@ -2065,7 +2277,7 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "rejection_reason": offer.get("rejection_reason"),
                 "notes": offer.get("notes"),
             }
-            for offer in (game_state.get("turn_log", {}).get("alliance_offers") or [])
+            for offer in (turn_log.get("alliance_offers") or [])
         ],
         "alliances": [
             {
@@ -2081,7 +2293,16 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
             }
             for a in (game_state.get("alliances") or [])
         ],
-        "plan_notes": game_state.get("turn_log", {}).get("plan_notes", {}),
+        "plan_notes": turn_log.get("plan_notes", {}),
+        "plan_allocations": turn_log.get("plan_allocations", {}) if reveal_orders else {},
+        "plan_allocations_submitted_team_ids": sorted(
+            int(team_id)
+            for team_id in (turn_log.get("plan_allocations") or {}).keys()
+        ),
+        "declared_moves": turn_log.get("declared_moves", {}),
+        "actual_moves": turn_log.get("actual_moves", {}) if reveal_orders else {},
+        "prepared_moves": turn_log.get("prepared_moves", {}) if reveal_orders else {},
+        "move_reveal_available": reveal_orders,
     }
 
 

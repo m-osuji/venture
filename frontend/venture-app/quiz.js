@@ -8,7 +8,10 @@ export class TournamentQuiz {
         this.matchups = [];
         this.currentMatchupIndex = 0;
         this.currentQuestionIndex = 0;
-        this.teamScores = {};
+        this.teamScores = {}; // Track wins (matchup wins)
+        this.teamCorrectAnswers = {}; // Track total correct answers
+        this.teamTotalTime = {}; // Track total response time in milliseconds
+        this.teamResponseCount = {}; // Track number of responses for averaging
         this.tournamentResults = [];
         this.countdownInterval = null;
         this.currentTimeRemaining = 30;
@@ -19,6 +22,11 @@ export class TournamentQuiz {
         this.matchupTeam2Score = 0;
         this.currentMatchupResults = [];
         this.onComplete = null;
+        this.tieBreakerNeeded = false;
+        this.teamsInTie = [];
+        
+        // Track start time for each question
+        this.currentQuestionStartTime = null;
         
         // Key mappings
         this.keyToOption = {
@@ -37,9 +45,12 @@ export class TournamentQuiz {
     }
     
     init() {
-        // Initialize team scores
+        // Initialize team stats
         this.teamNames.forEach(team => {
-            this.teamScores[team] = 0;
+            this.teamScores[team] = 0; // Matchup wins
+            this.teamCorrectAnswers[team] = 0; // Total correct answers
+            this.teamTotalTime[team] = 0; // Total response time (ms)
+            this.teamResponseCount[team] = 0; // Number of responses
         });
         
         // Generate matchups
@@ -171,6 +182,19 @@ export class TournamentQuiz {
         }
     }
     
+    recordAnswerTime(teamName, isCorrect) {
+        if (this.currentQuestionStartTime) {
+            const timeSpent = Date.now() - this.currentQuestionStartTime;
+            this.teamTotalTime[teamName] += timeSpent;
+            this.teamResponseCount[teamName]++;
+            if (isCorrect) {
+                this.teamCorrectAnswers[teamName]++;
+            }
+            this.currentQuestionStartTime = null;
+            console.log(`${teamName} answered in ${timeSpent}ms, correct: ${isCorrect}`);
+        }
+    }
+    
     displayQuestion() {
         if (this.currentQuestionIndex >= this.currentQuestions.length) {
             this.endMatchup();
@@ -186,8 +210,15 @@ export class TournamentQuiz {
         window.team1Locked = false;
         window.team2Locked = false;
         
+        // Record the start time for this question
+        this.currentQuestionStartTime = Date.now();
+        
         const question = this.currentQuestions[this.currentQuestionIndex];
-        window.currentCorrectAnswer = this.getCorrectLetter(question.correct);
+        const correctLetter = this.getCorrectLetter(question.correct);
+        window.currentCorrectAnswer = correctLetter;
+        
+        // Debug logging
+        console.log(`Question ${this.currentQuestionIndex + 1}: Correct answer is ${correctLetter} (${question.correct})`);
         
         document.getElementById("question-text").innerHTML = `Question ${this.currentQuestionIndex + 1} of ${this.currentQuestions.length}: ${question.content}`;
         document.getElementById("option-a").innerHTML = `A. ${question.options.a}`;
@@ -272,6 +303,8 @@ export class TournamentQuiz {
                     if (timerEl) timerEl.style.display = "none";
                     
                     this.questionActive = false;
+                    this.currentQuestionStartTime = null; // Clear start time
+                    
                     const buzzerStatus = document.getElementById("buzzer-status");
                     if (buzzerStatus) {
                         buzzerStatus.innerHTML = "Time's up! Moving to next question.";
@@ -325,6 +358,22 @@ export class TournamentQuiz {
         
         const question = this.currentQuestions[this.currentQuestionIndex];
         const isCorrect = (selectedOption === window.currentCorrectAnswer);
+        const teamName = team === 1 ? this.currentMatchup.team1 : this.currentMatchup.team2;
+        
+        // Debug logging
+        console.log(`Team ${teamName} selected: ${selectedOption}, Correct answer: ${window.currentCorrectAnswer}, Is Correct: ${isCorrect}`);
+        
+        // Record the answer time and correctness (only if answer is recorded at the moment of answering)
+        if (this.currentQuestionStartTime) {
+            const timeSpent = Date.now() - this.currentQuestionStartTime;
+            this.teamTotalTime[teamName] += timeSpent;
+            this.teamResponseCount[teamName]++;
+            if (isCorrect) {
+                this.teamCorrectAnswers[teamName]++;
+            }
+            this.currentQuestionStartTime = null;
+            console.log(`${teamName} answered in ${timeSpent}ms, correct: ${isCorrect}`);
+        }
         
         if (isCorrect) {
             this.stopCountdown();
@@ -371,7 +420,7 @@ export class TournamentQuiz {
             const nextBtn = document.getElementById("next-question-btn");
             if (nextBtn) nextBtn.style.display = "block";
             
-            const correctLetter = this.getCorrectLetter(question.correct);
+            const correctLetter = window.currentCorrectAnswer;
             const correctElement = document.getElementById(`option-${correctLetter}`);
             if (correctElement) {
                 correctElement.style.background = "#27ae60";
@@ -410,6 +459,9 @@ export class TournamentQuiz {
     
     handleDoubleWrong() {
         if (window.team1Locked && window.team2Locked && this.questionActive) {
+            // No one answered correctly, don't record time for this question
+            this.currentQuestionStartTime = null;
+            
             this.stopCountdown();
             this.questionActive = false;
             
@@ -534,16 +586,307 @@ export class TournamentQuiz {
         }
     }
     
+    calculateTeamRankings() {
+        // Create array of team stats
+        const teamStats = this.teamNames.map(team => ({
+            team: team,
+            correctAnswers: this.teamCorrectAnswers[team] || 0,
+            totalTime: this.teamTotalTime[team] || 0,
+            responseCount: this.teamResponseCount[team] || 0,
+            avgTime: this.teamResponseCount[team] > 0 ? this.teamTotalTime[team] / this.teamResponseCount[team] : Infinity,
+            matchupWins: this.teamScores[team] || 0
+        }));
+        
+        console.log("Team Stats for Ranking:", teamStats);
+        
+        // Sort by: 1) Most correct answers, 2) Fastest average response time
+        teamStats.sort((a, b) => {
+            // First compare by correct answers (descending)
+            if (b.correctAnswers !== a.correctAnswers) {
+                return b.correctAnswers - a.correctAnswers;
+            }
+            // If correct answers are tied, compare by average response time
+            // Teams with no responses (Infinity) should be ranked LAST
+            if (a.avgTime !== b.avgTime) {
+                // If a has no responses, it should come AFTER b
+                if (a.avgTime === Infinity) return 1;
+                // If b has no responses, a should come BEFORE b  
+                if (b.avgTime === Infinity) return -1;
+                // Otherwise sort by faster time (lower is better)
+                return a.avgTime - b.avgTime;
+            }
+            // If still tied, compare by matchup wins
+            if (b.matchupWins !== a.matchupWins) {
+                return b.matchupWins - a.matchupWins;
+            }
+            return 0;
+        });
+        
+        // Check for ties (teams with same correct answers and same avg time)
+        const tiedTeams = [];
+        for (let i = 0; i < teamStats.length - 1; i++) {
+            if (teamStats[i].correctAnswers === teamStats[i + 1].correctAnswers && 
+                teamStats[i].avgTime === teamStats[i + 1].avgTime) {
+                if (!tiedTeams.includes(teamStats[i].team)) tiedTeams.push(teamStats[i].team);
+                if (!tiedTeams.includes(teamStats[i + 1].team)) tiedTeams.push(teamStats[i + 1].team);
+            }
+        }
+        
+        if (tiedTeams.length > 0) {
+            console.log("Tie detected between teams:", tiedTeams);
+            this.teamsInTie = tiedTeams;
+            this.tieBreakerNeeded = true;
+        }
+        
+        return teamStats;
+    }
+    
+    async runTieBreaker(tiedTeams) {
+        console.log("Running tie-breaker for teams:", tiedTeams);
+        
+        // Create a temporary tournament for tied teams
+        const tieBreakerMatchups = [];
+        for (let i = 0; i < tiedTeams.length; i++) {
+            for (let j = i + 1; j < tiedTeams.length; j++) {
+                tieBreakerMatchups.push({
+                    team1: tiedTeams[i],
+                    team2: tiedTeams[j],
+                    team1Score: 0,
+                    team2Score: 0,
+                    results: []
+                });
+            }
+        }
+        
+        // Store original overlay
+        const originalOverlay = this.overlay;
+        
+        // Create a new promise that resolves when tie-breaker is complete
+        return new Promise((resolve) => {
+            let currentMatchupIndex = 0;
+            let tieBreakerScores = {};
+            tiedTeams.forEach(team => { tieBreakerScores[team] = 0; });
+            
+            function playNextMatchup() {
+                if (currentMatchupIndex >= tieBreakerMatchups.length) {
+                    // All tie-breaker matchups complete
+                    const sortedTiedTeams = Object.entries(tieBreakerScores)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(entry => entry[0]);
+                    resolve(sortedTiedTeams);
+                    return;
+                }
+                
+                const matchup = tieBreakerMatchups[currentMatchupIndex];
+                
+                // Create a temporary overlay for tie-breaker
+                const tempOverlay = document.createElement('div');
+                tempOverlay.className = 'game-setup-overlay';
+                tempOverlay.innerHTML = `
+                    <div class="setup-card quiz-card">
+                        <h2>TIE-BREAKER ROUND</h2>
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <p>Teams are tied! Answer 3 questions to break the tie.</p>
+                        </div>
+                        <div class="teams-panel">
+                            <div class="team-panel team1-panel">
+                                <h3>${matchup.team1}</h3>
+                                <div class="team-score">Score: <span id="tb-team1-score">0</span></div>
+                                <div class="team-keys">Use keys: 1 2 3 4</div>
+                            </div>
+                            <div class="team-panel team2-panel">
+                                <h3>${matchup.team2}</h3>
+                                <div class="team-score">Score: <span id="tb-team2-score">0</span></div>
+                                <div class="team-keys">Use keys: 6 7 8 9</div>
+                            </div>
+                        </div>
+                        <div id="tb-question-area" class="question-area">
+                            <div id="tb-question-text" class="question-text">Loading...</div>
+                            <div id="tb-options-area" class="options-area">
+                                <div id="tb-option-a" class="competition-option">A. </div>
+                                <div id="tb-option-b" class="competition-option">B. </div>
+                                <div id="tb-option-c" class="competition-option">C. </div>
+                                <div id="tb-option-d" class="competition-option">D. </div>
+                            </div>
+                        </div>
+                        <div class="setup-actions">
+                            <button id="tb-next-btn" class="setup-btn-primary" style="display: none;">Next Question</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(tempOverlay);
+                tempOverlay.style.display = "flex";
+                
+                let tbQuestions = this.getRandomQuestions(3, 'all');
+                let tbCurrentQuestionIndex = 0;
+                let tbTeam1Score = 0;
+                let tbTeam2Score = 0;
+                let tbQuestionActive = true;
+                let tbCountdownInterval = null;
+                let tbTimeRemaining = 30;
+                
+                function updateTBScores() {
+                    document.getElementById("tb-team1-score").textContent = tbTeam1Score;
+                    document.getElementById("tb-team2-score").textContent = tbTeam2Score;
+                }
+                
+                function displayTBQuestion() {
+                    if (tbCurrentQuestionIndex >= tbQuestions.length) {
+                        // Matchup complete
+                        tempOverlay.remove();
+                        tieBreakerScores[matchup.team1] += tbTeam1Score;
+                        tieBreakerScores[matchup.team2] += tbTeam2Score;
+                        currentMatchupIndex++;
+                        playNextMatchup();
+                        return;
+                    }
+                    
+                    if (tbCountdownInterval) clearInterval(tbCountdownInterval);
+                    tbQuestionActive = true;
+                    
+                    const question = tbQuestions[tbCurrentQuestionIndex];
+                    const correctAnswer = this.getCorrectLetter(question.correct);
+                    
+                    document.getElementById("tb-question-text").innerHTML = `Question ${tbCurrentQuestionIndex + 1} of 3: ${question.content}`;
+                    document.getElementById("tb-option-a").innerHTML = `A. ${question.options.a}`;
+                    document.getElementById("tb-option-b").innerHTML = `B. ${question.options.b}`;
+                    document.getElementById("tb-option-c").innerHTML = `C. ${question.options.c}`;
+                    document.getElementById("tb-option-d").innerHTML = `D. ${question.options.d}`;
+                    
+                    document.getElementById("tb-next-btn").style.display = "none";
+                    
+                    tbTimeRemaining = 30;
+                    const timerEl = document.getElementById("question-timer") || document.createElement('div');
+                    timerEl.id = "tb-timer";
+                    timerEl.className = "question-timer";
+                    timerEl.textContent = "Time: 30s";
+                    const header = document.querySelector("#tb-question-area");
+                    if (header && !document.getElementById("tb-timer")) {
+                        header.parentNode.insertBefore(timerEl, header);
+                    }
+                    
+                    tbCountdownInterval = setInterval(() => {
+                        if (!tbQuestionActive) return;
+                        tbTimeRemaining--;
+                        timerEl.textContent = `Time: ${tbTimeRemaining}s`;
+                        if (tbTimeRemaining <= 0) {
+                            clearInterval(tbCountdownInterval);
+                            tbQuestionActive = false;
+                            document.getElementById("tb-next-btn").style.display = "block";
+                        }
+                    }, 1000);
+                    
+                    const handleTBAnswer = (team, selectedOption) => {
+                        if (!tbQuestionActive) return;
+                        const isCorrect = (selectedOption === correctAnswer);
+                        if (isCorrect) {
+                            clearInterval(tbCountdownInterval);
+                            tbQuestionActive = false;
+                            if (team === 1) tbTeam1Score++;
+                            else tbTeam2Score++;
+                            updateTBScores();
+                            document.getElementById("tb-next-btn").style.display = "block";
+                        } else {
+                            // Wrong answer - lock out the team
+                            if (team === 1) {
+                                document.querySelectorAll(".competition-option").forEach(opt => {
+                                    opt.style.pointerEvents = "none";
+                                    opt.style.opacity = "0.5";
+                                });
+                            }
+                        }
+                    };
+                    
+                    const tbKeyHandler = (e) => {
+                        const key = e.key;
+                        const mapping = {
+                            '1': { team: 1, option: 'a' },
+                            '2': { team: 1, option: 'b' },
+                            '3': { team: 1, option: 'c' },
+                            '4': { team: 1, option: 'd' },
+                            '6': { team: 2, option: 'a' },
+                            '7': { team: 2, option: 'b' },
+                            '8': { team: 2, option: 'c' },
+                            '9': { team: 2, option: 'd' }
+                        };
+                        if (mapping[key] && tbQuestionActive) {
+                            e.preventDefault();
+                            handleTBAnswer(mapping[key].team, mapping[key].option);
+                        }
+                    };
+                    
+                    document.addEventListener("keydown", tbKeyHandler);
+                    
+                    const nextBtn = document.getElementById("tb-next-btn");
+                    nextBtn.onclick = () => {
+                        document.removeEventListener("keydown", tbKeyHandler);
+                        tbCurrentQuestionIndex++;
+                        displayTBQuestion();
+                    };
+                }
+                
+                displayTBQuestion();
+            }
+            
+            playNextMatchup();
+        });
+    }
+    
     endTournament() {
-        const rankedTeams = Object.entries(this.teamScores)
-            .map(([team, score]) => ({ team, score }))
-            .sort((a, b) => b.score - a.score);
+        // Calculate rankings based on correct answers and speed
+        const rankedTeams = this.calculateTeamRankings();
+        
+        console.log("Final Rankings (based on correct answers and speed):", rankedTeams);
+        
+        // Format the ranked teams for the original startMarketSelection function
+        // The original expects: rankedTeams array with { team, score } where score is tournament wins
+        // But we're using correctAnswers as the score for ranking
+        const formattedForMarketSelection = rankedTeams.map((team, index) => ({
+            team: team.team,
+            score: team.correctAnswers,  // Use correct answers as the score for ranking
+            wins: team.matchupWins,
+            correctAnswers: team.correctAnswers,
+            avgTime: team.avgTime !== Infinity ? (team.avgTime / 1000).toFixed(2) : 'N/A'
+        }));
         
         this.overlay.remove();
         this.removeEventListeners();
         
-        if (this.onComplete) {
-            this.onComplete(rankedTeams, this.tournamentResults);
+        // Check if tie-breaker is needed
+        if (this.tieBreakerNeeded && this.teamsInTie.length > 0) {
+            console.log("Tie-breaker required for teams:", this.teamsInTie);
+            alert("A tie has been detected! Running tie-breaker rounds...");
+            
+            this.runTieBreaker(this.teamsInTie).then((sortedTiedTeams) => {
+                // Update rankings with tie-breaker results
+                const finalRankings = [];
+                for (const team of formattedForMarketSelection) {
+                    if (this.teamsInTie.includes(team.team)) {
+                        const position = sortedTiedTeams.indexOf(team.team);
+                        finalRankings.push({ ...team, tieBreakerOrder: position });
+                    } else {
+                        finalRankings.push(team);
+                    }
+                }
+                // Re-sort with tie-breaker order
+                finalRankings.sort((a, b) => {
+                    if (a.tieBreakerOrder !== undefined && b.tieBreakerOrder !== undefined) {
+                        return a.tieBreakerOrder - b.tieBreakerOrder;
+                    }
+                    if (a.tieBreakerOrder !== undefined) return 1;
+                    if (b.tieBreakerOrder !== undefined) return -1;
+                    return b.score - a.score;
+                });
+                
+                console.log("Final Rankings after tie-breaker:", finalRankings);
+                if (this.onComplete) {
+                    this.onComplete(finalRankings, this.tournamentResults);
+                }
+            });
+        } else {
+            if (this.onComplete) {
+                this.onComplete(formattedForMarketSelection, this.tournamentResults);
+            }
         }
     }
     

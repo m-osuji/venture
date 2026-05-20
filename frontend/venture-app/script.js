@@ -811,6 +811,249 @@ function initQuizSetup() {
   });
 }
 
+// Market selection after tournament
+function startMarketSelection(rankedTeams) {
+    console.log("Starting market selection with rankings:", rankedTeams);
+    
+    // Extract just the team names in ranked order
+    const rankedTeamNames = rankedTeams.map(t => t.team);
+    
+    // Available markets for selection
+    const markets = [
+        { id: "agriculture", name: "Agriculture Market", size: "Medium", regulation: "Low", risk: "Low", growth: "High" },
+        { id: "energy", name: "Energy Market", size: "Large", regulation: "Medium", risk: "High", growth: "High" },
+        { id: "finance", name: "Finance Market", size: "Large", regulation: "High", risk: "High", growth: "Medium" },
+        { id: "healthcare", name: "Healthcare Market", size: "Large", regulation: "High", risk: "Low", growth: "Medium" },
+        { id: "manufacturing", name: "Manufacturing Market", size: "Medium", regulation: "Low", risk: "Medium", growth: "High" },
+        { id: "technology", name: "Technology Market", size: "Medium", regulation: "Low", risk: "High", growth: "High" }
+    ];
+    
+    let currentTeamIndex = 0;
+    const selectedMarkets = {};
+    const availableMarkets = [...markets];
+    
+    // Create market selection overlay
+    const marketOverlay = document.createElement("div");
+    marketOverlay.id = "market-selection-overlay";
+    marketOverlay.className = "game-setup-overlay";
+    marketOverlay.innerHTML = `
+        <div id="market-selection" class="setup-card" style="max-width: 800px;">
+            <h2>Market Selection Draft</h2>
+            <div id="draft-progress" style="margin-bottom: 20px; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">
+                Draft Pick 1 of ${rankedTeamNames.length}
+            </div>
+            <div id="current-team" style="text-align: center; margin-bottom: 20px;">
+                <h3 id="current-team-name">Team Name</h3>
+                <p>Select your starting market</p>
+            </div>
+            <div id="markets-list" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
+                <!-- Markets will be listed here -->
+            </div>
+            <div id="selection-feedback" style="text-align: center; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: none;"></div>
+            <div class="setup-actions">
+                <button id="cancel-market-btn" class="setup-btn-secondary">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(marketOverlay);
+    marketOverlay.style.display = "flex";
+    
+    // Cancel button functionality
+    const cancelMarketBtn = document.getElementById("cancel-market-btn");
+    if (cancelMarketBtn) {
+        cancelMarketBtn.onclick = () => {
+            marketOverlay.remove();
+        };
+    }
+    
+    function updateDraftProgress() {
+        const progressDiv = document.getElementById("draft-progress");
+        if (progressDiv) {
+            progressDiv.innerHTML = `Draft Pick ${currentTeamIndex + 1} of ${rankedTeamNames.length} | ${rankedTeamNames[currentTeamIndex]}'s turn`;
+        }
+        document.getElementById("current-team-name").innerHTML = `${rankedTeamNames[currentTeamIndex]}<br><span style="font-size: 14px; color: #666;">Tournament Rank: ${currentTeamIndex + 1}</span>`;
+    }
+    
+    function displayMarkets() {
+        const marketsList = document.getElementById("markets-list");
+        if (!marketsList) return;
+        
+        marketsList.innerHTML = "";
+        availableMarkets.forEach((market) => {
+            const marketDiv = document.createElement("div");
+            marketDiv.className = "market-option";
+            marketDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 10px;">
+                    <div style="flex: 2;">
+                        <strong style="font-size: 18px;">${market.name}</strong><br>
+                        <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px;">
+                            <span>📊 Size: ${market.size}</span>
+                            <span>⚖️ Regulation: ${market.regulation}</span>
+                            <span>⚠️ Risk: ${market.risk}</span>
+                            <span>📈 Growth: ${market.growth}</span>
+                        </div>
+                    </div>
+                    <button class="select-market-btn" data-market-id="${market.id}" data-market-name="${market.name}" style="background: #EE672B; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold;">Select</button>
+                </div>
+            `;
+            marketsList.appendChild(marketDiv);
+        });
+        
+        // Add event listeners to select buttons
+        document.querySelectorAll(".select-market-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const marketId = btn.getAttribute("data-market-id");
+                const marketName = btn.getAttribute("data-market-name");
+                selectMarket(marketId, marketName);
+            });
+        });
+    }
+    
+    function selectMarket(marketId, marketName) {
+        const currentTeam = rankedTeamNames[currentTeamIndex];
+        const selectedMarket = availableMarkets.find(m => m.id === marketId);
+        selectedMarkets[currentTeam] = selectedMarket;
+        
+        // Remove selected market from available list
+        const marketIndex = availableMarkets.findIndex(m => m.id === marketId);
+        if (marketIndex !== -1) availableMarkets.splice(marketIndex, 1);
+        
+        const feedback = document.getElementById("selection-feedback");
+        if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "#d4edda";
+            feedback.style.color = "#155724";
+            feedback.innerHTML = `${currentTeam} selected ${marketName}!`;
+            setTimeout(() => {
+                feedback.style.display = "none";
+            }, 1500);
+        }
+        
+        currentTeamIndex++;
+        
+        if (currentTeamIndex < rankedTeamNames.length) {
+            updateDraftProgress();
+            displayMarkets();
+        } else {
+            // All teams have selected markets
+            finishMarketSelection(selectedMarkets);
+        }
+    }
+    
+    function finishMarketSelection(selectedMarkets) {
+        const finalResults = {
+            tournamentRankings: rankedTeams,
+            marketSelections: selectedMarkets,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem("tournamentResults", JSON.stringify(finalResults));
+        localStorage.setItem("marketSelections", JSON.stringify(selectedMarkets));
+        
+        // Update territory buttons with market selections
+        updateTerritoryButtonsWithMarketSelections();
+        
+        // Remove the market selection overlay
+        const marketOverlayEl = document.getElementById("market-selection-overlay");
+        if (marketOverlayEl) marketOverlayEl.remove();
+        
+        // Enable team mode and populate leaderboard in the game if module is available
+        if (currentGameModule) {
+            if (currentGameModule.configureTeams) {
+                setTimeout(() => {
+                    if (currentGameModule.configureTeams) {
+                        currentGameModule.configureTeams();
+                    }
+                }, 0);
+            }
+            if (currentGameModule.populateLeaderboard) {
+                setTimeout(() => {
+                    if (currentGameModule.populateLeaderboard) {
+                        currentGameModule.populateLeaderboard();
+                    }
+                }, 0);
+            }
+        }
+        
+        // Update AI text
+        const aiText = document.getElementById("AI-text");
+        if (aiText) {
+            let rankingText = rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.correctAnswers || t.score || 0} correct)`).join("\n");
+            let marketText = Object.entries(selectedMarkets).map(([team, market]) => `${team}: ${market.name}`).join("\n");
+            aiText.innerHTML = `Tournament complete! Final rankings:\n${rankingText}\n\nMarket Selections:\n${marketText}\n\nClick Next Team to begin the game!`;
+        }
+        
+        // Show final results
+        let marketResults = Object.entries(selectedMarkets).map(([team, market]) => `${team} selected ${market.name}`).join("\n");
+        alert(`Tournament Complete!\n\nFinal Rankings:\n${rankedTeams.map((t, i) => `${i+1}. ${t.team} (${t.correctAnswers || t.score || 0} correct)`).join("\n")}\n\nMarket Selections:\n${marketResults}\n\nThe game will now begin!`);
+    }
+    
+    updateDraftProgress();
+    displayMarkets();
+}
+
+// Update territory buttons with market selections (placeholder for now)
+function updateTerritoryButtonsWithMarketSelections() {
+    console.log("Updating territory buttons with market selections...");
+    
+    // Get market selections from localStorage
+    const marketSelections = localStorage.getItem("marketSelections");
+    if (!marketSelections) {
+        console.log("No market selections found yet");
+        return;
+    }
+    
+    const selections = JSON.parse(marketSelections);
+    const territoryButtons = document.querySelectorAll('.territory-button');
+    
+    // Get team colors from saved game config
+    const savedGameConfig = localStorage.getItem("ventureGameConfig");
+    let teamColors = {};
+    
+    if (savedGameConfig) {
+        const gameConfig = JSON.parse(savedGameConfig);
+        if (gameConfig.teamColors && gameConfig.teamNames) {
+            for (let i = 0; i < gameConfig.teamNames.length; i++) {
+                teamColors[gameConfig.teamNames[i]] = gameConfig.teamColors[i];
+            }
+        }
+    }
+    
+    // Map market IDs to territory data attributes
+    const marketToTerritory = {
+        'healthcare': 'healthcare',
+        'finance': 'finance',
+        'energy': 'energy',
+        'manufacturing': 'manufacturing',
+        'agriculture': 'agriculture'
+    };
+    
+    territoryButtons.forEach(button => {
+        const territoryName = button.getAttribute('data-territory');
+        
+        for (const [team, market] of Object.entries(selections)) {
+            const mappedTerritory = marketToTerritory[market.id];
+            if (mappedTerritory === territoryName) {
+                const teamColor = teamColors[team] || DEFAULT_TEAM_COLOURS[0];
+                const h3 = button.querySelector('h3');
+                const p = button.querySelector('p');
+                if (h3 && p) {
+                    const currentText = p.textContent;
+                    const valueMatch = currentText.match(/\d+$/);
+                    const value = valueMatch ? valueMatch[0] : '';
+                    p.innerHTML = `Owned by ${team} ⋅ ${value}`;
+                    button.style.opacity = '0.9';
+                    button.style.border = `3px solid ${teamColor}`;
+                    button.style.boxShadow = `0 0 10px ${teamColor}`;
+                }
+                break;
+            }
+        }
+    });
+}
+
 // Tournament system with round robin between all teams
 async function startTeamQuiz() {
     if (window.location.pathname !== "/game") return;

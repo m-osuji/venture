@@ -49,7 +49,7 @@ Once setup is complete, you can launch both the backend and frontend simultaneou
 
 *(Note: To hard-refresh the browser and clear the cache, use `Ctrl + Shift + R`).*
 
-## Testing 
+## Backend Testing 
 All automated tests can be found in `project/backend/tests` and run from **root** using `python -m pytest backend/tests/ -m "not slow" -v`.
 
 For coverage, run `python -m pytest backend/tests/ -m "not slow" -v --cov=backend --cov-report=term-missing`
@@ -61,3 +61,15 @@ python -m backend.helpers.game_state_helpers
 
 This will initialise a mock game, save it to `game_state.json` and print the sanitised frontend view to terminal. This is to remove all sensitive information that could give players an unfair advantage from the frontend game state.
 
+## Frontend Testing
+To run the Jest unit tests on the app, enter the following code into your terminal:
+
+Within the `project/frontend/venture-app/` folder, you can run:
+```bash
+   npm test
+```
+
+To run a specific unit test, run:
+```bash
+   npm test -- <file_name>
+```

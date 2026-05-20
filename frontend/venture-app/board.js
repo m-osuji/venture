@@ -83,7 +83,8 @@ export function startGame() {
     initTerritoryUI(container);
     initPlanningBoardUI(container);
     initTeamIndicatorDisplay(container);
-    initStageProgressButton();
+    initStageIndicator(container);
+    initStageProgressButton(container);
 
     const config = {
         type: Phaser.AUTO,
@@ -124,6 +125,7 @@ export function stopGame() {
     }
 }
 
+// Enable team mode - called after tournament rankings are determined
 export function configureTeams() {
     const savedResults = localStorage.getItem("tournamentResults");
     if (!savedResults) return;
@@ -136,6 +138,9 @@ export function configureTeams() {
             gameState.currentTeamIndex = 0;
             updateTeamIndicator();
             updateButtonText();
+
+            // Display game UI elements after team rankings are determined
+            showGameUI();
         }
     } catch (error) {
         console.error("Error loading tournament rankings:", error);
@@ -155,15 +160,22 @@ export function populateLeaderboard() {
 
         const items = results.tournamentRankings
             .map(
-                (team, index) =>
-                    `<li><strong>${index + 1}. ${escapeHtml(team.team)}</strong> - ${team.score} wins</li>`,
+                (team) =>
+                    `<li><strong>${escapeHtml(team.team)}</strong> - ${team.score} wins</li>`,
             )
             .join("");
         content.innerHTML = `<ol>${items}</ol>`;
 
         const button = document.getElementById("leaderboard-button");
+        const rightPanel = document.getElementById("right-panel");
+        
         if (button) {
             button.style.display = "block";
+        }
+        
+        // Show right panel when leaderboard is populated
+        if (rightPanel && gameState.teamModeActive) {
+            rightPanel.classList.add('active');
         }
     } catch (error) {
         console.error("Error populating leaderboard:", error);
@@ -716,7 +728,11 @@ function initStageProgressButton() {
     const button = document.getElementById("stage-progresser");
     if (!button) return;
 
-    button.addEventListener("click", async () => {
+    button.style.display = 'none'; // Initially hidden until game starts
+
+    const maxStage = STAGE_LABELS.length - 1;
+
+    button.addEventListener('click', async () => {
         try {
             button.style.pointerEvents = "none";
             button.style.opacity = "0.5";
@@ -770,6 +786,18 @@ function initStageProgressButton() {
     updateButtonText();
 }
 
+function initStageIndicator(container) {
+
+    const indicator = document.getElementById('current-stage-display');
+    
+    if (!indicator) return;
+
+    indicator.style.display = 'none'; // Initially hidden until game starts
+    
+    updateButtonText(); // Initialize button text
+}
+
+// Update the stage indicator based on the current stage
 function updateStageIndicator() {
     const dots = document.querySelectorAll(".stage-dot");
     const lines = document.querySelectorAll(".stage-line");
@@ -952,14 +980,80 @@ function updateBoardNarration(state) {
     });
 }
 
+// Initialize team info button
+function initTeamInfoButton() {
+    const teamInfoButton = document.getElementById("team-info-button");
+    const teamDisplay = document.getElementById("current-team-display");
+    const closeButton = document.getElementById("close-team-display");
+    
+    if (!teamInfoButton || !teamDisplay) return;
+    
+    // Remove any existing event listeners to prevent duplicates
+    const newButton = teamInfoButton.cloneNode(true);
+    teamInfoButton.parentNode.replaceChild(newButton, teamInfoButton);
+    
+    const updatedButton = document.getElementById("team-info-button");
+    const updatedCloseButton = document.getElementById("close-team-display");
+    
+    // Click handler for pinning/unpinning
+    updatedButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        
+        if (teamDisplay.classList.contains("pinned")) {
+            // Unpin
+            teamDisplay.classList.remove("pinned");
+            if (updatedCloseButton) {
+                updatedCloseButton.style.display = "none";
+            }
+        } else {
+            // Pin and show
+            teamDisplay.classList.add("pinned");
+            if (updatedCloseButton) {
+                updatedCloseButton.style.display = "flex";
+            }
+        }
+    });
+    
+    // Close button handler
+    if (updatedCloseButton) {
+        updatedCloseButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            teamDisplay.classList.remove("pinned");
+            updatedCloseButton.style.display = "none";
+        });
+    }
+    
+    // Prevent mouseleave from hiding pinned display
+    const container = document.getElementById("team-info-container");
+    if (container) {
+        container.addEventListener("mouseleave", () => {
+            if (!teamDisplay.classList.contains("pinned")) {
+                teamDisplay.style.display = "none";
+            }
+        });
+        
+        container.addEventListener("mouseenter", () => {
+            if (!teamDisplay.classList.contains("pinned")) {
+                teamDisplay.style.display = "block";
+            }
+        });
+    }
+}
+
+// Update the team indicator based on current team
 function updateTeamIndicator() {
     const teamDisplay = document.getElementById("current-team-display");
     const teamNameElement = document.getElementById("team-name");
-    const teamActionsList = document.getElementById("team-actions-list");
+    const teamActionsList = document.getElementById("current-team-display-list");
+    const rightPanel = document.getElementById("right-panel");
+    const closeButton = document.getElementById("close-team-display");
     if (!teamDisplay || !teamNameElement || !teamActionsList) return;
 
     if (!currentBackendState || currentBackendState?.is_finished) {
+        teamDisplay.classList.remove("pinned");
         teamDisplay.style.display = "none";
+        if (closeButton) closeButton.style.display = "none";
+        if (rightPanel) rightPanel.classList.remove("active");
         return;
     }
 
@@ -991,7 +1085,13 @@ function updateTeamIndicator() {
     const hints = stageHints[gameState.currentStageName] || [];
     teamNameElement.textContent = selectedTeam.team_name;
     teamActionsList.innerHTML = hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("");
-    teamDisplay.style.display = hints.length ? "block" : "none";
+    if (rightPanel) rightPanel.classList.add("active");
+
+    if (teamDisplay.classList.contains("pinned")) {
+        teamDisplay.style.display = "block";
+    } else {
+        teamDisplay.style.display = hints.length ? "block" : "none";
+    }
 }
 
 function updateButtonText() {
@@ -1034,6 +1134,31 @@ function toTitleCase(value) {
         .split(" ")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+// Show game UI elements (stage indicator and progresser button)
+function showGameUI() {
+    const stageDisplay = document.getElementById('current-stage-display');
+    const progresserButton = document.getElementById('stage-progresser');
+    const rightPanel = document.getElementById('right-panel');
+    
+    console.log("showGameUI called. gameState.teamModeActive:", gameState.teamModeActive);
+    
+    if (stageDisplay) {
+        stageDisplay.style.display = gameState.teamModeActive ? 'block' : 'none';
+    }
+    if (progresserButton) {
+        progresserButton.style.display = gameState.teamModeActive ? 'block' : 'none';
+    }
+    if (rightPanel) {
+        if (gameState.teamModeActive) {
+            rightPanel.classList.add('active');
+            // Initialize team info button when game starts
+            initTeamInfoButton();
+        } else {
+            rightPanel.classList.remove('active');
+        }
+    }
 }
 
 function escapeHtml(value) {

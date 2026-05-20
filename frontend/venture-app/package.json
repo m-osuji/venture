@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test --test-isolation=none"
+    "test": "jest --runInBand",
+    "test:helpers": "node --test --test-isolation=none tests/*.test.js"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "vite": "^8.0.4"
   },
   "dependencies": {

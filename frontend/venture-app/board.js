@@ -1,4 +1,11 @@
 import * as Phaser from "phaser";
+import {
+    buildTeamNameLookup,
+    calculatePlanningReserve,
+    createZeroAllocationDraft,
+    normaliseOwnerId,
+    resolveOwnerName,
+} from "./lib/gameState.js";
 
 const API_BASE =
     window.VENTURE_API_BASE ||
@@ -229,21 +236,16 @@ function getPlanningReserve(teamId) {
         return 0;
     }
 
-    const alreadyAllocated = ownedMarketsForTeam(teamId).reduce(
-        (sum, market) => sum + Number(market.allocated_ip || 0),
-        0,
-    );
-    return Number(team.ip || 0) + alreadyAllocated;
+    return calculatePlanningReserve(team);
 }
 
 function getPlanningDraftForTeam(teamId) {
     const numericTeamId = Number(teamId);
     if (!planningState.drafts.has(numericTeamId)) {
-        const draft = new Map();
-        ownedMarketsForTeam(numericTeamId).forEach((market) => {
-            draft.set(Number(market.marketId), Number(market.allocated_ip || 0));
-        });
-        planningState.drafts.set(numericTeamId, draft);
+        planningState.drafts.set(
+            numericTeamId,
+            createZeroAllocationDraft(ownedMarketsForTeam(numericTeamId)),
+        );
     }
     return planningState.drafts.get(numericTeamId);
 }
@@ -277,11 +279,10 @@ function syncPlanningFromBackend(state) {
 
     const nextDrafts = new Map();
     (state.teams || []).forEach((team) => {
-        const teamDraft = new Map();
-        ownedMarketsForTeam(team.team_id, state).forEach((market) => {
-            teamDraft.set(Number(market.marketId), Number(market.allocated_ip || 0));
-        });
-        nextDrafts.set(Number(team.team_id), teamDraft);
+        nextDrafts.set(
+            Number(team.team_id),
+            createZeroAllocationDraft(ownedMarketsForTeam(team.team_id, state)),
+        );
     });
     planningState.drafts = nextDrafts;
 
@@ -537,7 +538,7 @@ function renderPlanningBoard() {
             getPlanningDraftForTeam(selectedTeamId)?.get(Number(selectedMarket.marketId)) || 0,
         );
         marketName.textContent = selectedMarket.market_name;
-        marketMeta.textContent = `${toTitleCase(selectedMarket.size || "market")} market | ${Number(selectedMarket.allocated_ip || 0)} currently saved`;
+        marketMeta.textContent = `${toTitleCase(selectedMarket.size || "market")} market | ${Number(selectedMarket.allocated_ip || 0)} already saved`;
         marketAllocation.textContent = String(draftValue);
     } else {
         marketName.textContent = "Select a market";
@@ -557,7 +558,7 @@ function renderPlanningBoard() {
                             <strong>${escapeHtml(market.market_name)}</strong>
                             <span>${escapeHtml(toTitleCase(market.size || "market"))}</span>
                         </span>
-                        <span class="planning-board-market-value">${escapeHtml(String(draftValue))} IP</span>
+                        <span class="planning-board-market-value">+${escapeHtml(String(draftValue))} IP</span>
                     </button>
                   `;
               })
@@ -617,11 +618,10 @@ function initPlanningBoardUI() {
 
     resetButton.addEventListener("click", () => {
         const selectedTeamId = Number(planningState.selectedTeamId);
-        const draft = new Map();
-        ownedMarketsForTeam(selectedTeamId).forEach((market) => {
-            draft.set(Number(market.marketId), Number(market.allocated_ip || 0));
-        });
-        planningState.drafts.set(selectedTeamId, draft);
+        planningState.drafts.set(
+            selectedTeamId,
+            createZeroAllocationDraft(ownedMarketsForTeam(selectedTeamId)),
+        );
         clearPlanningStatus();
         renderPlanningBoard();
     });
@@ -844,9 +844,7 @@ function renderLeaderboard(state) {
 
 function renderMarketState(state) {
     const marketState = state?.market_state || {};
-    const teamNameById = new Map(
-        (state?.teams || []).map((team) => [Number(team.team_id), team.team_name]),
-    );
+    const teamNameById = buildTeamNameLookup(state?.teams || []);
 
     Object.entries(marketState).forEach(([marketId, market]) => {
         const numericMarketId = Number(marketId);
@@ -857,8 +855,8 @@ function renderMarketState(state) {
 
         if (!button) return;
 
-        const ownerId = market.owner === null ? null : Number(market.owner);
-        const ownerName = ownerId === null ? null : teamNameById.get(ownerId);
+        const ownerId = normaliseOwnerId(market.owner);
+        const ownerName = resolveOwnerName(market, ownerId, teamNameById);
         const colour = market.colour || "";
         const allocation = Number(market.allocated_ip || 0);
         const buttonTitle = button.querySelector("h3");

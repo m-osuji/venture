@@ -1,3 +1,8 @@
+import {
+    calculatePlanningReserve,
+    createZeroAllocationDraft,
+} from "../lib/gameState.js";
+
 const API_BASE =
     window.VENTURE_API_BASE ||
     import.meta.env.VITE_VENTURE_API_BASE ||
@@ -119,12 +124,7 @@ export function initPlanningPage() {
             return 0;
         }
 
-        const currentOwnedMarkets = ownedMarketsForTeam(state, teamId);
-        const alreadyAllocated = currentOwnedMarkets.reduce(
-            (sum, market) => sum + Number(market.allocated_ip || 0),
-            0
-        );
-        return Number(team.ip || 0) + alreadyAllocated;
+        return calculatePlanningReserve(team);
     }
 
     function currentDraftSum() {
@@ -150,10 +150,7 @@ export function initPlanningPage() {
     }
 
     function syncDraftToSelectedTeam() {
-        draftAllocations = new Map();
-        ownedMarketsForTeam(state, selectedTeamId).forEach((market) => {
-            draftAllocations.set(Number(market.marketId), Number(market.allocated_ip || 0));
-        });
+        draftAllocations = createZeroAllocationDraft(ownedMarketsForTeam(state, selectedTeamId));
     }
 
     function renderTabs() {
@@ -214,7 +211,7 @@ export function initPlanningPage() {
                         <div class="planning-allocation-pill">
                             <div class="planning-allocation-value">
                                 <strong>${escapeHtml(String(draftValue))}</strong>
-                                <span>allocated IP</span>
+                                <span>new IP</span>
                             </div>
                         </div>
                     </div>
@@ -225,7 +222,7 @@ export function initPlanningPage() {
                             <button class="planning-step-btn" data-action="increment" data-market-id="${market.marketId}" type="button" ${ipRemaining() <= 0 ? "disabled" : ""}>+</button>
                         </div>
                         <div class="planning-controls-note">
-                            ${escapeHtml(String(market.allocated_ip || 0))} currently saved on this market
+                            ${escapeHtml(String(market.allocated_ip || 0))} already saved on this market
                         </div>
                     </div>
                 </article>

@@ -1,4 +1,9 @@
 // Loads all index.html features at the same time
+import {
+  routeForGameStage,
+  shouldNavigateToStage
+} from "./lib/gameState.js";
+
 async function init() {
   try {
     const [header, footer] = await Promise.all([
@@ -2026,14 +2031,6 @@ function stopGameTimer() {
   if (timerDisplay) timerDisplay.remove();
 }
 
-// File navigation, did not like js navigate function, now uses global
-function routeForGameStage(stage) {
-  const stageName = String(stage || "PLAN").toUpperCase();
-  if (stageName === "NEGOTIATE") return "/negotiator";
-  if (stageName === "ORDERS") return "/orders";
-  return "/game";
-}
-
 async function fetchBackendGameState() {
   const response = await fetch(`${API_BASE}/api/game/state`);
   if (!response.ok) {
@@ -2055,8 +2052,11 @@ window.navigateToGameStage = async function (state = null) {
     return null;
   }
 
-  const nextPath = routeForGameStage(nextState.current_stage);
-  if (window.location.pathname !== nextPath) {
+  const { nextPath, shouldNavigate } = shouldNavigateToStage(
+    window.location.pathname,
+    nextState.current_stage,
+  );
+  if (shouldNavigate) {
     window.navigate(nextPath);
   }
   return nextState;

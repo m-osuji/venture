@@ -9,7 +9,12 @@ if PROJECT_ROOT not in sys.path:
 
 from flask import Blueprint, jsonify, request
 
-from backend.ai_opponent.agents.decision_maker import choose_action, choose_orders
+from backend.ai_opponent.agents.decision_maker import (
+    choose_action,
+    choose_declared_and_actual_moves,
+    choose_orders,
+    choose_plan_allocations,
+)
 from backend.ai_opponent.agents.commentator import get_commentary
 
 from backend.helpers import gameplay_helpers
@@ -339,13 +344,20 @@ def get_ai_decision():
             .strip()
             .lower()
         )
-        mode = str(data.get("mode") or request.args.get("mode") or "orders").strip().lower()
+        mode = str(data.get("mode") or request.args.get("mode") or "stage").strip().lower()
         ai_context = game_service.build_ai_context(int(requested_team_id))
+        ai_context["current_stage"] = _stage_name(full_state.get("current_stage"))
 
         if mode == "action":
             decision = choose_action(ai_context, difficulty=difficulty)
-        else:
+        elif mode in {"orders", "order", "actual"}:
             decision = choose_orders(ai_context, difficulty=difficulty)
+        elif mode in {"plan", "planning", "allocation", "allocations"}:
+            decision = choose_plan_allocations(ai_context, difficulty=difficulty)
+        elif mode in {"negotiation", "negotiate", "declared", "moves"}:
+            decision = choose_declared_and_actual_moves(ai_context, difficulty=difficulty)
+        else:
+            mode, decision = _choose_stage_decision(ai_context, difficulty)
 
         return jsonify(
             {
@@ -370,6 +382,28 @@ def _state_response(status: str, state: dict[str, Any]) -> dict[str, Any]:
 
 def _json_payload() -> dict[str, Any]:
     return request.get_json(silent=True) or {}
+
+
+def _choose_stage_decision(ai_context: dict[str, Any], difficulty: str) -> tuple[str, dict[str, Any]]:
+    stage_name = str(ai_context.get("current_stage") or "").upper()
+    if stage_name == "PLAN":
+        return "plan", choose_plan_allocations(ai_context, difficulty=difficulty)
+    if stage_name == "NEGOTIATE":
+        return "negotiation", choose_declared_and_actual_moves(ai_context, difficulty=difficulty)
+    return "orders", choose_orders(ai_context, difficulty=difficulty)
+
+
+def _stage_name(raw_stage: Any) -> str:
+    if raw_stage is None:
+        return "UNKNOWN"
+    if hasattr(raw_stage, "name"):
+        return str(raw_stage.name)
+    try:
+        from backend.enums import GameStage
+
+        return GameStage(int(raw_stage)).name
+    except (TypeError, ValueError):
+        return str(raw_stage).upper()
 
 
 def _normalise_team_payload(teams: list[dict[str, Any]]) -> list[dict[str, Any]]:

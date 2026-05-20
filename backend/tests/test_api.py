@@ -215,6 +215,40 @@ def test_get_ai_decision_orders(client, monkeypatch):
     assert body["decision"] == {"orders": [1, 2]}
 
 
+def test_get_ai_decision_plan_mode(client, monkeypatch):
+    patch_ai_game_state(monkeypatch)
+
+    monkeypatch.setattr(
+        api_module,
+        "choose_plan_allocations",
+        lambda ctx, difficulty: {"allocations": [{"market_id": 1, "ip_allocated": 2}]},
+    )
+
+    response = client.get("/api/ai/decide?mode=plan")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["mode"] == "plan"
+    assert body["decision"] == {"allocations": [{"market_id": 1, "ip_allocated": 2}]}
+
+
+def test_get_ai_decision_negotiation_mode(client, monkeypatch):
+    patch_ai_game_state(monkeypatch)
+
+    monkeypatch.setattr(
+        api_module,
+        "choose_declared_and_actual_moves",
+        lambda ctx, difficulty: {"declared_moves": [], "actual_moves": []},
+    )
+
+    response = client.get("/api/ai/decide?mode=negotiation")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["mode"] == "negotiation"
+    assert body["decision"] == {"declared_moves": [], "actual_moves": []}
+
+
 # Tests if the game status endpoint returns a 500 when the service crashes
 def test_game_service_failure_returns_500(client, monkeypatch):
     def raise_error():
@@ -308,45 +342,6 @@ def test_resolve_pending_quizzes(client, monkeypatch):
     body = response.get_json()
     assert body["status"] == "quizzes_resolved"
     assert body["game_state"]["status"] == "resolved"
-
-
-# Tests if the demo start endpoint creates a demo game with default demo values
-def test_start_demo(client, monkeypatch):
-    fake_state = {"session_uuid": "demo123", "teams": []}
-
-    def fake_create_demo_game(**kwargs):
-        assert kwargs["game_mode"] == "speedrun"
-        assert kwargs["difficulty"] == "medium"
-        return fake_state
-
-    monkeypatch.setattr(api_module.game_service, "create_demo_game", fake_create_demo_game)
-    monkeypatch.setattr(
-        api_module.gameplay_helpers,
-        "get_frontend_state",
-        lambda state: {"session_uuid": state["session_uuid"]},
-    )
-
-    response = client.post("/api/demo/start", json={})
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["status"] == "demo_started"
-    assert body["session_uuid"] == "demo123"
-
-
-# Tests if the demo step endpoint advances one scripted demo step
-def test_run_demo_step(client, monkeypatch):
-    fake_state = {"demo_message": "step complete"}
-
-    monkeypatch.setattr(api_module.game_service, "run_demo_step", lambda: fake_state)
-    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
-
-    response = client.post("/api/demo/step")
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["status"] == "demo_step_applied"
-    assert body["message"] == "step complete"
 
 
 # Tests if the AI commentary endpoint returns the mocked narration

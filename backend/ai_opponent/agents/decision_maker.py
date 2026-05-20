@@ -6,7 +6,8 @@ First-pass AI decision maker for the market strategy game.
 What this module does now:
 - Generates legal-ish actions from the current game state
 - Supports both single-action choice and a small round-order bundle
-- Models defend reallocation when source-market IP is available
+- Chooses planning-stage IP allocations for owned markets
+- Chooses negotiation-stage declared moves plus final locked orders
 - Models explicit research options with regulation-aware costs
 - Uses DB-backed market/synergy information to score actions
 - Uses structured decision traits by difficulty
@@ -15,7 +16,6 @@ What this module does now:
 What this module cannot fully do yet:
 - It does NOT know your exact runtime game-state schema yet
 - It does NOT know the exact engine-side legality rules for all actions
-- It does NOT yet handle alliances / negotiation / betrayal in full depth
 - It does NOT yet use Mellea/Granite directly
 - It assumes enemy_markets are attackable unless attackable_markets is provided
 - It uses a few scoring proxies where exact rules are not wired yet
@@ -41,7 +41,6 @@ Expected minimal game_state shape (roughly):
     },
     "rules": {
         "attack_cost": 1,
-        "defend_cost": 1,
         "research_cost": 2,
         "high_regulation_research_surcharge": 1,
         "maintenance_threshold": 5,
@@ -53,7 +52,7 @@ Expected minimal game_state shape (roughly):
 
 Returned action shape:
 {
-    "action_type": "attack" | "defend" | "research" | "hold",
+    "action_type": "attack" | "research" | "hold",
     "target_market_id": int | None,
     "source_market_id": int | None,
     "ip_spent": int,
@@ -64,7 +63,6 @@ choose_orders(...) returns:
 {
     "orders": [action_dict, ...],
     "current_ip_spent": int,
-    "market_ip_reallocated": int,
     "remaining_current_ip": int,
     "total_score": float
 }
@@ -190,17 +188,6 @@ ACTION_BONUS_WEIGHTS = {
         "attack": 1.5,
         "risk_control": 1.0,
         "tiebreak": 0.8,
-    },
-    "defend": {
-        "ip": 1.0,
-        "research_cost": 0.4,
-        "expansion_strength": 0.6,
-        "defence": 1.6,
-        "regulation_mitigation": 1.1,
-        "growth_bonus": 0.8,
-        "attack": 0.5,
-        "risk_control": 1.2,
-        "tiebreak": 1.0,
     },
     "research": {
         "ip": 1.0,
@@ -384,6 +371,110 @@ def choose_orders(
     return response
 
 
+def choose_plan_allocations(
+    game_state: Dict[str, Any],
+    difficulty: str = "medium",
+    return_debug: bool = False,
+) -> Dict[str, Any]:
+    """
+    Pick planning-stage IP allocations for markets the AI already owns.
+
+    This replaces the old runtime "defend" order: protection is now expressed
+    by committing spare IP during PLAN before negotiation starts.
+    """
+    traits = get_decision_traits(difficulty)
+    current_ip = _get_current_ip(game_state)
+    owned_markets = _as_int_list(game_state.get("owned_markets", []))
+
+    if current_ip <= 0 or not owned_markets:
+        response = {
+            "allocations": [],
+            "ip_allocated": 0,
+            "remaining_ip": current_ip,
+            "strategy": "No spare IP or owned markets available for planning.",
+        }
+        if return_debug:
+            response["allocation_scores"] = []
+        return response
+
+    scored_markets = [
+        _score_plan_allocation_market(market_id, game_state, traits)
+        for market_id in owned_markets
+    ]
+    scored_markets.sort(key=lambda entry: entry["score"], reverse=True)
+
+    allocations_by_market = {entry["market_id"]: 0 for entry in scored_markets}
+    remaining = current_ip
+    cursor = 0
+
+    # Weighted round-robin keeps allocations readable while still favouring the
+    # highest-risk/highest-value markets.
+    while remaining > 0 and scored_markets:
+        entry = scored_markets[cursor % len(scored_markets)]
+        market_id = entry["market_id"]
+        allocations_by_market[market_id] += 1
+        remaining -= 1
+
+        if allocations_by_market[market_id] < max(1, int(round(entry["weight"]))):
+            continue
+        cursor += 1
+
+    allocations = [
+        {"market_id": market_id, "ip_allocated": amount}
+        for market_id, amount in allocations_by_market.items()
+        if amount > 0
+    ]
+
+    response = {
+        "allocations": allocations,
+        "ip_allocated": sum(entry["ip_allocated"] for entry in allocations),
+        "remaining_ip": remaining,
+        "strategy": _describe_plan_strategy(scored_markets, traits),
+    }
+    if return_debug:
+        response["allocation_scores"] = scored_markets
+        response["traits"] = traits
+    return response
+
+
+def choose_declared_and_actual_moves(
+    game_state: Dict[str, Any],
+    difficulty: str = "medium",
+    return_debug: bool = False,
+    max_actions: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Choose what the AI says in negotiation and what it actually locks in.
+
+    Medium/easy AI is mostly honest. Hard AI may bluff when it is aggressive,
+    low-ethics, or considering a betrayal of a protected/allied market.
+    """
+    traits = get_decision_traits(difficulty)
+    actual_result = choose_orders(
+        game_state,
+        difficulty=difficulty,
+        return_debug=return_debug,
+        max_actions=max_actions,
+    )
+    actual_moves = actual_result.get("orders", [])
+    declared_moves, honesty_read = _build_declared_moves(actual_moves, game_state, traits)
+
+    response = {
+        "declared_moves": declared_moves,
+        "actual_moves": actual_moves,
+        "honesty": honesty_read,
+        "orders_summary": {
+            "current_ip_spent": actual_result.get("current_ip_spent", 0),
+            "remaining_current_ip": actual_result.get("remaining_current_ip", _get_current_ip(game_state)),
+            "total_score": actual_result.get("total_score", 0.0),
+        },
+    }
+    if return_debug:
+        response["orders_debug"] = actual_result
+        response["traits"] = traits
+    return response
+
+
 # -----------------------------------------------------------------------------
 # Trait handling
 # -----------------------------------------------------------------------------
@@ -458,12 +549,11 @@ def generate_legal_actions(game_state: Dict[str, Any]) -> List[Action]:
     attackable_markets = _resolve_attackable_markets(game_state)
 
     attack_cost = int(rules.get("attack_cost", 1))
-    defend_cost = int(rules.get("defend_cost", 1))
     forbid_attack_allies = _attacking_allies_is_hard_blocked(rules)
 
     actions: List[Action] = [Action(action_type="hold", ip_spent=0)]
 
-    if current_ip <= 0 and not any(_get_market_reallocatable_ip(game_state, market) > 0 for market in owned_markets):
+    if current_ip <= 0:
         return actions
 
     # Attack actions
@@ -487,45 +577,9 @@ def generate_legal_actions(game_state: Dict[str, Any]) -> List[Action]:
                     )
                 )
 
-    # Defend / research actions on owned markets
+    # Research actions on owned markets. Planning-stage IP allocation now covers
+    # market protection, so runtime orders no longer include "defend".
     for market_id in owned_markets:
-        if current_ip >= defend_cost:
-            for spend in _candidate_spends(current_ip, defend_cost):
-                actions.append(
-                    Action(
-                        action_type="defend",
-                        target_market_id=market_id,
-                        ip_spent=spend,
-                        metadata={
-                            "defend_mode": "allocate",
-                            "resource_pool": "current_ip",
-                        },
-                    )
-                )
-
-        for source_market_id in owned_markets:
-            if source_market_id == market_id:
-                continue
-
-            source_available_ip = _get_market_reallocatable_ip(game_state, source_market_id)
-            if source_available_ip < defend_cost:
-                continue
-
-            for spend in _candidate_spends(source_available_ip, defend_cost):
-                actions.append(
-                    Action(
-                        action_type="defend",
-                        target_market_id=market_id,
-                        source_market_id=source_market_id,
-                        ip_spent=spend,
-                        metadata={
-                            "defend_mode": "reallocate",
-                            "resource_pool": "market_ip",
-                            "source_available_ip": source_available_ip,
-                        },
-                    )
-                )
-
         research_cost = _get_research_cost_for_market(market_id, game_state)
         if current_ip >= research_cost:
             surcharge_applied = research_cost > int(rules.get("research_cost", 2))
@@ -632,8 +686,6 @@ def score_action(
 ) -> Tuple[float, Dict[str, float]]:
     if action.action_type == "attack":
         return _score_attack(action, game_state, traits)
-    if action.action_type == "defend":
-        return _score_defend(action, game_state, traits)
     if action.action_type == "research":
         return _score_research(action, game_state, traits)
     return _score_hold(action, game_state, traits)
@@ -709,7 +761,6 @@ def _action_type_priority_order(
 ) -> List[str]:
     type_best_score = {
         "attack": -9999.0,
-        "defend": -9999.0,
         "research": -9999.0,
     }
 
@@ -726,7 +777,8 @@ def _action_type_priority_order(
     )
 
     if max_threat >= 0.65:
-        type_best_score["defend"] += 2.0
+        type_best_score["attack"] -= 0.8
+        type_best_score["research"] -= 0.3
     if traits["aggression"] >= 0.65:
         type_best_score["attack"] += 1.0
     if max_threat <= 0.3 and _get_current_ip(game_state) >= 2:
@@ -798,12 +850,7 @@ def _is_action_compatible(action: Action, selected_actions: List[Action]) -> boo
 def _owned_markets_touched(action: Action) -> Set[int]:
     touched: Set[int] = set()
 
-    if action.action_type == "defend":
-        if action.target_market_id is not None:
-            touched.add(action.target_market_id)
-        if action.source_market_id is not None:
-            touched.add(action.source_market_id)
-    elif action.action_type == "research":
+    if action.action_type == "research":
         if action.target_market_id is not None:
             touched.add(action.target_market_id)
 
@@ -1107,7 +1154,6 @@ def select_best_action(scored_actions: List[ScoredAction]) -> ScoredAction:
 
     action_priority = {
         "attack": 4,
-        "defend": 3,
         "research": 2,
         "hold": 1,
     }
@@ -1168,6 +1214,137 @@ def _fetch_all(query: str, params: Tuple[Any, ...]) -> List[sqlite3.Row]:
 # -----------------------------------------------------------------------------
 # Game-state helpers
 # -----------------------------------------------------------------------------
+
+def _score_plan_allocation_market(
+    market_id: int,
+    game_state: Dict[str, Any],
+    traits: Dict[str, Any],
+) -> Dict[str, Any]:
+    attrs = get_market_attributes(market_id)
+    state = _get_market_state(game_state, market_id)
+
+    market_value = _estimate_market_value(attrs)
+    threat = _get_market_threat(game_state, market_id)
+    security_risk = _enum_to_score(attrs.get("security_risk"))
+    regulation = _enum_to_score(attrs.get("regulation_level"))
+    topic_confidence = _estimate_topic_confidence(attrs.get("key_topic"), traits)
+    existing_ip = max(0, int(state.get("allocated_ip", state.get("ip", 0)) or 0))
+
+    risk_need = threat * (3.0 + 2.5 * traits["defense_bias"])
+    value_need = market_value * 0.55
+    security_need = security_risk * (0.5 + 0.6 * traits["risk_tolerance"])
+    regulation_need = regulation * 0.2
+    knowledge_need = topic_confidence * 0.8
+    saturation_penalty = min(existing_ip, 5) * 0.25
+
+    score = (
+        risk_need
+        + value_need
+        + security_need
+        + regulation_need
+        + knowledge_need
+        - saturation_penalty
+    )
+
+    return {
+        "market_id": market_id,
+        "score": round(score, 3),
+        "weight": max(1.0, min(4.0, score / 2.5)),
+        "reasons": {
+            "risk_need": round(risk_need, 3),
+            "value_need": round(value_need, 3),
+            "security_need": round(security_need, 3),
+            "regulation_need": round(regulation_need, 3),
+            "knowledge_need": round(knowledge_need, 3),
+            "saturation_penalty": round(-saturation_penalty, 3),
+        },
+    }
+
+
+def _describe_plan_strategy(scored_markets: List[Dict[str, Any]], traits: Dict[str, Any]) -> str:
+    if not scored_markets:
+        return "No owned markets available for planning."
+
+    top_market = scored_markets[0]["market_id"]
+    if traits["defense_bias"] >= 0.65:
+        return f"Protect market {top_market} while keeping a balanced reserve across owned markets."
+    if traits["aggression"] >= 0.65:
+        return f"Load market {top_market} enough to survive counter-pressure, then keep tempo for attacks."
+    return f"Balanced IP allocation led by market {top_market}."
+
+
+def _build_declared_moves(
+    actual_moves: List[Dict[str, Any]],
+    game_state: Dict[str, Any],
+    traits: Dict[str, Any],
+) -> Tuple[List[Dict[str, Any]], str]:
+    if not actual_moves:
+        return [Action("hold", ip_spent=0).to_dict()], "honest"
+
+    ethical_score = _clamp(_coerce_float(game_state.get("ethical_score", 0.7)), 0.0, 1.0)
+    betrayal_planned = any(_move_breaks_commitment(move, game_state) for move in actual_moves)
+    deception_pressure = (
+        traits["aggression"] * 0.4
+        + traits["risk_tolerance"] * 0.25
+        + (1.0 - traits["ethical_bias"]) * 0.65
+        + (1.0 - ethical_score) * 0.35
+    )
+
+    should_bluff = betrayal_planned or deception_pressure >= 0.85
+    if not should_bluff:
+        return [_copy_move(move, declared=True) for move in actual_moves], "honest"
+
+    declared_moves = []
+    for move in actual_moves:
+        if move.get("action_type") == "attack":
+            declared_moves.append(_declared_hold_move(game_state, reason="concealed_attack"))
+        else:
+            declared_moves.append(_copy_move(move, declared=True))
+
+    honesty = "betrayal" if betrayal_planned else "bluff"
+    return declared_moves, honesty
+
+
+def _copy_move(move: Dict[str, Any], *, declared: bool = False) -> Dict[str, Any]:
+    copied = {
+        "action_type": move.get("action_type", "hold"),
+        "target_market_id": move.get("target_market_id"),
+        "source_market_id": move.get("source_market_id"),
+        "ip_spent": int(move.get("ip_spent", 0) or 0),
+        "metadata": dict(move.get("metadata", {}) or {}),
+    }
+    if declared:
+        copied["metadata"]["declared"] = True
+    return copied
+
+
+def _declared_hold_move(game_state: Dict[str, Any], *, reason: str) -> Dict[str, Any]:
+    owned_markets = _as_int_list(game_state.get("owned_markets", []))
+    target_market_id = owned_markets[0] if owned_markets else None
+    return Action(
+        action_type="hold",
+        target_market_id=target_market_id,
+        ip_spent=0,
+        metadata={"declared": True, "reason": reason},
+    ).to_dict()
+
+
+def _move_breaks_commitment(move: Dict[str, Any], game_state: Dict[str, Any]) -> bool:
+    if move.get("action_type") != "attack":
+        return False
+
+    try:
+        target_market_id = int(move.get("target_market_id"))
+    except (TypeError, ValueError):
+        return False
+
+    commitments = game_state.get("commitments", {}) or {}
+    allied_markets = set(_as_int_list(game_state.get("allied_markets", [])))
+    protected_markets = set(_as_int_list(commitments.get("protected_markets", [])))
+    avoid_attack_markets = set(_as_int_list(commitments.get("avoid_attack_markets", [])))
+
+    return target_market_id in allied_markets or target_market_id in protected_markets or target_market_id in avoid_attack_markets
+
 
 def _get_current_ip(game_state: Dict[str, Any]) -> int:
     return max(0, int(game_state.get("current_ip", 0)))

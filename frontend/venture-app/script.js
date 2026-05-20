@@ -9,8 +9,8 @@ import {
 async function init() {
   try {
     const [header, footer] = await Promise.all([
-      fetch("/header.html").then(res => res.text()),
-      fetch("/footer.html").then(res => res.text())
+      fetch("header.html").then(res => res.text()),
+      fetch("footer.html").then(res => res.text())
     ]);
 
     document.getElementById("header").innerHTML = header;
@@ -417,6 +417,7 @@ async function loadRoute(path) {
   const page = routes[path] || "home.html";
 
   try {
+
     if (typeof currentPageCleanup === "function") {
       currentPageCleanup();
       currentPageCleanup = null;
@@ -424,14 +425,15 @@ async function loadRoute(path) {
 
     applyRouteStylesheet(path);
 
-    const res = await fetch("/" + page);
+    const res = await fetch(page);
+
     if (!res.ok) throw new Error("Page not found");
 
     const data = await res.text();
     document.getElementById("content").innerHTML = data;
 
     if (path === "/game") {
-      currentGameModule = await import("/board.js");
+      currentGameModule = await import("./board.js");
       currentGameModule.startGame();
       initAIInteraction();
       // Also clear game timer

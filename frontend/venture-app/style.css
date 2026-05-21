@@ -2045,3 +2045,72 @@ footer nav p {
     border-radius: 8px;
     text-align: center;
 }
+
+/* Spider chart styles */
+.spider-chart-container {
+    margin: 15px auto;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 340px;
+    overflow: visible;
+}
+
+.market-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 10px 0;
+    padding: 10px;
+    background: #f0f4f8;
+    border-radius: 8px;
+    color: #2c3e50;
+}
+
+.strategic-advice {
+    font-size: 12px;
+    padding: 8px;
+    margin: 8px 0;
+    background: #fff8e7;
+    border-left: 3px solid #e6672b;
+    border-radius: 5px;
+}
+
+.market-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 6px 0;
+}
+
+.stat-row span:first-child {
+    font-weight: bold;
+    color: #555;
+}
+
+.stat-row span:last-child {
+    color: #467096;
+    font-weight: bold;
+    background: #e8f0f8;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.territory-dialog {
+    width: 420px;
+    max-width: 95vw;
+    padding: 20px;
+    overflow-y: auto;
+    overflow-x: visible;
+}

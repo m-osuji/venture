@@ -72,6 +72,377 @@ export async function fetchGameState() {
     }
 }
 
+// Add this to the top of board.js with other imports
+// Fallback market data for spider chart testing (based on your sample)
+const FALLBACK_MARKETS = {
+    1: { id: 1, name: "Healthcare", size: "Large", regulation: "High", competition: "Medium", resources: "Low" },
+    2: { id: 2, name: "Finance", size: "Large", regulation: "High", competition: "Medium", resources: "High" },
+    3: { id: 3, name: "Energy", size: "Large", regulation: "Medium", competition: "High", resources: "High" },
+    4: { id: 4, name: "Food & Water", size: "Large", regulation: "Medium", competition: "High", resources: "Medium" },
+    5: { id: 5, name: "Technology", size: "Medium", regulation: "Low", competition: "High", resources: "High" },
+    6: { id: 6, name: "Manufacturing", size: "Medium", regulation: "Low", competition: "High", resources: "Medium" },
+    7: { id: 7, name: "Weapons", size: "Small", regulation: "High", competition: "Low", resources: "Very High" },
+    8: { id: 8, name: "Pharmaceuticals", size: "Medium", regulation: "High", competition: "High", resources: "Medium" },
+    9: { id: 9, name: "Science", size: "Medium", regulation: "Medium", competition: "High", resources: "Low" },
+    10: { id: 10, name: "Automotive", size: "Medium", regulation: "Medium", competition: "Medium", resources: "Medium" },
+    11: { id: 11, name: "Agriculture", size: "Medium", regulation: "Low", competition: "High", resources: "Low" },
+    12: { id: 12, name: "Education", size: "Small", regulation: "Medium", competition: "Medium", resources: "Low" },
+    13: { id: 13, name: "Retail", size: "Small", regulation: "Low", competition: "Medium", resources: "Medium" },
+    14: { id: 14, name: "Law", size: "Small", regulation: "High", competition: "Low", resources: "Low" },
+    15: { id: 15, name: "Mining", size: "Small", regulation: "Low", competition: "High", resources: "High" },
+    16: { id: 16, name: "Fisheries", size: "Small", regulation: "Low", competition: "Medium", resources: "Medium" },
+    17: { id: 17, name: "Cybersecurity", size: "Small", regulation: "Low", competition: "Medium", resources: "High" },
+    18: { id: 18, name: "Aerospace", size: "Medium", regulation: "High", competition: "Medium", resources: "High" },
+    19: { id: 19, name: "Real Estate", size: "Large", regulation: "Medium", competition: "Medium", resources: "Medium" },
+    20: { id: 20, name: "Transport", size: "Large", regulation: "Medium", competition: "High", resources: "Medium" },
+    21: { id: 21, name: "Civil Engineering", size: "Medium", regulation: "Medium", competition: "Medium", resources: "Low" }
+};
+
+// Map territory slugs to market IDs and names
+const TERRITORY_MARKET_MAP = {
+    'food-and-water': { id: 4, name: 'Food & Water' },
+    'fisheries': { id: 16, name: 'Fisheries' },
+    'agriculture': { id: 11, name: 'Agriculture' },
+    'healthcare': { id: 1, name: 'Healthcare' },
+    'pharmaceuticals': { id: 8, name: 'Pharmaceuticals' },
+    'science': { id: 9, name: 'Science' },
+    'law': { id: 14, name: 'Law' },
+    'technology': { id: 5, name: 'Technology' },
+    'education': { id: 12, name: 'Education' },
+    'cybersecurity': { id: 17, name: 'Cybersecurity' },
+    'automotive': { id: 10, name: 'Automotive' },
+    'aerospace': { id: 18, name: 'Aerospace' },
+    'manufacturing': { id: 6, name: 'Manufacturing' },
+    'mining': { id: 15, name: 'Mining' },
+    'civil-engineering': { id: 21, name: 'Civil Engineering' },
+    'energy': { id: 3, name: 'Energy' },
+    'transport': { id: 20, name: 'Transport' },
+    'weapons': { id: 7, name: 'Weapons' },
+    'real-estate': { id: 19, name: 'Real Estate' },
+    'retail': { id: 13, name: 'Retail' },
+    'finance': { id: 2, name: 'Finance' }
+};
+
+// Score mapping for spider chart
+const scoreMap = {
+    'Small': 3, 'Medium': 6, 'Large': 10,
+    'Low': 2, 'Medium': 5, 'High': 8, 'Very High': 10
+};
+
+// Function to get market data (tries backend first, then fallback)
+async function getMarketData(marketId, marketName) {
+    try {
+        const response = await fetch(`${API_BASE}/api/market/${marketId}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (e) {
+        console.log("Backend unavailable, using fallback data");
+    }
+    
+    const market = FALLBACK_MARKETS[marketId] || 
+                   Object.values(FALLBACK_MARKETS).find(m => m.name === marketName);
+    
+    if (market) {
+        return {
+            market_id: market.id,
+            market_name: market.name,
+            size: scoreMap[market.size] || 5,
+            regulation: scoreMap[market.regulation] || 5,
+            competition: scoreMap[market.competition] || 5,
+            resources: scoreMap[market.resources] || 5,
+            profit_potential: Math.min(10, (scoreMap[market.size] + (10 - scoreMap[market.competition])) / 2),
+            entry_difficulty: Math.min(10, (scoreMap[market.regulation] + scoreMap[market.competition]) / 2),
+            growth_risk: Math.min(10, ((10 - scoreMap[market.size]) + scoreMap[market.competition]) / 2)
+        };
+    }
+    return null;
+}
+
+// Simple spider chart renderer
+function renderSimpleSpiderChart(marketData, containerElement) {
+    if (!containerElement) return;
+    
+    containerElement.innerHTML = '';
+    
+    // Increased size for better spacing
+    const width = 320;
+    const height = 320;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = 110;
+    
+    const attributes = [
+        { key: 'size', label: 'Market Size', value: marketData.size / 10 },
+        { key: 'regulation', label: 'Regulation', value: marketData.regulation / 10 },
+        { key: 'competition', label: 'Competition', value: marketData.competition / 10 },
+        { key: 'resources', label: 'Resources', value: marketData.resources / 10 },
+        { key: 'profit_potential', label: 'Profit Potential', value: marketData.profit_potential / 10 },
+        { key: 'entry_difficulty', label: 'Entry Difficulty', value: marketData.entry_difficulty / 10 }
+    ];
+    
+    const numVars = attributes.length;
+    const angleStep = (Math.PI * 2) / numVars;
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.style.background = '#f9f9f9';
+    svg.style.borderRadius = '10px';
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
+    
+    // Draw grid circles
+    for (let level = 0.2; level <= 1; level += 0.2) {
+        const r = radius * level;
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', centerX);
+        circle.setAttribute('cy', centerY);
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', '#ddd');
+        circle.setAttribute('stroke-width', '0.5');
+        svg.appendChild(circle);
+    }
+    
+    // Draw axes and labels
+    const points = [];
+    for (let i = 0; i < numVars; i++) {
+        const angle = i * angleStep - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', centerX);
+        line.setAttribute('y1', centerY);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', '#999');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+        
+        // Adjust label positioning based on angle
+        const labelRadius = radius + 25;
+        const labelX = centerX + labelRadius * Math.cos(angle);
+        const labelY = centerY + labelRadius * Math.sin(angle);
+        
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', labelX);
+        text.setAttribute('y', labelY);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('font-size', '10px');
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('fill', '#333');
+        
+        // Split long labels into two lines
+        const labelText = attributes[i].label;
+        if (labelText === 'Profit Potential') {
+            const tspan1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            tspan1.setAttribute('x', labelX);
+            tspan1.setAttribute('dy', '-5');
+            tspan1.textContent = 'Profit';
+            const tspan2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            tspan2.setAttribute('x', labelX);
+            tspan2.setAttribute('dy', '12');
+            tspan2.textContent = 'Potential';
+            text.appendChild(tspan1);
+            text.appendChild(tspan2);
+        } else if (labelText === 'Entry Difficulty') {
+            const tspan1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            tspan1.setAttribute('x', labelX);
+            tspan1.setAttribute('dy', '-5');
+            tspan1.textContent = 'Entry';
+            const tspan2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            tspan2.setAttribute('x', labelX);
+            tspan2.setAttribute('dy', '12');
+            tspan2.textContent = 'Difficulty';
+            text.appendChild(tspan1);
+            text.appendChild(tspan2);
+        } else {
+            text.textContent = labelText;
+        }
+        
+        svg.appendChild(text);
+        
+        const dataRadius = radius * attributes[i].value;
+        const dataX = centerX + dataRadius * Math.cos(angle);
+        const dataY = centerY + dataRadius * Math.sin(angle);
+        points.push({ x: dataX, y: dataY });
+    }
+    
+    // Draw data polygon
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+    polygon.setAttribute('points', pointsStr);
+    polygon.setAttribute('fill', 'rgba(70, 112, 150, 0.3)');
+    polygon.setAttribute('stroke', '#467096');
+    polygon.setAttribute('stroke-width', '2');
+    svg.appendChild(polygon);
+    
+    // Draw data points
+    points.forEach(p => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', '4');
+        circle.setAttribute('fill', '#467096');
+        circle.setAttribute('stroke', 'white');
+        circle.setAttribute('stroke-width', '1.5');
+        svg.appendChild(circle);
+    });
+    
+    containerElement.appendChild(svg);
+}
+
+// Helper function to format attribute values
+function formatAttribute(value, type) {
+    const labels = {
+        size: { low: 'Small', mid: 'Medium', high: 'Large' },
+        regulation: { low: 'Low', mid: 'Medium', high: 'High' },
+        competition: { low: 'Low', mid: 'Medium', high: 'High' },
+        resources: { low: 'Low', mid: 'Medium', high: 'High' }
+    };
+    
+    if (value <= 3.5) return labels[type]?.low || 'Low';
+    if (value <= 6.5) return labels[type]?.mid || 'Medium';
+    return labels[type]?.high || 'High';
+}
+
+function getMarketArchetype(marketData) {
+    if (marketData.size >= 8 && marketData.regulation <= 4) return 'high-growth';
+    if (marketData.size >= 8 && marketData.regulation >= 7) return 'regulated giant';
+    if (marketData.size <= 4 && marketData.resources >= 8) return 'specialized niche';
+    if (marketData.competition >= 8) return 'contested';
+    return 'developing';
+}
+
+function getCompetitionLevel(score) {
+    if (score >= 8) return 'intense';
+    if (score >= 5) return 'moderate';
+    return 'low';
+}
+
+function getRegulationLevel(score) {
+    if (score >= 7) return 'strict';
+    if (score >= 4) return 'moderate';
+    return 'light';
+}
+
+// Generate business-focused descriptions
+function generateBusinessDescription(marketData) {
+    const strategies = [];
+    
+    if (marketData.profit_potential >= 7) {
+        strategies.push('High profit potential - prioritize investment');
+    } else if (marketData.profit_potential <= 3) {
+        strategies.push('Low margins - focus on efficiency');
+    }
+    
+    if (marketData.entry_difficulty >= 7) {
+        strategies.push('High barriers - form strategic alliances');
+    } else if (marketData.entry_difficulty <= 3) {
+        strategies.push('Easy entry - quick expansion opportunity');
+    }
+    
+    if (marketData.growth_risk >= 7) {
+        strategies.push('Volatile market - maintain flexible exit strategy');
+    }
+    
+    if (marketData.competition >= 8) {
+        strategies.push('Crowded market - differentiate or consolidate');
+    }
+    
+    if (marketData.resources >= 8) {
+        strategies.push('Resource-rich - leverage local assets');
+    }
+    
+    const shortDesc = `${marketData.market_name}: ${getMarketArchetype(marketData)} market with ${getCompetitionLevel(marketData.competition)} competition and ${getRegulationLevel(marketData.regulation)} regulation.`;
+    
+    return {
+        short: shortDesc,
+        strategic: strategies.join('<br>') || 'Balanced approach - standard market entry recommended'
+    };
+}
+
+// Enhanced territory click handler with spider chart
+function showMarketDetailsWithSpider(marketId, marketName, button, overlay) {
+    const dialog = overlay.querySelector('.territory-dialog');
+    const title = dialog.querySelector('h3');
+    const chartContainer = dialog.querySelector('#spider-chart-container');
+    const descContainer = dialog.querySelector('#market-description');
+    const adviceContainer = dialog.querySelector('#strategic-advice');
+    
+    getMarketData(marketId, marketName).then(marketData => {
+        if (!marketData) {
+            title.textContent = `${marketName} - Data Unavailable`;
+            if (descContainer) descContainer.innerHTML = '<p>Market data could not be loaded.</p>';
+            return;
+        }
+        
+        title.textContent = `${marketData.market_name} Market Analysis`;
+        
+        const statSize = dialog.querySelector('#stat-size');
+        const statRegulation = dialog.querySelector('#stat-regulation');
+        const statCompetition = dialog.querySelector('#stat-competition');
+        const statResources = dialog.querySelector('#stat-resources');
+        
+        if (statSize) statSize.textContent = formatAttribute(marketData.size, 'size');
+        if (statRegulation) statRegulation.textContent = formatAttribute(marketData.regulation, 'regulation');
+        if (statCompetition) statCompetition.textContent = formatAttribute(marketData.competition, 'competition');
+        if (statResources) statResources.textContent = formatAttribute(marketData.resources, 'resources');
+        
+        const description = generateBusinessDescription(marketData);
+        if (descContainer) descContainer.innerHTML = `<strong>Market Brief:</strong> ${description.short}`;
+        if (adviceContainer) adviceContainer.innerHTML = `
+            <strong>Strategic Insight:</strong><br>
+            ${description.strategic}
+        `;
+        
+        if (chartContainer) {
+            renderSimpleSpiderChart(marketData, chartContainer);
+        }
+        
+        const actionBtn = dialog.querySelector('.territory-action-button');
+        if (actionBtn) {
+            actionBtn.dataset.marketId = marketId;
+            actionBtn.dataset.marketName = marketData.market_name;
+            actionBtn.dataset.marketData = JSON.stringify(marketData);
+        }
+    }).catch(error => {
+        console.error('Failed to load market data:', error);
+        if (descContainer) descContainer.innerHTML = '<p>Error loading market data. Please try again.</p>';
+    });
+}
+
+// Make available globally for console testing
+window.testSpiderChart = async (marketId, marketName) => {
+    const marketData = await getMarketData(marketId, marketName);
+    if (marketData) {
+        console.log('Market data:', marketData);
+        const testContainer = document.createElement('div');
+        testContainer.style.position = 'fixed';
+        testContainer.style.top = '50%';
+        testContainer.style.left = '50%';
+        testContainer.style.transform = 'translate(-50%, -50%)';
+        testContainer.style.zIndex = '9999';
+        testContainer.style.background = 'white';
+        testContainer.style.padding = '20px';
+        testContainer.style.borderRadius = '10px';
+        testContainer.style.boxShadow = '0 0 20px rgba(0,0,0,0.3)';
+        document.body.appendChild(testContainer);
+        renderSimpleSpiderChart(marketData, testContainer);
+        return marketData;
+    } else {
+        console.error('Market not found');
+        return null;
+    }
+};
+window.getMarketData = getMarketData;
+
+// ============= SPIDER CHART CODE END =============
+
+
 export function startGame() {
     if (game) return;
 
@@ -684,10 +1055,37 @@ function initTerritoryUI(container) {
         const overlay = button.nextElementSibling;
         if (!overlay || !overlay.classList.contains("territory-overlay")) return;
 
-        button.addEventListener("click", () => {
-            const market = findMarketEntryBySlug(button.dataset.territory);
-            if (isPlanningStageActive() && market) {
-                if (Number(market.owner || 0) === Number(planningState.selectedTeamId)) {
+        // Remove any existing listeners to avoid duplicates
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        newButton.addEventListener("click", () => {
+            const territorySlug = newButton.dataset.territory;
+            const mappedMarket = TERRITORY_MARKET_MAP[territorySlug];
+            const marketName = newButton.querySelector('h3')?.textContent;
+            
+            // Use mapped ID if available, otherwise try to find from backend
+            let marketId = mappedMarket?.id;
+            let finalMarketName = mappedMarket?.name || marketName;
+            
+            // If no mapped ID, try to find from market state
+            if (!marketId) {
+                const market = findMarketEntryBySlug(territorySlug);
+                marketId = market?.marketId;
+                finalMarketName = market?.market_name || marketName;
+            }
+            
+            console.log("Territory clicked:", { territorySlug, marketId, finalMarketName });
+            
+            // ALWAYS show spider chart for any market click
+            if (marketId && finalMarketName && !isPlanningStageActive()) {
+                console.log("Showing spider chart for:", finalMarketName);
+                showMarketDetailsWithSpider(marketId, finalMarketName, newButton, overlay);
+                overlay.style.display = "flex";
+            } else if (isPlanningStageActive() && marketId) {
+                // Planning mode logic
+                const market = findMarketEntryBySlug(territorySlug);
+                if (market && Number(market.owner || 0) === Number(planningState.selectedTeamId)) {
                     selectPlanningMarket(market.marketId);
                 } else {
                     const selectedTeam = (currentBackendState?.teams || []).find(
@@ -702,14 +1100,22 @@ function initTerritoryUI(container) {
                     renderPlanningBoard();
                 }
                 return;
+            } else if (marketId && finalMarketName) {
+                // Fallback - still show spider chart
+                console.log("Fallback: Showing spider chart for:", finalMarketName);
+                showMarketDetailsWithSpider(marketId, finalMarketName, newButton, overlay);
+                overlay.style.display = "flex";
+            } else {
+                console.log("No market ID found, just showing overlay");
+                overlay.style.display = "flex";
             }
-
-            overlay.style.display = "flex";
         });
 
         const closeButton = overlay.querySelector(".territory-close");
         if (closeButton) {
-            closeButton.addEventListener("click", () => {
+            const newClose = closeButton.cloneNode(true);
+            closeButton.parentNode.replaceChild(newClose, closeButton);
+            newClose.addEventListener("click", () => {
                 overlay.style.display = "none";
             });
         }
@@ -1154,8 +1560,10 @@ function showGameUI() {
     if (rightPanel) {
         if (gameState.teamModeActive) {
             rightPanel.classList.add('active');
-            // Initialize team info button when game starts
             initTeamInfoButton();
+            // ADD THIS LINE - Re-initialize territory buttons with spider chart support
+            const container = document.getElementById("board-container");
+            if (container) initTerritoryUI(container);
         } else {
             rightPanel.classList.remove('active');
         }

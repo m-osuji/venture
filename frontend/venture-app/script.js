@@ -1117,7 +1117,6 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
       if (aiButton) {
         const newButton = aiButton.cloneNode(true);
         aiButton.parentNode.replaceChild(newButton, aiButton);
-        newButton.textContent = "Hide";
         newButton.addEventListener("click", () => {
           if (aiContainer) {
             aiContainer.style.display = "none";

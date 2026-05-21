@@ -505,6 +505,10 @@ class ConflictResolutionQuiz {
         this.resultsByMarket = {};
         this.currentQuizResults = null;
         this.onComplete = null;
+        
+        // Track per-team response times for the current question
+        this.questionTeamAnswers = new Map(); // teamIndex -> { answeredAt: timestamp }
+        
         this.keyToOption = {
             "1": { team: 1, option: "a" },
             "2": { team: 1, option: "b" },
@@ -535,6 +539,7 @@ class ConflictResolutionQuiz {
                     <div id="team1-panel" class="tournament-team-panel team1-panel">
                         <h3>TEAM 1</h3>
                         <div class="team-score">Score: <span id="team1-score">0</span></div>
+                        <div class="team-total-time">Total Time: <span id="team1-time">0.0</span>s</div>
                         <div class="team-keys">Use keys: 1 2 3 4</div>
                     </div>
                     <div class="setup-card quiz-card">
@@ -561,6 +566,7 @@ class ConflictResolutionQuiz {
                     <div id="team2-panel" class="tournament-team-panel team2-panel">
                         <h3>TEAM 2</h3>
                         <div class="team-score">Score: <span id="team2-score">0</span></div>
+                        <div class="team-total-time">Total Time: <span id="team2-time">0.0</span>s</div>
                         <div class="team-keys">Use keys: 6 7 8 9</div>
                     </div>
                 </div>
@@ -597,6 +603,8 @@ class ConflictResolutionQuiz {
             team_results: this.currentTeams().map((teamId) => ({
                 team_id: teamId,
                 answers: [],
+                totalResponseTimeMs: 0,  // Track total time in milliseconds
+                correctCount: 0,           // Track correct answers
             })),
         };
         this.resultsByMarket[Number(quiz.market_id)] = this.currentQuizResults;
@@ -612,6 +620,7 @@ class ConflictResolutionQuiz {
         }
 
         this.updateScores();
+        this.updateTotalTimeDisplay();
         this.updateTournamentProgress();
         this.displayQuestion();
 
@@ -623,13 +632,36 @@ class ConflictResolutionQuiz {
 
     updateScores() {
         const [team1Id, team2Id] = this.currentTeams();
-        const quiz = this.currentQuiz();
-        const team1Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team1Id);
-        const team2Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team2Id);
+        const team1Correct = this.getTeamCorrectCount(team1Id);
+        const team2Correct = this.getTeamCorrectCount(team2Id);
         const team1ScoreEl = document.getElementById("team1-score");
         const team2ScoreEl = document.getElementById("team2-score");
-        if (team1ScoreEl) team1ScoreEl.textContent = String(team1Score);
-        if (team2ScoreEl) team2ScoreEl.textContent = String(team2Score);
+        if (team1ScoreEl) team1ScoreEl.textContent = String(team1Correct);
+        if (team2ScoreEl) team2ScoreEl.textContent = String(team2Correct);
+    }
+
+    updateTotalTimeDisplay() {
+        const [team1Id, team2Id] = this.currentTeams();
+        const team1TimeSec = (this.getTeamTotalTime(team1Id) / 1000).toFixed(1);
+        const team2TimeSec = (this.getTeamTotalTime(team2Id) / 1000).toFixed(1);
+        const team1TimeEl = document.getElementById("team1-time");
+        const team2TimeEl = document.getElementById("team2-time");
+        if (team1TimeEl) team1TimeEl.textContent = team1TimeSec;
+        if (team2TimeEl) team2TimeEl.textContent = team2TimeSec;
+    }
+
+    getTeamCorrectCount(teamId) {
+        const result = this.currentQuizResults?.team_results?.find(
+            (entry) => Number(entry.team_id) === Number(teamId)
+        );
+        return result?.correctCount || 0;
+    }
+
+    getTeamTotalTime(teamId) {
+        const result = this.currentQuizResults?.team_results?.find(
+            (entry) => Number(entry.team_id) === Number(teamId)
+        );
+        return result?.totalResponseTimeMs || 0;
     }
 
     revealCorrectAnswer() {
@@ -673,6 +705,9 @@ class ConflictResolutionQuiz {
         window.team1Locked = false;
         window.team2Locked = false;
         this.currentQuestionStartTime = Date.now();
+        
+        // Reset per-question answer tracking
+        this.questionTeamAnswers.clear();
 
         const questionText = document.getElementById("question-text");
         if (questionText) {
@@ -716,22 +751,37 @@ class ConflictResolutionQuiz {
         this.startCountdown();
     }
 
-    recordAnswer(teamIndex, selectedOption) {
+    recordAnswer(teamIndex, selectedOption, isCorrect) {
         const question = this.currentQuestion();
         const teamId = this.currentTeams()[teamIndex - 1];
         const result = this.currentQuizResults?.team_results?.find((entry) => Number(entry.team_id) === Number(teamId));
-        if (!question || !result) return;
+        if (!question || !result) return false;
 
-        const responseTime = this.currentQuestionStartTime ? Math.max(250, Date.now() - this.currentQuestionStartTime) : 1000;
+        // Check if already answered this question
         if (result.answers.some((answer) => Number(answer.question_id) === Number(question.question_id))) {
-            return;
+            return false;
         }
+
+        // Calculate response time - from question start to when this team answered
+        const responseTime = this.currentQuestionStartTime 
+            ? Math.max(250, Date.now() - this.currentQuestionStartTime) 
+            : 1000;
 
         result.answers.push({
             question_id: Number(question.question_id),
             selected_option: optionLetterToAnswerKey[selectedOption] || "option_1",
             response_time_ms: responseTime,
         });
+
+        // Add to total response time for this team
+        result.totalResponseTimeMs += responseTime;
+        
+        // Track correct answers count
+        if (isCorrect) {
+            result.correctCount += 1;
+        }
+
+        return true;
     }
 
     startCountdown() {
@@ -758,21 +808,36 @@ class ConflictResolutionQuiz {
             if (this.currentTimeRemaining <= 0) {
                 clearInterval(this.countdownInterval);
                 this.countdownInterval = null;
-                this.questionActive = false;
-                const roundResult = document.getElementById("round-result");
-                if (roundResult) {
-                    roundResult.innerHTML = `<span style="color: orange; font-weight: bold;">Time's up! No more answers for this question.</span>`;
-                    roundResult.style.display = "block";
+                
+                if (this.questionActive) {
+                    this.questionActive = false;
+                    
+                    // Record that timer expired - no additional time recorded for unanswered teams
+                    const roundResult = document.getElementById("round-result");
+                    if (roundResult) {
+                        const unansweredTeams = [];
+                        if (!window.team1Locked) unansweredTeams.push("Team 1");
+                        if (!window.team2Locked) unansweredTeams.push("Team 2");
+                        const unansweredText = unansweredTeams.length 
+                            ? ` (${unansweredTeams.join(" and ")} did not answer)` 
+                            : "";
+                        roundResult.innerHTML = `<span style="color: orange; font-weight: bold;">Time's up!${unansweredText} The correct answer was ${answerKeyToOptionLetter[this.currentQuestion()?.answer]?.toUpperCase()}.</span>`;
+                        roundResult.style.display = "block";
+                    }
+                    
+                    const nextQuestionBtn = document.getElementById("next-question-btn");
+                    if (nextQuestionBtn) {
+                        nextQuestionBtn.style.display = "block";
+                    }
+                    
+                    document.querySelectorAll(".competition-option").forEach((opt) => {
+                        opt.style.cursor = "not-allowed";
+                        opt.style.opacity = "0.5";
+                    });
+                    
+                    this.revealCorrectAnswer();
+                    this.updateTotalTimeDisplay();
                 }
-                const nextQuestionBtn = document.getElementById("next-question-btn");
-                if (nextQuestionBtn) {
-                    nextQuestionBtn.style.display = "block";
-                }
-                document.querySelectorAll(".competition-option").forEach((opt) => {
-                    opt.style.cursor = "not-allowed";
-                    opt.style.opacity = "0.5";
-                });
-                this.revealCorrectAnswer();
             }
         }, 1000);
     }
@@ -784,8 +849,12 @@ class ConflictResolutionQuiz {
         }
 
         const question = this.currentQuestion();
-        const isCorrect = optionLetterToAnswerKey[selectedOption] === question?.answer;
-        this.recordAnswer(teamIndex, selectedOption);
+        const selectedAnswerKey = optionLetterToAnswerKey[selectedOption];
+        const isCorrect = selectedAnswerKey === question?.answer;
+        
+        // Record the answer with time tracking
+        this.recordAnswer(teamIndex, selectedOption, isCorrect);
+        
         if (teamIndex === 1) window.team1Locked = true;
         if (teamIndex === 2) window.team2Locked = true;
 
@@ -793,27 +862,48 @@ class ConflictResolutionQuiz {
         if (roundResult) {
             const teamId = this.currentTeams()[teamIndex - 1];
             const teamName = this.teamNameLookup.get(teamId) || `Team ${teamId}`;
-            roundResult.innerHTML = isCorrect
-                ? `<span style="color: green; font-weight: bold;">CORRECT! ${escapeHtml(teamName)} locks in a correct answer.</span>`
-                : `<span style="color: red;">WRONG! ${escapeHtml(teamName)} is locked for this question.</span>`;
+            
+            if (isCorrect) {
+                roundResult.innerHTML = `<span style="color: green; font-weight: bold;">CORRECT! ${escapeHtml(teamName)} earns a point! (Response time recorded)</span>`;
+            } else {
+                roundResult.innerHTML = `<span style="color: red;">WRONG! ${escapeHtml(teamName)} does not earn a point. (Response time still recorded)</span>`;
+            }
             roundResult.style.display = "block";
         }
 
+        // Update displays
         this.updateScores();
+        this.updateTotalTimeDisplay();
 
         const allLocked = Boolean(window.team1Locked) && Boolean(window.team2Locked);
+        
+        // Only end the question if:
+        // 1. Someone answered correctly, OR
+        // 2. Both teams have answered (even if both wrong)
         if (isCorrect || allLocked) {
             this.stopCountdown();
             this.questionActive = false;
+            
             const nextQuestionBtn = document.getElementById("next-question-btn");
             if (nextQuestionBtn) {
                 nextQuestionBtn.style.display = "block";
             }
+            
             document.querySelectorAll(".competition-option").forEach((opt) => {
                 opt.style.cursor = "not-allowed";
                 opt.style.opacity = "0.5";
             });
+            
             this.revealCorrectAnswer();
+            
+            // If both were wrong, show additional message
+            if (allLocked && !window.team1Correct && !window.team2Correct) {
+                const roundResult = document.getElementById("round-result");
+                if (roundResult) {
+                    roundResult.innerHTML = `<span style="color: orange; font-weight: bold;">Both teams were wrong! The correct answer was ${answerKeyToOptionLetter[question?.answer]?.toUpperCase()}.</span>`;
+                    roundResult.style.display = "block";
+                }
+            }
         }
     }
 
@@ -836,12 +926,34 @@ class ConflictResolutionQuiz {
 
     endMatchup() {
         const [team1Id, team2Id] = this.currentTeams();
-        const quiz = this.currentQuiz();
-        const team1Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team1Id);
-        const team2Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team2Id);
-        const winnerLabel = team1Score === team2Score
-            ? "IT'S A TIE!"
-            : `WINNER: ${escapeHtml(this.teamNameLookup.get(team1Score > team2Score ? team1Id : team2Id) || "Unknown")}`;
+        const team1Correct = this.getTeamCorrectCount(team1Id);
+        const team2Correct = this.getTeamCorrectCount(team2Id);
+        const team1TimeSec = (this.getTeamTotalTime(team1Id) / 1000).toFixed(1);
+        const team2TimeSec = (this.getTeamTotalTime(team2Id) / 1000).toFixed(1);
+        
+        // Determine winner: highest correct wins, tie goes to lower total time
+        let winnerText = "";
+        let winnerColor = "#f39c12"; // Default tie color
+        
+        if (team1Correct > team2Correct) {
+            winnerText = `WINNER: ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)} (${team1Correct} correct, ${team1TimeSec}s total)`;
+            winnerColor = "#27ae60";
+        } else if (team2Correct > team1Correct) {
+            winnerText = `WINNER: ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)} (${team2Correct} correct, ${team2TimeSec}s total)`;
+            winnerColor = "#27ae60";
+        } else {
+            // Tie - compare total time
+            if (team1TimeSec < team2TimeSec) {
+                winnerText = `TIE BREAKER! ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)} wins on time (${team1Correct} correct, ${team1TimeSec}s vs ${team2TimeSec}s)`;
+                winnerColor = "#27ae60";
+            } else if (team2TimeSec < team1TimeSec) {
+                winnerText = `TIE BREAKER! ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)} wins on time (${team2Correct} correct, ${team2TimeSec}s vs ${team1TimeSec}s)`;
+                winnerColor = "#27ae60";
+            } else {
+                winnerText = "IT'S A COMPLETE TIE! (Same correct answers AND total time)";
+                winnerColor = "#f39c12";
+            }
+        }
 
         const questionArea = document.getElementById("question-area");
         if (questionArea) questionArea.style.display = "none";
@@ -854,11 +966,11 @@ class ConflictResolutionQuiz {
                 <div style="text-align: center;">
                     <h3>MATCHUP COMPLETE</h3>
                     <div style="font-size: 20px; margin: 15px 0;">
-                        ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}: ${team1Score}<br>
-                        ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}: ${team2Score}
+                        ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}: ${team1Correct} correct (${team1TimeSec}s total)<br>
+                        ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}: ${team2Correct} correct (${team2TimeSec}s total)
                     </div>
-                    <div style="font-size: 24px; font-weight: bold; color: ${team1Score === team2Score ? "#f39c12" : "#27ae60"};">
-                        ${winnerLabel}
+                    <div style="font-size: 24px; font-weight: bold; color: ${winnerColor};">
+                        ${winnerText}
                     </div>
                 </div>
             `;

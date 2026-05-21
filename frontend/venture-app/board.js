@@ -1,4 +1,5 @@
-import * as Phaser from "phaser";
+
+import * as Phaser from "https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.esm.min.js";
 import {
     buildTeamNameLookup,
     calculatePlanningReserve,

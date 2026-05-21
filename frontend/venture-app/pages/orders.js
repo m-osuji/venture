@@ -481,6 +481,13 @@ const optionLetterToAnswerKey = {
     d: "option_4",
 };
 
+const answerKeyToOptionLetter = {
+    option_1: "a",
+    option_2: "b",
+    option_3: "c",
+    option_4: "d",
+};
+
 class ConflictResolutionQuiz {
     constructor(state, marketMap) {
         this.state = state;
@@ -616,15 +623,31 @@ class ConflictResolutionQuiz {
 
     updateScores() {
         const [team1Id, team2Id] = this.currentTeams();
-        const resultLookup = new Map(
-            (this.currentQuizResults?.team_results || []).map((entry) => [Number(entry.team_id), entry.answers.length]),
-        );
-        const team1Score = resultLookup.get(team1Id) || 0;
-        const team2Score = resultLookup.get(team2Id) || 0;
+        const quiz = this.currentQuiz();
+        const team1Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team1Id);
+        const team2Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team2Id);
         const team1ScoreEl = document.getElementById("team1-score");
         const team2ScoreEl = document.getElementById("team2-score");
         if (team1ScoreEl) team1ScoreEl.textContent = String(team1Score);
         if (team2ScoreEl) team2ScoreEl.textContent = String(team2Score);
+    }
+
+    revealCorrectAnswer() {
+        const correctOptionLetter = answerKeyToOptionLetter[this.currentQuestion()?.answer];
+        if (!correctOptionLetter) {
+            return;
+        }
+
+        const correctOption = document.getElementById(`option-${correctOptionLetter}`);
+        if (!correctOption) {
+            return;
+        }
+
+        correctOption.style.background = "#27ae60";
+        correctOption.style.border = "2px solid #1d7c45";
+        correctOption.style.color = "#ffffff";
+        correctOption.style.opacity = "1";
+        correctOption.style.boxShadow = "0 14px 30px rgba(39, 174, 96, 0.28)";
     }
 
     updateTournamentProgress() {
@@ -749,6 +772,7 @@ class ConflictResolutionQuiz {
                     opt.style.cursor = "not-allowed";
                     opt.style.opacity = "0.5";
                 });
+                this.revealCorrectAnswer();
             }
         }, 1000);
     }
@@ -789,6 +813,7 @@ class ConflictResolutionQuiz {
                 opt.style.cursor = "not-allowed";
                 opt.style.opacity = "0.5";
             });
+            this.revealCorrectAnswer();
         }
     }
 
@@ -811,11 +836,12 @@ class ConflictResolutionQuiz {
 
     endMatchup() {
         const [team1Id, team2Id] = this.currentTeams();
-        const team1Answered = answeredCountForTeam(this.currentQuizResults, team1Id);
-        const team2Answered = answeredCountForTeam(this.currentQuizResults, team2Id);
-        const winnerLabel = team1Answered === team2Answered
+        const quiz = this.currentQuiz();
+        const team1Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team1Id);
+        const team2Score = correctAnswerCountForTeam(this.currentQuizResults, quiz, team2Id);
+        const winnerLabel = team1Score === team2Score
             ? "IT'S A TIE!"
-            : `WINNER: ${escapeHtml(this.teamNameLookup.get(team1Answered > team2Answered ? team1Id : team2Id) || "Unknown")}`;
+            : `WINNER: ${escapeHtml(this.teamNameLookup.get(team1Score > team2Score ? team1Id : team2Id) || "Unknown")}`;
 
         const questionArea = document.getElementById("question-area");
         if (questionArea) questionArea.style.display = "none";
@@ -828,10 +854,10 @@ class ConflictResolutionQuiz {
                 <div style="text-align: center;">
                     <h3>MATCHUP COMPLETE</h3>
                     <div style="font-size: 20px; margin: 15px 0;">
-                        ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}: ${team1Answered}<br>
-                        ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}: ${team2Answered}
+                        ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}: ${team1Score}<br>
+                        ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}: ${team2Score}
                     </div>
-                    <div style="font-size: 24px; font-weight: bold; color: ${team1Answered === team2Answered ? "#f39c12" : "#27ae60"};">
+                    <div style="font-size: 24px; font-weight: bold; color: ${team1Score === team2Score ? "#f39c12" : "#27ae60"};">
                         ${winnerLabel}
                     </div>
                 </div>
@@ -898,6 +924,19 @@ class ConflictResolutionQuiz {
 
 function answeredCountForTeam(resultSet, teamId) {
     return (resultSet?.team_results?.find((entry) => Number(entry.team_id) === Number(teamId))?.answers?.length) || 0;
+}
+
+function correctAnswerCountForTeam(resultSet, quiz, teamId) {
+    const answers =
+        resultSet?.team_results?.find((entry) => Number(entry.team_id) === Number(teamId))?.answers || [];
+    const answerLookup = new Map(
+        (quiz?.questions || []).map((question) => [Number(question.question_id), String(question.answer || "")]),
+    );
+
+    return answers.filter((answer) => {
+        const correctAnswer = answerLookup.get(Number(answer.question_id));
+        return correctAnswer && String(answer.selected_option || "") === correctAnswer;
+    }).length;
 }
 
 function launchConflictResolutionQuiz(state, marketMap) {

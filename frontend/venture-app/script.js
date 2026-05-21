@@ -1166,7 +1166,8 @@ function updateTerritoryButtonsWithMarketSelections() {
         'finance': 'finance',
         'energy': 'energy',
         'manufacturing': 'manufacturing',
-        'agriculture': 'agriculture'
+        'agriculture': 'agriculture',
+        'technology': 'technology'
     };
     
     territoryButtons.forEach(button => {

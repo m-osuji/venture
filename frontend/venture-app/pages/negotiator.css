@@ -96,6 +96,10 @@
     border: 1px solid rgba(122, 108, 89, 0.18);
 }
 
+#negotiation-back-btn {
+    display: none;
+}
+
 .neg-empty-card {
     padding: 2rem;
 }

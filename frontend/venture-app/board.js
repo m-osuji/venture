@@ -10,8 +10,9 @@ import {
 
 const API_BASE =
     window.VENTURE_API_BASE ||
-    import.meta.env.VITE_VENTURE_API_BASE ||
+    "https://venture-o2cx.onrender.com" ||
     "http://localhost:5000";
+
 const STAGE_SEQUENCE = ["PLAN", "NEGOTIATE", "ORDERS", "RESOLVE", "UPDATE"];
 const STAGE_LABELS = {
     PLAN: "Planning",

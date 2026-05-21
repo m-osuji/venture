@@ -961,7 +961,7 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
                 <h3 id="current-team-name">Team Name</h3>
                 <p>Select your starting market</p>
             </div>
-            <div id="markets-list" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
+            <div id="markets-list" style="margin-bottom: 20px; overflow-y: auto;">
                 <!-- Markets will be listed here -->
             </div>
             <div id="selection-feedback" style="text-align: center; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: none;"></div>

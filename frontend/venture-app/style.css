@@ -1665,7 +1665,6 @@ footer nav p {
 
 #markets-list {
     margin-bottom: 20px;
-    max-height: 400px;
     overflow-y: auto;
 }
 

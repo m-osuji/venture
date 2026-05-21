@@ -976,7 +976,6 @@ function updateBoardNarration(state) {
 
     const newButton = button.cloneNode(true);
     button.parentNode.replaceChild(newButton, button);
-    newButton.textContent = "Hide";
     newButton.addEventListener("click", () => {
         container.style.display = "none";
     });

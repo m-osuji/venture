@@ -8,6 +8,12 @@
     --second-heading-font: 'Raleway', sans-serif;
 }
 
+#team-info-container,
+#current-team-display,
+#team-info-button {
+    display: none !important;
+}
+
 #loader {
   position: fixed;
   top: 0;

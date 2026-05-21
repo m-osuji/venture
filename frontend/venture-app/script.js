@@ -927,7 +927,7 @@ function initQuizSetup() {
 }
 
 // Market selection after tournament
-function startMarketSelection(rankedTeams) {
+function startMarketSelection(rankedTeams, tournamentResults = []) {
     console.log("Starting market selection with rankings:", rankedTeams);
     
     // Extract just the team names in ranked order
@@ -1235,7 +1235,7 @@ async function startTeamQuiz() {
             timestamp: new Date().toISOString()
         }));
         // Start market selection
-        startMarketSelection(rankedTeams);
+        startMarketSelection(rankedTeams, tournamentResults);
     });
 }
 

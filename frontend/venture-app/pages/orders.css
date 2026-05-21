@@ -169,6 +169,144 @@
     margin: 0 auto 24px;
 }
 
+.orders-resolve.hidden {
+    display: none;
+}
+
+.orders-resolve {
+    max-width: 1220px;
+    margin: 0 auto 24px;
+    display: grid;
+    gap: 18px;
+}
+
+.orders-resolve-card {
+    padding: 22px 24px;
+    border-radius: 24px;
+    background: rgba(255, 252, 248, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.56);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.07);
+}
+
+.orders-resolve-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(67, 67, 67, 0.06);
+    color: rgba(67, 67, 67, 0.8);
+    font-size: 14px;
+}
+
+.orders-resolve-layout {
+    margin-top: 18px;
+}
+
+.orders-resolve-layout .tournament-team-panel.is-active {
+    outline: 3px solid rgba(238, 103, 43, 0.28);
+    transform: translateY(-2px);
+}
+
+.orders-resolve-layout .team-keys {
+    background: rgba(67, 67, 67, 0.82);
+}
+
+.orders-resolve-layout .competition-option {
+    cursor: pointer;
+}
+
+.orders-resolve-layout .competition-option:hover {
+    transform: translateY(-1px);
+}
+
+.orders-resolve-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+}
+
+.orders-resolve-head h2,
+.orders-quiz-card h3,
+.orders-team-quiz h4,
+.orders-quiz-question strong {
+    margin: 0;
+    color: #434343;
+}
+
+.orders-resolve-head p,
+.orders-quiz-meta,
+.orders-quiz-question span {
+    margin: 0;
+    color: rgba(67, 67, 67, 0.72);
+    line-height: 1.55;
+}
+
+.orders-quiz-list {
+    display: grid;
+    gap: 16px;
+}
+
+.orders-quiz-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(250, 246, 241, 0.9);
+    border: 1px solid rgba(67, 67, 67, 0.08);
+}
+
+.orders-quiz-meta {
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.orders-quiz-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #d9f0e2;
+    color: #215d3a;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.orders-quiz-teams {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.orders-team-quiz {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(67, 67, 67, 0.08);
+}
+
+.orders-team-quiz h4 {
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.orders-quiz-question {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.orders-quiz-select {
+    width: 100%;
+    border: 1px solid rgba(67, 67, 67, 0.14);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: inherit;
+    color: #434343;
+    background: rgba(255, 252, 248, 0.95);
+}
+
 .orders-empty-card {
     padding: 28px 30px;
     border-radius: 24px;

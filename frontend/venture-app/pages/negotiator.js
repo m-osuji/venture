@@ -53,6 +53,40 @@ function targetMarkets(state, teamId) {
         .sort((left, right) => String(left.market_name || "").localeCompare(String(right.market_name || "")));
 }
 
+function marketById(state, marketId) {
+    return marketEntries(state).find((market) => Number(market.marketId) === Number(marketId)) || null;
+}
+
+function enumScore(value) {
+    const normalised = String(value || "").trim().toLowerCase();
+    return {
+        low: 1,
+        medium: 2,
+        large: 3,
+        high: 3,
+        "very high": 4,
+        "very large": 4,
+    }[normalised] || 0;
+}
+
+function researchCostForMarket(state, marketId) {
+    const rules = state?.rules || {};
+    const market = marketById(state, marketId);
+    const baseCost = Number(rules.research_cost ?? 2);
+    const threshold = Number(rules.high_regulation_threshold ?? 3);
+    const surcharge = Number(rules.high_regulation_research_surcharge ?? 1);
+    const regulationScore = enumScore(market?.regulation_level);
+    return regulationScore >= threshold ? baseCost + surcharge : baseCost;
+}
+
+function clampNumber(value, minimum, maximum) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return minimum;
+    }
+    return Math.min(Math.max(numeric, minimum), maximum);
+}
+
 function teamInitials(name) {
     return String(name || "")
         .split(" ")
@@ -204,6 +238,7 @@ function applyMoveDraftToForm(prefix, moveDraft, state, teamId) {
     }
 
     updateConditionalFields(prefix);
+    applyMoveThresholds(prefix, state, teamId);
 }
 
 function updateConditionalFields(prefix) {
@@ -213,6 +248,56 @@ function updateConditionalFields(prefix) {
 
     attackFields?.classList.toggle("hidden", actionType !== "attack");
     researchFields?.classList.toggle("hidden", actionType !== "research");
+}
+
+function applyMoveThresholds(prefix, state, teamId) {
+    const attackSourceSelect = document.getElementById(`${prefix}-source-market`);
+    const attackIpInput = document.getElementById(`${prefix}-ip-spent`);
+    const attackHint = document.getElementById(`${prefix}-attack-threshold`);
+    const researchMarketSelect = document.getElementById(`${prefix}-research-market`);
+    const researchIpInput = document.getElementById(`${prefix}-research-ip`);
+    const researchHint = document.getElementById(`${prefix}-research-threshold`);
+    const selectedTeam = teamById(state, teamId);
+
+    if (attackIpInput && attackSourceSelect) {
+        const sourceMarket = marketById(state, attackSourceSelect.value);
+        const allocatedIp = Math.max(0, Number(sourceMarket?.allocated_ip || 0));
+        const attackMax = allocatedIp;
+        attackIpInput.min = attackMax > 0 ? "1" : "0";
+        attackIpInput.max = String(attackMax);
+        attackIpInput.value = String(
+            attackMax > 0
+                ? clampNumber(attackIpInput.value || 1, 1, attackMax)
+                : 0,
+        );
+
+        if (attackHint) {
+            attackHint.textContent = sourceMarket
+                ? attackMax > 0
+                    ? `${attackMax} allocated IP available from ${sourceMarket.market_name}.`
+                    : `${sourceMarket.market_name} has no allocated IP available for an attack this round.`
+                : "Choose an owned source market to see the attack limit.";
+        }
+    }
+
+    if (researchIpInput && researchMarketSelect) {
+        const targetMarketId = researchMarketSelect.value;
+        const requiredCost = targetMarketId ? researchCostForMarket(state, targetMarketId) : Number(state?.rules?.research_cost ?? 2);
+        const reserveIp = Math.max(0, Number(selectedTeam?.ip || 0));
+        researchIpInput.min = String(requiredCost);
+        researchIpInput.max = String(requiredCost);
+        researchIpInput.value = String(requiredCost);
+
+        if (researchHint) {
+            if (!targetMarketId) {
+                researchHint.textContent = "Choose an owned market to see the research cost.";
+            } else if (reserveIp < requiredCost) {
+                researchHint.textContent = `Research here costs ${requiredCost} reserve IP, but this team only has ${reserveIp}.`;
+            } else {
+                researchHint.textContent = `Research here costs exactly ${requiredCost} reserve IP. Team reserve: ${reserveIp}.`;
+            }
+        }
+    }
 }
 
 function moveDraftFromForm(prefix) {
@@ -233,7 +318,7 @@ function moveDraftFromForm(prefix) {
     return draft;
 }
 
-function buildMovePayload(moveDraft, { allowBreakAlliance = false } = {}) {
+function buildMovePayload(moveDraft, { allowBreakAlliance = false, state = null, teamId = null } = {}) {
     const actionType = String(moveDraft?.action_type || "hold").trim().toLowerCase() || "hold";
 
     if (actionType === "hold") {
@@ -250,8 +335,18 @@ function buildMovePayload(moveDraft, { allowBreakAlliance = false } = {}) {
         if (Number(moveDraft?.ip_spent || 0) <= 0) {
             throw new Error("Attack moves must commit at least 1 IP.");
         }
+        if (state && teamId != null) {
+            const sourceMarket = marketById(state, moveDraft.source_market_id);
+            const availableIp = Math.max(0, Number(sourceMarket?.allocated_ip || 0));
+            if (!sourceMarket || Number(sourceMarket.owner || 0) !== Number(teamId)) {
+                throw new Error("Attack moves must start from one of the team's owned markets.");
+            }
+            if (Number(moveDraft.ip_spent) > availableIp) {
+                throw new Error(`Attack moves can use at most ${availableIp} allocated IP from ${sourceMarket.market_name}.`);
+            }
+        }
 
-        const metadata = {};
+        const metadata = { resource_pool: "market_ip" };
         if (allowBreakAlliance && moveDraft.break_alliance) {
             metadata.break_alliance = true;
         }
@@ -273,6 +368,16 @@ function buildMovePayload(moveDraft, { allowBreakAlliance = false } = {}) {
         }
         if (Number(moveDraft?.ip_spent || 0) <= 0) {
             throw new Error("Research moves must commit a positive amount of IP.");
+        }
+        if (state && teamId != null) {
+            const expectedCost = researchCostForMarket(state, moveDraft.target_market_id);
+            const reserveIp = Math.max(0, Number(teamById(state, teamId)?.ip || 0));
+            if (Number(moveDraft.ip_spent) !== expectedCost) {
+                throw new Error(`Research on this market costs exactly ${expectedCost} IP.`);
+            }
+            if (reserveIp < expectedCost) {
+                throw new Error(`This team needs ${expectedCost} reserve IP for research, but only has ${reserveIp}.`);
+            }
         }
 
         return [
@@ -497,8 +602,15 @@ export function initNegotiatorPage() {
         const draft = draftStore.teamDrafts[toIdKey(teamId)];
 
         try {
-            const declaredMoves = buildMovePayload(draft.declared);
-            buildMovePayload(draft.actual, { allowBreakAlliance: true });
+            const declaredMoves = buildMovePayload(draft.declared, {
+                state: currentState,
+                teamId,
+            });
+            buildMovePayload(draft.actual, {
+                allowBreakAlliance: true,
+                state: currentState,
+                teamId,
+            });
 
             elements.saveTeamButton.disabled = true;
             await postJson(`${API_BASE}/api/game/declared-moves`, {
@@ -544,7 +656,11 @@ export function initNegotiatorPage() {
 
             for (const team of teams) {
                 const teamDraft = draftStore.teamDrafts[toIdKey(team.team_id)];
-                const actualMoves = buildMovePayload(teamDraft.actual, { allowBreakAlliance: true });
+                const actualMoves = buildMovePayload(teamDraft.actual, {
+                    allowBreakAlliance: true,
+                    state: currentState,
+                    teamId: Number(team.team_id),
+                });
                 await postJson(`${API_BASE}/api/game/orders`, {
                     team_id: Number(team.team_id),
                     moves: actualMoves,

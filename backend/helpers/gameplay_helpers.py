@@ -835,6 +835,8 @@ def prepare_resolution_state(game_state: dict[str, Any]) -> dict[str, Any]:
                 spent_current_ip += move["ip_spent"]
 
             if action_type == "attack":
+                if not _uses_shared_ip(move):
+                    _consume_attack_market_ip(game_state, team_id, move)
                 _validate_attack_move(game_state, team_id, move)
                 attacks_by_market[int(move["target_market_id"])].append(
                     {"team_id": team_id, **move}
@@ -1283,6 +1285,28 @@ def _validate_attack_move(game_state: dict[str, Any], team_id: int, move: dict[s
         raise ValueError(
             f"[gameplay_helpers] Team {team_id} cannot attack allied/protected market {target_market_id}."
         )
+
+
+def _consume_attack_market_ip(game_state: dict[str, Any], team_id: int, move: dict[str, Any]) -> None:
+    source_market_id = move.get("source_market_id")
+    if source_market_id is None:
+        raise ValueError(
+            f"[gameplay_helpers] Market-backed attack order requires source_market_id: {move}"
+        )
+
+    source_state = _market_entry(game_state, source_market_id)
+    if source_state.get("owner") != team_id:
+        raise ValueError(
+            f"[gameplay_helpers] Team {team_id} can only attack from its own markets. Invalid source {source_market_id}."
+        )
+
+    source_available = int(source_state.get("allocated_ip", 0))
+    if source_available < move["ip_spent"]:
+        raise ValueError(
+            f"[gameplay_helpers] Cannot commit {move['ip_spent']} IP from market {source_market_id}; only {source_available} allocated."
+        )
+
+    source_state["allocated_ip"] = source_available - move["ip_spent"]
 
 
 def _apply_defend_move(game_state: dict[str, Any], team_id: int, move: dict[str, Any]) -> None:
@@ -2243,6 +2267,7 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "colour": _get_owner_colour(state.get("owner"), teams),
                 "market_name": state.get("_market_name"),
                 "size": state.get("_size"),
+                "regulation_level": state.get("_regulation_level"),
                 "allocated_ip": int(state.get("allocated_ip", 0)),
                 "supporting_teams": list(state.get("supporting_teams", [])),
                 "research_upgrades": state.get("research_upgrades", []),

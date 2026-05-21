@@ -3,6 +3,9 @@ const API_BASE =
     import.meta.env.VITE_VENTURE_API_BASE ||
     "http://localhost:5000";
 
+let resolveSession = null;
+let activeConflictQuiz = null;
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -24,6 +27,10 @@ function teamInitials(name) {
         .join("")
         .slice(0, 2)
         .toUpperCase();
+}
+
+function teamNameById(state, teamId) {
+    return (state?.teams || []).find((team) => Number(team.team_id) === Number(teamId))?.team_name || `Team ${teamId}`;
 }
 
 function marketName(marketMap, marketId) {
@@ -354,6 +361,579 @@ async function postJson(url, body) {
     return payload;
 }
 
+function quizSessionKey(state) {
+    return JSON.stringify(
+        (state.active_quizzes || []).map((quiz) => ({
+            market_id: Number(quiz.market_id),
+            participants: (quiz.participant_team_ids || []).map(Number),
+            questions: (quiz.questions || []).map((question) => Number(question.question_id)),
+        })),
+    );
+}
+
+function buildResolveSession(state) {
+    const submitted = new Set((state.quiz_results_submitted_markets || []).map(Number));
+    const quizzes = (state.active_quizzes || []).filter(
+        (quiz) => !submitted.has(Number(quiz.market_id)),
+    );
+
+    return {
+        key: quizSessionKey({ active_quizzes: quizzes }),
+        quizzes,
+        currentQuizIndex: 0,
+        currentQuestionIndex: 0,
+        currentParticipantIndex: 0,
+        answers: {},
+        statusMessage: quizzes.length
+            ? "Answer each question for both teams to resolve the contested market."
+            : "",
+        completed: quizzes.length === 0,
+        currentQuestionStartedAt: Date.now(),
+    };
+}
+
+function ensureResolveSession(state) {
+    const nextSession = buildResolveSession(state);
+    if (!resolveSession || resolveSession.key !== nextSession.key) {
+        resolveSession = nextSession;
+    } else {
+        resolveSession.quizzes = nextSession.quizzes;
+        resolveSession.completed = nextSession.completed;
+    }
+    return resolveSession;
+}
+
+function getResolveQuiz(session) {
+    return session?.quizzes?.[session.currentQuizIndex] || null;
+}
+
+function getResolveQuestion(session, quiz) {
+    return quiz?.questions?.[session.currentQuestionIndex] || null;
+}
+
+function ensureAnswerBucket(session, marketId, teamId) {
+    session.answers[marketId] = session.answers[marketId] || {};
+    session.answers[marketId][teamId] = session.answers[marketId][teamId] || [];
+    return session.answers[marketId][teamId];
+}
+
+function answeredQuestionCount(session, marketId, teamId) {
+    return (session.answers?.[marketId]?.[teamId] || []).length;
+}
+
+function recordResolveAnswer(optionValue) {
+    if (!resolveSession) {
+        return;
+    }
+
+    const quiz = getResolveQuiz(resolveSession);
+    const question = getResolveQuestion(resolveSession, quiz);
+    if (!quiz || !question) {
+        return;
+    }
+
+    const marketId = Number(quiz.market_id);
+    const participantIds = (quiz.participant_team_ids || []).map(Number);
+    const teamId = participantIds[resolveSession.currentParticipantIndex];
+    const bucket = ensureAnswerBucket(resolveSession, marketId, teamId);
+    const responseTime = Math.max(250, Date.now() - Number(resolveSession.currentQuestionStartedAt || Date.now()));
+
+    bucket.push({
+        question_id: Number(question.question_id),
+        selected_option: optionValue,
+        response_time_ms: responseTime,
+    });
+
+    if (resolveSession.currentParticipantIndex < participantIds.length - 1) {
+        resolveSession.currentParticipantIndex += 1;
+        resolveSession.currentQuestionStartedAt = Date.now();
+        resolveSession.statusMessage = `${teamId} answered. Pass to ${participantIds[resolveSession.currentParticipantIndex]}.`;
+        return;
+    }
+
+    if (resolveSession.currentQuestionIndex < (quiz.questions || []).length - 1) {
+        resolveSession.currentQuestionIndex += 1;
+        resolveSession.currentParticipantIndex = 0;
+        resolveSession.currentQuestionStartedAt = Date.now();
+        resolveSession.statusMessage = `Question ${resolveSession.currentQuestionIndex + 1} is live for ${participantIds[0]}.`;
+        return;
+    }
+
+    if (resolveSession.currentQuizIndex < resolveSession.quizzes.length - 1) {
+        const finishedMarket = Number(quiz.market_id);
+        resolveSession.currentQuizIndex += 1;
+        resolveSession.currentQuestionIndex = 0;
+        resolveSession.currentParticipantIndex = 0;
+        resolveSession.currentQuestionStartedAt = Date.now();
+        const nextQuiz = getResolveQuiz(resolveSession);
+        resolveSession.statusMessage = `${finishedMarket} resolved locally. Continue with ${marketName(new Map(), nextQuiz?.market_id)}.`;
+        return;
+    }
+
+    resolveSession.completed = true;
+    resolveSession.statusMessage = "All conflict quiz answers are ready. Press Finish resolution to apply the outcomes.";
+}
+
+const optionLetterToAnswerKey = {
+    a: "option_1",
+    b: "option_2",
+    c: "option_3",
+    d: "option_4",
+};
+
+class ConflictResolutionQuiz {
+    constructor(state, marketMap) {
+        this.state = state;
+        this.marketMap = marketMap;
+        this.quizzes = state.active_quizzes || [];
+        this.teamNameLookup = new Map(
+            (state.teams || []).map((team) => [Number(team.team_id), team.team_name]),
+        );
+        this.currentQuizIndex = 0;
+        this.currentQuestionIndex = 0;
+        this.questionActive = true;
+        this.countdownInterval = null;
+        this.currentTimeRemaining = 30;
+        this.currentQuestionStartTime = null;
+        this.resultsByMarket = {};
+        this.currentQuizResults = null;
+        this.onComplete = null;
+        this.keyToOption = {
+            "1": { team: 1, option: "a" },
+            "2": { team: 1, option: "b" },
+            "3": { team: 1, option: "c" },
+            "4": { team: 1, option: "d" },
+            "6": { team: 2, option: "a" },
+            "7": { team: 2, option: "b" },
+            "8": { team: 2, option: "c" },
+            "9": { team: 2, option: "d" },
+        };
+    }
+
+    start(onComplete) {
+        this.onComplete = onComplete;
+        this.createOverlay();
+        this.setupEventListeners();
+        this.startMatchup();
+    }
+
+    createOverlay() {
+        this.overlay = document.getElementById("conflict-resolution-overlay");
+        if (!this.overlay) {
+            this.overlay = document.createElement("div");
+            this.overlay.id = "conflict-resolution-overlay";
+            this.overlay.className = "game-setup-overlay";
+            this.overlay.innerHTML = `
+                <div class="tournament-layout">
+                    <div id="team1-panel" class="tournament-team-panel team1-panel">
+                        <h3>TEAM 1</h3>
+                        <div class="team-score">Score: <span id="team1-score">0</span></div>
+                        <div class="team-keys">Use keys: 1 2 3 4</div>
+                    </div>
+                    <div class="setup-card quiz-card">
+                        <div class="quiz-header">
+                            <h2>CONFLICT CHALLENGE</h2>
+                            <div id="question-timer" class="question-timer">Time: 30s</div>
+                        </div>
+                        <div id="tournament-progress" class="tournament-progress">Matchup X of Y</div>
+                        <div id="question-area" class="question-area">
+                            <div id="question-text" class="question-text">Loading question...</div>
+                            <div id="options-area" class="options-area">
+                                <div id="option-a" class="competition-option" data-option="a">A. </div>
+                                <div id="option-b" class="competition-option" data-option="b">B. </div>
+                                <div id="option-c" class="competition-option" data-option="c">C. </div>
+                                <div id="option-d" class="competition-option" data-option="d">D. </div>
+                            </div>
+                        </div>
+                        <div id="round-result" class="round-result" style="display: none;"></div>
+                        <div class="setup-actions">
+                            <button id="next-question-btn" class="setup-btn-primary" style="display: none;">Next Question</button>
+                            <button id="next-matchup-btn" class="setup-btn-primary" style="display: none;">Next Matchup</button>
+                        </div>
+                    </div>
+                    <div id="team2-panel" class="tournament-team-panel team2-panel">
+                        <h3>TEAM 2</h3>
+                        <div class="team-score">Score: <span id="team2-score">0</span></div>
+                        <div class="team-keys">Use keys: 6 7 8 9</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(this.overlay);
+        }
+        this.overlay.style.display = "flex";
+    }
+
+    currentQuiz() {
+        return this.quizzes[this.currentQuizIndex] || null;
+    }
+
+    currentTeams() {
+        return (this.currentQuiz()?.participant_team_ids || []).map(Number);
+    }
+
+    currentQuestion() {
+        return this.currentQuiz()?.questions?.[this.currentQuestionIndex] || null;
+    }
+
+    startMatchup() {
+        const quiz = this.currentQuiz();
+        if (!quiz) {
+            this.finish();
+            return;
+        }
+
+        this.currentQuestionIndex = 0;
+        this.questionActive = true;
+        this.currentTimeRemaining = 30;
+        this.currentQuizResults = {
+            market_id: Number(quiz.market_id),
+            team_results: this.currentTeams().map((teamId) => ({
+                team_id: teamId,
+                answers: [],
+            })),
+        };
+        this.resultsByMarket[Number(quiz.market_id)] = this.currentQuizResults;
+
+        const [team1Id, team2Id] = this.currentTeams();
+        const team1Panel = document.getElementById("team1-panel");
+        const team2Panel = document.getElementById("team2-panel");
+        if (team1Panel) {
+            team1Panel.querySelector("h3").innerHTML = `TEAM 1: ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}`;
+        }
+        if (team2Panel) {
+            team2Panel.querySelector("h3").innerHTML = `TEAM 2: ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}`;
+        }
+
+        this.updateScores();
+        this.updateTournamentProgress();
+        this.displayQuestion();
+
+        const nextMatchupBtn = document.getElementById("next-matchup-btn");
+        if (nextMatchupBtn) {
+            nextMatchupBtn.style.display = "none";
+        }
+    }
+
+    updateScores() {
+        const [team1Id, team2Id] = this.currentTeams();
+        const resultLookup = new Map(
+            (this.currentQuizResults?.team_results || []).map((entry) => [Number(entry.team_id), entry.answers.length]),
+        );
+        const team1Score = resultLookup.get(team1Id) || 0;
+        const team2Score = resultLookup.get(team2Id) || 0;
+        const team1ScoreEl = document.getElementById("team1-score");
+        const team2ScoreEl = document.getElementById("team2-score");
+        if (team1ScoreEl) team1ScoreEl.textContent = String(team1Score);
+        if (team2ScoreEl) team2ScoreEl.textContent = String(team2Score);
+    }
+
+    updateTournamentProgress() {
+        const progressDiv = document.getElementById("tournament-progress");
+        if (!progressDiv) return;
+        const quiz = this.currentQuiz();
+        progressDiv.innerHTML = `Conflict ${this.currentQuizIndex + 1} of ${this.quizzes.length} | ${marketName(this.marketMap, Number(quiz?.market_id))}`;
+    }
+
+    displayQuestion() {
+        const question = this.currentQuestion();
+        if (!question) {
+            this.endMatchup();
+            return;
+        }
+
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+
+        this.questionActive = true;
+        window.team1Locked = false;
+        window.team2Locked = false;
+        this.currentQuestionStartTime = Date.now();
+
+        const questionText = document.getElementById("question-text");
+        if (questionText) {
+            questionText.innerHTML = `Question ${this.currentQuestionIndex + 1} of ${this.currentQuiz()?.questions?.length || 0}: ${escapeHtml(question.content)}`;
+        }
+        const optionA = document.getElementById("option-a");
+        const optionB = document.getElementById("option-b");
+        const optionC = document.getElementById("option-c");
+        const optionD = document.getElementById("option-d");
+        if (optionA) optionA.innerHTML = `A. ${escapeHtml(question.options?.option_1 || "")}`;
+        if (optionB) optionB.innerHTML = `B. ${escapeHtml(question.options?.option_2 || "")}`;
+        if (optionC) optionC.innerHTML = `C. ${escapeHtml(question.options?.option_3 || "")}`;
+        if (optionD) optionD.innerHTML = `D. ${escapeHtml(question.options?.option_4 || "")}`;
+
+        const roundResult = document.getElementById("round-result");
+        if (roundResult) {
+            roundResult.style.display = "none";
+            roundResult.innerHTML = "";
+        }
+
+        const nextQuestionBtn = document.getElementById("next-question-btn");
+        if (nextQuestionBtn) {
+            nextQuestionBtn.style.display = "none";
+        }
+
+        document.querySelectorAll(".competition-option").forEach((opt) => {
+            opt.style.background = "#f0f0f0";
+            opt.style.border = "2px solid #ddd";
+            opt.style.cursor = "pointer";
+            opt.style.opacity = "1";
+        });
+
+        const timerElement = document.getElementById("question-timer");
+        if (timerElement) {
+            timerElement.style.display = "block";
+            timerElement.style.background = "var(--main-orange)";
+            timerElement.style.animation = "none";
+            timerElement.textContent = "Time: 30s";
+        }
+
+        this.startCountdown();
+    }
+
+    recordAnswer(teamIndex, selectedOption) {
+        const question = this.currentQuestion();
+        const teamId = this.currentTeams()[teamIndex - 1];
+        const result = this.currentQuizResults?.team_results?.find((entry) => Number(entry.team_id) === Number(teamId));
+        if (!question || !result) return;
+
+        const responseTime = this.currentQuestionStartTime ? Math.max(250, Date.now() - this.currentQuestionStartTime) : 1000;
+        if (result.answers.some((answer) => Number(answer.question_id) === Number(question.question_id))) {
+            return;
+        }
+
+        result.answers.push({
+            question_id: Number(question.question_id),
+            selected_option: optionLetterToAnswerKey[selectedOption] || "option_1",
+            response_time_ms: responseTime,
+        });
+    }
+
+    startCountdown() {
+        this.currentTimeRemaining = 30;
+        this.countdownInterval = setInterval(() => {
+            if (!this.questionActive) return;
+
+            this.currentTimeRemaining -= 1;
+            const timerEl = document.getElementById("question-timer");
+            if (timerEl) {
+                timerEl.textContent = `Time: ${this.currentTimeRemaining}s`;
+                if (this.currentTimeRemaining <= 10 && this.currentTimeRemaining > 0) {
+                    timerEl.style.background = "#e74c3c";
+                    timerEl.style.animation = "pulse 0.5s infinite";
+                } else if (this.currentTimeRemaining <= 20 && this.currentTimeRemaining > 0) {
+                    timerEl.style.background = "#f39c12";
+                    timerEl.style.animation = "none";
+                } else if (this.currentTimeRemaining > 0) {
+                    timerEl.style.background = "var(--main-orange)";
+                    timerEl.style.animation = "none";
+                }
+            }
+
+            if (this.currentTimeRemaining <= 0) {
+                clearInterval(this.countdownInterval);
+                this.countdownInterval = null;
+                this.questionActive = false;
+                const roundResult = document.getElementById("round-result");
+                if (roundResult) {
+                    roundResult.innerHTML = `<span style="color: orange; font-weight: bold;">Time's up! No more answers for this question.</span>`;
+                    roundResult.style.display = "block";
+                }
+                const nextQuestionBtn = document.getElementById("next-question-btn");
+                if (nextQuestionBtn) {
+                    nextQuestionBtn.style.display = "block";
+                }
+                document.querySelectorAll(".competition-option").forEach((opt) => {
+                    opt.style.cursor = "not-allowed";
+                    opt.style.opacity = "0.5";
+                });
+            }
+        }, 1000);
+    }
+
+    handleAnswer(teamIndex, selectedOption) {
+        if (!this.questionActive) return;
+        if ((teamIndex === 1 && window.team1Locked) || (teamIndex === 2 && window.team2Locked)) {
+            return;
+        }
+
+        const question = this.currentQuestion();
+        const isCorrect = optionLetterToAnswerKey[selectedOption] === question?.answer;
+        this.recordAnswer(teamIndex, selectedOption);
+        if (teamIndex === 1) window.team1Locked = true;
+        if (teamIndex === 2) window.team2Locked = true;
+
+        const roundResult = document.getElementById("round-result");
+        if (roundResult) {
+            const teamId = this.currentTeams()[teamIndex - 1];
+            const teamName = this.teamNameLookup.get(teamId) || `Team ${teamId}`;
+            roundResult.innerHTML = isCorrect
+                ? `<span style="color: green; font-weight: bold;">CORRECT! ${escapeHtml(teamName)} locks in a correct answer.</span>`
+                : `<span style="color: red;">WRONG! ${escapeHtml(teamName)} is locked for this question.</span>`;
+            roundResult.style.display = "block";
+        }
+
+        this.updateScores();
+
+        const allLocked = Boolean(window.team1Locked) && Boolean(window.team2Locked);
+        if (isCorrect || allLocked) {
+            this.stopCountdown();
+            this.questionActive = false;
+            const nextQuestionBtn = document.getElementById("next-question-btn");
+            if (nextQuestionBtn) {
+                nextQuestionBtn.style.display = "block";
+            }
+            document.querySelectorAll(".competition-option").forEach((opt) => {
+                opt.style.cursor = "not-allowed";
+                opt.style.opacity = "0.5";
+            });
+        }
+    }
+
+    stopCountdown() {
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+    }
+
+    nextQuestion() {
+        this.stopCountdown();
+        this.currentQuestionIndex += 1;
+        if (this.currentQuestionIndex < (this.currentQuiz()?.questions?.length || 0)) {
+            this.displayQuestion();
+        } else {
+            this.endMatchup();
+        }
+    }
+
+    endMatchup() {
+        const [team1Id, team2Id] = this.currentTeams();
+        const team1Answered = answeredCountForTeam(this.currentQuizResults, team1Id);
+        const team2Answered = answeredCountForTeam(this.currentQuizResults, team2Id);
+        const winnerLabel = team1Answered === team2Answered
+            ? "IT'S A TIE!"
+            : `WINNER: ${escapeHtml(this.teamNameLookup.get(team1Answered > team2Answered ? team1Id : team2Id) || "Unknown")}`;
+
+        const questionArea = document.getElementById("question-area");
+        if (questionArea) questionArea.style.display = "none";
+        const nextQuestionBtn = document.getElementById("next-question-btn");
+        if (nextQuestionBtn) nextQuestionBtn.style.display = "none";
+
+        const roundResult = document.getElementById("round-result");
+        if (roundResult) {
+            roundResult.innerHTML = `
+                <div style="text-align: center;">
+                    <h3>MATCHUP COMPLETE</h3>
+                    <div style="font-size: 20px; margin: 15px 0;">
+                        ${escapeHtml(this.teamNameLookup.get(team1Id) || `Team ${team1Id}`)}: ${team1Answered}<br>
+                        ${escapeHtml(this.teamNameLookup.get(team2Id) || `Team ${team2Id}`)}: ${team2Answered}
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: ${team1Answered === team2Answered ? "#f39c12" : "#27ae60"};">
+                        ${winnerLabel}
+                    </div>
+                </div>
+            `;
+            roundResult.style.display = "block";
+        }
+
+        const nextMatchupBtn = document.getElementById("next-matchup-btn");
+        if (nextMatchupBtn) {
+            nextMatchupBtn.style.display = "block";
+            nextMatchupBtn.textContent = this.currentQuizIndex + 1 < this.quizzes.length ? "Next Matchup" : "View Tournament Results";
+        }
+    }
+
+    nextMatchup() {
+        this.currentQuizIndex += 1;
+        if (this.currentQuizIndex < this.quizzes.length) {
+            const questionArea = document.getElementById("question-area");
+            const roundResult = document.getElementById("round-result");
+            const nextMatchupBtn = document.getElementById("next-matchup-btn");
+            if (questionArea) questionArea.style.display = "block";
+            if (roundResult) roundResult.style.display = "none";
+            if (nextMatchupBtn) nextMatchupBtn.style.display = "none";
+            this.startMatchup();
+        } else {
+            this.finish();
+        }
+    }
+
+    finish() {
+        this.stopCountdown();
+        this.removeEventListeners();
+        if (this.overlay) {
+            this.overlay.remove();
+        }
+        const results = Object.values(this.resultsByMarket);
+        this.onComplete?.(results);
+    }
+
+    setupEventListeners() {
+        this.boundKeyDown = this.onKeyDown.bind(this);
+        this.boundNextQuestion = this.nextQuestion.bind(this);
+        this.boundNextMatchup = this.nextMatchup.bind(this);
+        document.addEventListener("keydown", this.boundKeyDown);
+        const nextQuestionBtn = document.getElementById("next-question-btn");
+        if (nextQuestionBtn) nextQuestionBtn.onclick = this.boundNextQuestion;
+        const nextMatchupBtn = document.getElementById("next-matchup-btn");
+        if (nextMatchupBtn) nextMatchupBtn.onclick = this.boundNextMatchup;
+    }
+
+    removeEventListeners() {
+        document.removeEventListener("keydown", this.boundKeyDown);
+    }
+
+    onKeyDown(event) {
+        const mapping = this.keyToOption[event.key];
+        if (!mapping || !this.questionActive) {
+            return;
+        }
+        event.preventDefault();
+        this.handleAnswer(mapping.team, mapping.option);
+    }
+}
+
+function answeredCountForTeam(resultSet, teamId) {
+    return (resultSet?.team_results?.find((entry) => Number(entry.team_id) === Number(teamId))?.answers?.length) || 0;
+}
+
+function launchConflictResolutionQuiz(state, marketMap) {
+    return new Promise((resolve, reject) => {
+        try {
+            if (activeConflictQuiz) {
+                activeConflictQuiz.finish();
+            }
+            activeConflictQuiz = new ConflictResolutionQuiz(state, marketMap);
+            activeConflictQuiz.start((results) => {
+                activeConflictQuiz = null;
+                resolve(results);
+            });
+        } catch (error) {
+            activeConflictQuiz = null;
+            reject(error);
+        }
+    });
+}
+
+function renderResolveSection(state, elements, marketMap) {
+    if (!elements.resolveShell) return;
+    resolveSession = null;
+    elements.resolveShell.classList.add("hidden");
+    elements.resolveShell.innerHTML = "";
+}
+
+async function submitActiveQuizResults(results) {
+    for (const quizResult of results) {
+        await postJson(`${API_BASE}/api/game/quiz-results`, {
+            market_id: Number(quizResult.market_id),
+            team_results: quizResult.team_results,
+        });
+    }
+}
+
 function renderOrdersPage(state, elements) {
     const teams = state.teams || [];
     const marketMap = new Map(
@@ -390,6 +970,7 @@ function renderOrdersPage(state, elements) {
 
     if (!teams.length) {
         elements.grid.innerHTML = "";
+        renderResolveSection(state, elements, marketMap);
         elements.empty.classList.remove("hidden");
         elements.emptyCopy.textContent = "No active game state is available yet. Start a game first, then return to this reveal page.";
         updateSummary(summary, elements.summary);
@@ -473,6 +1054,7 @@ function renderOrdersPage(state, elements) {
 
     elements.grid.innerHTML = cards.join("");
     elements.empty.classList.toggle("hidden", true);
+    renderResolveSection(state, elements, marketMap);
     updateSummary(summary, elements.summary);
 }
 
@@ -493,6 +1075,7 @@ export function initOrdersPage() {
         message: document.getElementById("orders-stage-message"),
         empty: document.getElementById("orders-empty-state"),
         emptyCopy: document.getElementById("orders-empty-copy"),
+        resolveShell: document.getElementById("orders-resolve-shell"),
         refreshButton: document.getElementById("orders-refresh-btn"),
         continueButton: document.getElementById("orders-continue-btn"),
         backButton: document.getElementById("orders-back-btn")
@@ -503,6 +1086,7 @@ export function initOrdersPage() {
     }
 
     let disposed = false;
+    let currentState = null;
 
     async function refresh() {
         try {
@@ -510,14 +1094,17 @@ export function initOrdersPage() {
             if (disposed) {
                 return;
             }
+            currentState = state;
             renderOrdersPage(state, elements);
         } catch (error) {
             const fallback = fallbackStateFromLocalStorage();
             if (fallback) {
+                currentState = fallback;
                 renderOrdersPage(fallback, elements);
                 elements.empty.classList.remove("hidden");
                 elements.emptyCopy.textContent = "Live game state could not be loaded, so this page is showing a safe local fallback.";
             } else {
+                currentState = null;
                 elements.grid.innerHTML = "";
                 elements.empty.classList.remove("hidden");
                 elements.emptyCopy.textContent = "Could not load the reveal data. Check that the backend is running, then refresh.";
@@ -542,14 +1129,32 @@ export function initOrdersPage() {
         try {
             let state = await fetchOrdersState();
             const stageName = String(state?.current_stage || "").toUpperCase();
+            const marketMap = new Map(
+                Object.entries(state.market_state || {}).map(([marketId, market]) => [Number(marketId), market])
+            );
 
             if (stageName === "ORDERS") {
                 const payload = await postJson(`${API_BASE}/api/game/advance`, { force: false });
                 state = payload.game_state || await fetchOrdersState();
+                if (String(state?.current_stage || "").toUpperCase() === "RESOLVE" && (state.active_quizzes || []).length) {
+                    const quizResults = await launchConflictResolutionQuiz(state, marketMap);
+                    await submitActiveQuizResults(quizResults);
+                    state = await fetchOrdersState();
+                }
             }
 
             if (String(state?.current_stage || "").toUpperCase() === "RESOLVE") {
-                const payload = await postJson(`${API_BASE}/api/game/advance`, { force: true });
+                if ((state.active_quizzes || []).length) {
+                    const quizResults = await launchConflictResolutionQuiz(state, marketMap);
+                    await submitActiveQuizResults(quizResults);
+                    state = await fetchOrdersState();
+                }
+                const payload = await postJson(`${API_BASE}/api/game/advance`, { force: false });
+                state = payload.game_state || await fetchOrdersState();
+            }
+
+            if (String(state?.current_stage || "").toUpperCase() === "UPDATE") {
+                const payload = await postJson(`${API_BASE}/api/game/advance`, { force: false });
                 state = payload.game_state || await fetchOrdersState();
             }
 
@@ -577,5 +1182,9 @@ export function initOrdersPage() {
         elements.refreshButton.removeEventListener("click", onRefreshClick);
         elements.continueButton.removeEventListener("click", onContinueClick);
         elements.backButton.removeEventListener("click", onBackClick);
+        if (activeConflictQuiz) {
+            activeConflictQuiz.finish();
+            activeConflictQuiz = null;
+        }
     };
 }

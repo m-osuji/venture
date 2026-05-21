@@ -49,20 +49,42 @@ def fetch_questions_by_topic_and_difficulty(
     difficulty_key = _normalise_text(difficulty)
     excluded = {int(qid) for qid in (exclude_question_ids or [])}
 
-    raw_rows = db_fetch_questions(topic=topic, difficulty=difficulty)
-    exact_pool = [
-        dict(row)
-        for row in raw_rows
-        if _normalise_text(row["topic"]) == topic_key
-        and _normalise_text(row["difficulty_level"]) == difficulty_key
-    ]
+    exact_pool = _question_rows(topic=topic, difficulty=difficulty)
+    preferred = [q for q in exact_pool if int(q["question_id"]) not in excluded]
+
+    if not preferred:
+        same_topic_pool = [
+            q
+            for q in _question_rows(topic=topic, difficulty=None)
+            if _normalise_text(q["topic"]) == topic_key
+        ]
+        preferred = [q for q in same_topic_pool if int(q["question_id"]) not in excluded]
+        if same_topic_pool:
+            exact_pool = same_topic_pool
+
+    if not preferred:
+        same_difficulty_pool = [
+            q
+            for q in _question_rows(topic=None, difficulty=difficulty)
+            if _normalise_text(q["difficulty_level"]) == difficulty_key
+        ]
+        preferred = [q for q in same_difficulty_pool if int(q["question_id"]) not in excluded]
+        if same_difficulty_pool:
+            exact_pool = same_difficulty_pool
+
+    if not preferred:
+        all_pool = _question_rows(topic=None, difficulty=None)
+        preferred = [q for q in all_pool if int(q["question_id"]) not in excluded]
+        if all_pool:
+            exact_pool = all_pool
 
     if not exact_pool:
         raise ValueError(
-            f"[quiz_helpers] No questions available for topic='{topic}' difficulty='{difficulty}'."
+            f"[quiz_helpers] No questions are available in the question bank."
         )
 
-    preferred = [q for q in exact_pool if int(q["question_id"]) not in excluded]
+    if not preferred:
+        preferred = [dict(exact_pool[0])]
 
     if len(preferred) >= limit:
         return preferred[:limit]
@@ -73,6 +95,10 @@ def fetch_questions_by_topic_and_difficulty(
         selected.append(dict(exact_pool[fallback_index % len(exact_pool)]))
         fallback_index += 1
     return selected
+
+
+def _question_rows(topic: str | None, difficulty: str | None) -> list[dict[str, Any]]:
+    return [dict(row) for row in db_fetch_questions(topic=topic, difficulty=difficulty)]
 
 
 def build_quiz_for_conflict(
@@ -319,6 +345,7 @@ def _question_for_frontend(question: dict[str, Any]) -> dict[str, Any]:
         "topic": question["topic"],
         "difficulty_level": question["difficulty_level"],
         "content": question["content"],
+        "answer": question["answer"],
         "options": {
             "option_1": question["option_1"],
             "option_2": question["option_2"],

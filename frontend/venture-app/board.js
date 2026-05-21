@@ -54,6 +54,7 @@ export async function fetchGameState() {
         updateTeamIndicator();
         updateStageIndicator();
         updateBoardNarration(currentBackendState);
+        showGameUI();
         maybeNavigateToStagePage(currentBackendState);
 
         console.log("Backend state synced:", currentBackendState);
@@ -66,6 +67,7 @@ export async function fetchGameState() {
         updateTeamIndicator();
         updateStageIndicator();
         updateBoardNarration(null);
+        showGameUI();
         return null;
     }
 }
@@ -188,9 +190,9 @@ function syncGameStateFromBackend(state) {
     const stageIndex = STAGE_SEQUENCE.indexOf(currentStageName);
     gameState.currentStageName = stageIndex >= 0 ? currentStageName : "PLAN";
     gameState.currentStage = stageIndex >= 0 ? stageIndex : 0;
+    gameState.teamModeActive = Boolean(state?.session_uuid);
 
-    if (state) {
-        gameState.teamModeActive = false;
+    if (!state) {
         gameState.currentTeamIndex = 0;
         gameState.tournamentRankings = [];
     }

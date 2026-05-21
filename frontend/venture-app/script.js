@@ -52,9 +52,9 @@ const DEFAULT_TEAM_COLOURS = [
   "#F4A261"
 ];
 
-const API_BASE =
-  window.VENTURE_API_BASE ||
-  import.meta.env.VITE_VENTURE_API_BASE ||
+const API_BASE = 
+  window.VENTURE_API_BASE || 
+  "https://venture-o2cx.onrender.com" ||
   "http://localhost:5000";
 
 function isGamePageRoute(pathname = window.location.pathname) {

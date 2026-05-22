@@ -110,7 +110,7 @@ def test_game_service_runs_a_full_conflict_round(monkeypatch):
 
     public_state = service.get_public_game_state()
     assert public_state is not None
-    assert "answer" in public_state["active_quizzes"][0]["questions"][0]
+    assert "answer" not in public_state["active_quizzes"][0]["questions"][0]
 
     quiz = service.get_game_state()["turn_log"]["active_quizzes"][0]
     service.submit_quiz_results(
@@ -281,6 +281,40 @@ def test_game_service_persists_declared_moves(monkeypatch):
         }
     ]
 
+def test_create_demo_game_seeds_scripted_state(monkeypatch):
+    markets = [
+        {"market_id": 1, "market_name": "Technology", "size": "medium", "regulation_level": "low", "growth_potential": "high", "security_risk": "low", "key_topic": "AI"},
+        {"market_id": 2, "market_name": "Finance", "size": "large", "regulation_level": "medium", "growth_potential": "medium", "security_risk": "medium", "key_topic": "Cybersecurity"},
+        {"market_id": 3, "market_name": "Cybersecurity", "size": "large", "regulation_level": "low", "growth_potential": "high", "security_risk": "medium", "key_topic": "Cybersecurity"},
+    ]
+    monkeypatch.setattr(service.gameplay_helpers, "fetch_all_markets", lambda: markets)
+    monkeypatch.setattr(service.gameplay_helpers, "fetch_all", lambda query, params=(): [])
+    monkeypatch.setattr(service.gameplay_helpers, "_refresh_active_synergies", lambda state: None)
+    monkeypatch.setattr(service.gameplay_helpers, "_refresh_market_estimates", lambda state: None)
+    storage = _stub_persistence(monkeypatch)
+
+    state = service.create_demo_game(
+        teams=[
+            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
+            {"id": 2, "name": "Blue", "colour": "#00f", "is_ai": False},
+        ],
+        team_order=[1, 2],
+    )
+
+    assert state["demo_script"]["enabled"] is True
+    assert state["rules"]["max_rounds"] == 1
+    assert storage["state"]["demo_script"]["target_market_id"] == 3
+
+
+def test_run_demo_step_requires_active_demo(monkeypatch):
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: {"demo_script": {"enabled": False}})
+
+    try:
+        service.run_demo_step()
+    except ValueError as exc:
+        assert "No scripted demo is active" in str(exc)
+    else:
+        raise AssertionError("Expected inactive demo to raise ValueError")
 def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
     _stub_reference_data(monkeypatch)
     storage = _stub_persistence(monkeypatch)

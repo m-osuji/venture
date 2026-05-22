@@ -381,6 +381,45 @@ def test_resolve_pending_quizzes(client, monkeypatch):
     assert body["game_state"]["status"] == "resolved"
 
 
+# Tests if the demo start endpoint creates a demo game with default demo values
+def test_start_demo(client, monkeypatch):
+    fake_state = {"session_uuid": "demo123", "teams": []}
+
+    def fake_create_demo_game(**kwargs):
+        assert kwargs["game_mode"] == "speedrun"
+        assert kwargs["difficulty"] == "medium"
+        return fake_state
+
+    monkeypatch.setattr(api_module.game_service, "create_demo_game", fake_create_demo_game)
+    monkeypatch.setattr(
+        api_module.gameplay_helpers,
+        "get_frontend_state",
+        lambda state: {"session_uuid": state["session_uuid"]},
+    )
+
+    response = client.post("/api/demo/start", json={})
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "demo_started"
+    assert body["session_uuid"] == "demo123"
+
+
+# Tests if the demo step endpoint advances one scripted demo step
+def test_run_demo_step(client, monkeypatch):
+    fake_state = {"demo_message": "step complete"}
+
+    monkeypatch.setattr(api_module.game_service, "run_demo_step", lambda: fake_state)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post("/api/demo/step")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "demo_step_applied"
+    assert body["message"] == "step complete"
+
+
 # Tests if the AI commentary endpoint returns the mocked narration
 def test_get_ai_commentary(client, monkeypatch):
     monkeypatch.setattr(
@@ -420,6 +459,42 @@ def test_set_team_order_endpoint(client, monkeypatch):
     assert response.status_code == 200
     body = response.get_json()
     assert body["status"] == "team_order_set"
+
+
+def test_start_demo_uses_custom_payload(client, monkeypatch):
+    captured = {}
+
+    def fake_create_demo_game(**kwargs):
+        captured.update(kwargs)
+        return {"session_uuid": "demo-456"}
+
+    monkeypatch.setattr(api_module.game_service, "create_demo_game", fake_create_demo_game)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/demo/start",
+        json={
+            "mode": "full",
+            "difficulty": "hard",
+            "team_order": [2, 1],
+            "teams": [
+                {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+                {"id": 2, "name": "Beta", "colour": "#222222", "is_ai": False},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "teams": [
+            {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+            {"id": 2, "name": "Beta", "colour": "#222222", "is_ai": False},
+        ],
+        "game_mode": "full",
+        "difficulty": "hard",
+        "team_order": [2, 1],
+    }
+    assert response.get_json()["status"] == "demo_started"
 
 
 def test_submit_plan_notes_endpoint(client, monkeypatch):

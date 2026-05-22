@@ -383,7 +383,17 @@ def test_plan_and_declared_mismatch_penalise_ethics(monkeypatch):
     gph.submit_actual_moves(state, 2, [])
     gph.advance_stage(state)
 
-    assert state["turn_log"]["active_quizzes"] == []
+    quiz = state["turn_log"]["active_quizzes"][0]
+    gph.submit_quiz_results(
+        state,
+        3,
+        [
+            {
+                "team_id": 1,
+                "answers": _perfect_answers(quiz["questions"]),
+            }
+        ],
+    )
     gph.advance_stage(state)
     gph.advance_stage(state)
 
@@ -501,7 +511,7 @@ def test_frontend_state_exposes_public_quiz_payload_only(monkeypatch):
     public_question = frontend_state["active_quizzes"][0]["questions"][0]
 
     assert frontend_state["active_quizzes"][0]["market_id"] == 2
-    assert "answer" in public_question
+    assert "answer" not in public_question
     assert public_question["options"]["option_1"]
 
 

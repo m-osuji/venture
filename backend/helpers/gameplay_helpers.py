@@ -184,6 +184,7 @@ def _empty_turn_log() -> dict[str, Any]:
         "plan_notes": {},
         "plan_allocations": {},
         "declared_moves": {},
+        "alliance_intents": {},
         "alliance_offers": [],
         "actual_moves": {},
         "prepared_moves": {},
@@ -347,6 +348,28 @@ def submit_declared_moves(
 
     turn_log = game_state.setdefault("turn_log", _empty_turn_log())
     turn_log.setdefault("declared_moves", {})[str(team_id)] = _normalise_moves(moves)
+    return game_state
+
+
+def submit_alliance_intent(
+    game_state: dict[str, Any],
+    team_id: int,
+    ally_team_id: int | None,
+) -> dict[str, Any]:
+    """
+    Record one team's mutual-alliance intent for the negotiation stage.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+    _get_team_entry(game_state, team_id)
+
+    numeric_ally_id = _optional_int(ally_team_id)
+    if numeric_ally_id is not None:
+        _get_team_entry(game_state, numeric_ally_id)
+        if int(numeric_ally_id) == int(team_id):
+            raise ValueError("[gameplay_helpers] A team cannot form an alliance with itself.")
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    turn_log.setdefault("alliance_intents", {})[str(int(team_id))] = numeric_ally_id
     return game_state
 
 
@@ -623,7 +646,14 @@ def submit_quiz_results(
     participant_team_ids = {int(team_id) for team_id in quiz.get("participant_team_ids", [])}
     time_limit_ms = int(quiz.get("time_limit_ms", 30_000))
 
-    normalised_results: list[dict[str, Any]] = []
+    existing_results = {
+        int(result["team_id"]): deepcopy(result)
+        for result in (
+            turn_log.get("quiz_results", {}).get(str(int(market_id)), {}).get("team_results") or []
+        )
+        if result.get("team_id") is not None
+    }
+    normalised_results_by_team: dict[int, dict[str, Any]] = dict(existing_results)
     for raw_result in team_results:
         if raw_result.get("team_id") is None:
             raise ValueError(
@@ -658,11 +688,14 @@ def submit_quiz_results(
                 normalised_result["total_response_time_ms"]
             )
 
-        normalised_results.append(normalised_result)
+        normalised_results_by_team[team_id] = normalised_result
 
     turn_log.setdefault("quiz_results", {})[str(int(market_id))] = {
         "market_id": int(market_id),
-        "team_results": normalised_results,
+        "team_results": [
+            normalised_results_by_team[team_id]
+            for team_id in sorted(normalised_results_by_team)
+        ],
     }
     return game_state
 
@@ -731,6 +764,7 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
         return game_state
 
     if current_stage == GameStage.NEGOTIATE:
+        resolve_alliance_intents(game_state)
         pending_offer_ids = _pending_alliance_offer_ids(game_state)
         if pending_offer_ids and not force:
             raise ValueError(
@@ -778,6 +812,65 @@ def advance_stage(game_state: dict[str, Any], force: bool = False) -> dict[str, 
         return game_state
 
     apply_round_update(game_state)
+    return game_state
+
+
+def resolve_alliance_intents(game_state: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert reciprocal alliance intents into active alliances.
+    """
+    _require_stage(game_state, GameStage.NEGOTIATE)
+
+    turn_log = game_state.setdefault("turn_log", _empty_turn_log())
+    intents = turn_log.get("alliance_intents", {}) or {}
+    if not intents:
+        return game_state
+
+    processed_pairs: set[tuple[int, int]] = set()
+    current_round = int(game_state.get("current_round", 1))
+
+    for team_id_str, ally_team_id in intents.items():
+        team_id = int(team_id_str)
+        target_id = _optional_int(ally_team_id)
+        if target_id is None or target_id == team_id:
+            continue
+
+        reciprocal_target = _optional_int(intents.get(str(target_id)))
+        if reciprocal_target != team_id:
+            continue
+
+        pair = tuple(sorted((team_id, target_id)))
+        if pair in processed_pairs:
+            continue
+        processed_pairs.add(pair)
+
+        if _find_active_alliance_between(game_state, pair[0], pair[1]) is not None:
+            continue
+
+        alliance_id = f"alliance_{uuid4().hex[:10]}"
+        alliance = {
+            "alliance_id": alliance_id,
+            "members": [pair[0], pair[1]],
+            "type": "alliance",
+            "formed_turn": current_round,
+            "protected_markets": [],
+            "notes": "formed_from_mutual_intent",
+            "source_offer_id": None,
+            "status": "active",
+            "broken_turn": None,
+            "broken_by_team_id": None,
+            "broken_reason": None,
+        }
+        game_state.setdefault("alliances", []).append(alliance)
+        append_negotiation_entry(
+            game_state,
+            {
+                "entry_type": "alliance_formed_from_intent",
+                "alliance_id": alliance_id,
+                "members": [pair[0], pair[1]],
+            },
+        )
+
     return game_state
 
 
@@ -861,6 +954,23 @@ def prepare_resolution_state(game_state: dict[str, Any]) -> dict[str, Any]:
     for conflict in turn_log["conflicts"]:
         market_id = int(conflict["market_id"])
         state = market_state[str(market_id)]
+        if conflict.get("conflict_type") == "neutral_capture":
+            winner_team_id = int(conflict["attacker_team_ids"][0])
+            state["owner"] = winner_team_id
+            state["contested"] = False
+            state["supporting_teams"] = []
+            conflict["winner_team_id"] = winner_team_id
+            conflict["status"] = "resolved"
+            conflict["resolution_notes"] = f"Team {winner_team_id} captured the neutral market without opposition."
+            turn_log["resolution_outcomes"].append(
+                {
+                    "market_id": market_id,
+                    "winner_team_id": winner_team_id,
+                    "resolution_notes": conflict["resolution_notes"],
+                }
+            )
+            continue
+
         state["contested"] = True
         state["supporting_teams"] = list(conflict["attacker_team_ids"])
 
@@ -2252,10 +2362,7 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
                 "colour": t["colour"],
                 "ip": t["ip"],
                 "ip_spent_this_turn": t.get("ip_spent_this_turn", 0),
-                # ethical score hidden until game end
-                "ethical_score": (
-                    t["ethical_score"] if is_finished else None
-                ),
+                "ethical_score": float(t.get("ethical_score", 1.0)),
                 "is_ai": t.get("is_ai", False),
             }
             for t in teams
@@ -2325,6 +2432,7 @@ def _get_frontend_states(game_state: dict[str, Any]) -> dict[str, Any]:
             for team_id in (turn_log.get("plan_allocations") or {}).keys()
         ),
         "declared_moves": turn_log.get("declared_moves", {}),
+        "alliance_intents": turn_log.get("alliance_intents", {}),
         "actual_moves": turn_log.get("actual_moves", {}) if reveal_orders else {},
         "prepared_moves": turn_log.get("prepared_moves", {}) if reveal_orders else {},
         "move_reveal_available": reveal_orders,

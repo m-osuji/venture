@@ -493,6 +493,12 @@ class ConflictResolutionQuiz {
         this.state = state;
         this.marketMap = marketMap;
         this.quizzes = state.active_quizzes || [];
+        this.aiTeamIds = new Set(
+            (state.teams || [])
+                .filter((team) => Boolean(team.is_ai))
+                .map((team) => Number(team.team_id)),
+        );
+        this.aiDifficulty = String(state.ai_difficulty || "medium").toLowerCase();
         this.teamNameLookup = new Map(
             (state.teams || []).map((team) => [Number(team.team_id), team.team_name]),
         );
@@ -505,6 +511,7 @@ class ConflictResolutionQuiz {
         this.resultsByMarket = {};
         this.currentQuizResults = null;
         this.onComplete = null;
+        this.aiAnswerTimeouts = [];
         
         // Track per-team response times for the current question
         this.questionTeamAnswers = new Map(); // teamIndex -> { answeredAt: timestamp }
@@ -682,6 +689,63 @@ class ConflictResolutionQuiz {
         correctOption.style.boxShadow = "0 14px 30px rgba(39, 174, 96, 0.28)";
     }
 
+    clearAiAnswerTimeouts() {
+        this.aiAnswerTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+        this.aiAnswerTimeouts = [];
+    }
+
+    getAiAccuracyChance(question) {
+        const questionDifficulty = String(question?.difficulty_level || "medium").toLowerCase();
+        const baseByDifficulty = {
+            easy: 0.58,
+            medium: 0.74,
+            hard: 0.88,
+        };
+        const questionModifier = {
+            easy: 0.16,
+            medium: 0.0,
+            hard: -0.12,
+        };
+        const baseChance = baseByDifficulty[this.aiDifficulty] ?? 0.74;
+        return Math.max(0.2, Math.min(0.97, baseChance + (questionModifier[questionDifficulty] ?? 0)));
+    }
+
+    randomWrongOption(correctOption) {
+        const distractors = ["a", "b", "c", "d"].filter((option) => option !== correctOption);
+        return distractors[Math.floor(Math.random() * distractors.length)] || "a";
+    }
+
+    getAiDelayMs() {
+        if (this.aiDifficulty === "easy") {
+            return 9000 + Math.floor(Math.random() * 9000);
+        }
+        if (this.aiDifficulty === "hard") {
+            return 2500 + Math.floor(Math.random() * 4500);
+        }
+        return 5000 + Math.floor(Math.random() * 7000);
+    }
+
+    scheduleAiAnswers(question) {
+        this.currentTeams().forEach((teamId, index) => {
+            if (!this.aiTeamIds.has(Number(teamId))) {
+                return;
+            }
+
+            const timeoutId = setTimeout(() => {
+                if (!this.questionActive) {
+                    return;
+                }
+                const correctOption = answerKeyToOptionLetter[question?.answer] || "a";
+                const selectedOption = Math.random() <= this.getAiAccuracyChance(question)
+                    ? correctOption
+                    : this.randomWrongOption(correctOption);
+                this.handleAnswer(index + 1, selectedOption);
+            }, this.getAiDelayMs());
+
+            this.aiAnswerTimeouts.push(timeoutId);
+        });
+    }
+
     updateTournamentProgress() {
         const progressDiv = document.getElementById("tournament-progress");
         if (!progressDiv) return;
@@ -708,6 +772,7 @@ class ConflictResolutionQuiz {
         
         // Reset per-question answer tracking
         this.questionTeamAnswers.clear();
+        this.clearAiAnswerTimeouts();
 
         const questionText = document.getElementById("question-text");
         if (questionText) {
@@ -749,6 +814,7 @@ class ConflictResolutionQuiz {
         }
 
         this.startCountdown();
+        this.scheduleAiAnswers(question);
     }
 
     recordAnswer(teamIndex, selectedOption, isCorrect) {
@@ -897,7 +963,16 @@ class ConflictResolutionQuiz {
             this.revealCorrectAnswer();
             
             // If both were wrong, show additional message
-            if (allLocked && !window.team1Correct && !window.team2Correct) {
+            const bothWrong = allLocked && this.currentTeams().every((teamId) => {
+                const result = this.currentQuizResults?.team_results?.find(
+                    (entry) => Number(entry.team_id) === Number(teamId),
+                );
+                const answer = result?.answers?.find(
+                    (entry) => Number(entry.question_id) === Number(question?.question_id),
+                );
+                return answer && String(answer.selected_option) !== String(question?.answer);
+            });
+            if (bothWrong) {
                 const roundResult = document.getElementById("round-result");
                 if (roundResult) {
                     roundResult.innerHTML = `<span style="color: orange; font-weight: bold;">Both teams were wrong! The correct answer was ${answerKeyToOptionLetter[question?.answer]?.toUpperCase()}.</span>`;
@@ -916,6 +991,7 @@ class ConflictResolutionQuiz {
 
     nextQuestion() {
         this.stopCountdown();
+        this.clearAiAnswerTimeouts();
         this.currentQuestionIndex += 1;
         if (this.currentQuestionIndex < (this.currentQuiz()?.questions?.length || 0)) {
             this.displayQuestion();
@@ -985,6 +1061,7 @@ class ConflictResolutionQuiz {
     }
 
     nextMatchup() {
+        this.clearAiAnswerTimeouts();
         this.currentQuizIndex += 1;
         if (this.currentQuizIndex < this.quizzes.length) {
             const questionArea = document.getElementById("question-area");
@@ -1001,6 +1078,7 @@ class ConflictResolutionQuiz {
 
     finish() {
         this.stopCountdown();
+        this.clearAiAnswerTimeouts();
         this.removeEventListeners();
         if (this.overlay) {
             this.overlay.remove();
@@ -1175,6 +1253,7 @@ function renderOrdersPage(state, elements) {
                             <div class="orders-team-meta">
                                 <span>${escapeHtml(String(team.ip ?? 0))} IP in reserve</span>
                                 <span>${escapeHtml(String(marketsControlled))} markets controlled</span>
+                                <span>Ethics ${escapeHtml(Number(team.ethical_score ?? 1).toFixed(2))}</span>
                             </div>
                         </div>
                     </div>

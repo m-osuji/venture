@@ -94,6 +94,12 @@ function ownedMarketsForTeam(state, teamId) {
         .sort((left, right) => String(left.market_name || "").localeCompare(String(right.market_name || "")));
 }
 
+function getPlanningTeams(state) {
+    const teams = state?.teams || [];
+    const humanTeams = teams.filter((team) => !team?.is_ai);
+    return humanTeams.length ? humanTeams : teams;
+}
+
 export function initPlanningPage() {
     // Add drag functionality to the planning panel
     function setupDraggable() {
@@ -416,7 +422,7 @@ export function initPlanningPage() {
     function renderTabs() {
         if (!elements.tabs) return;
         elements.tabs.innerHTML = "";
-        const teams = state.teams || [];
+        const teams = getPlanningTeams(state);
 
         teams.forEach((team) => {
             const isActive = Number(team.team_id) === Number(selectedTeamId);
@@ -441,7 +447,7 @@ export function initPlanningPage() {
 
         if (elements.message) {
             elements.message.textContent = state.current_stage === "PLAN"
-                ? `Round ${state.current_round} planning is open. Pick a team, tap plus or minus, and save before negotiation begins.`
+                ? `Round ${state.current_round} planning is open. Pick one of the player teams, tap plus or minus, and save before negotiation begins.`
                 : `The game is currently in ${state.current_stage}. You can still review allocations here, but the live planning stage has passed.`;
         }
 
@@ -520,11 +526,13 @@ export function initPlanningPage() {
             
             state = nextState;
             if (!selectedTeamId) {
-                selectedTeamId = Number(state.current_team_turn || state.teams?.[0]?.team_id || 0);
+                const planningTeams = getPlanningTeams(state);
+                selectedTeamId = Number(state.current_team_turn || planningTeams[0]?.team_id || 0);
             }
             
-            if (!(state.teams || []).some((team) => Number(team.team_id) === Number(selectedTeamId))) {
-                selectedTeamId = Number(state.current_team_turn || state.teams?.[0]?.team_id || 0);
+            if (!getPlanningTeams(state).some((team) => Number(team.team_id) === Number(selectedTeamId))) {
+                const planningTeams = getPlanningTeams(state);
+                selectedTeamId = Number(state.current_team_turn || planningTeams[0]?.team_id || 0);
             }
             
             syncDraftToSelectedTeam();
@@ -535,7 +543,8 @@ export function initPlanningPage() {
             }
         } catch (error) {
             state = buildFallbackState();
-            selectedTeamId = Number(state.current_team_turn || state.teams?.[0]?.team_id || 0);
+            const planningTeams = getPlanningTeams(state);
+            selectedTeamId = Number(state.current_team_turn || planningTeams[0]?.team_id || 0);
             syncDraftToSelectedTeam();
             render();
             setStatus("Could not load live planning state. Showing local fallback only.", "error");

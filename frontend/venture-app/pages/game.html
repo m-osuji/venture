@@ -34,14 +34,17 @@
         </div>
         <aside id="planning-board-panel" class="planning-board-panel hidden" aria-live="polite">
             <div class="planning-board-header">
-                <div>
+                <div class="planning-board-title-group">
                     <span class="planning-board-kicker">Planning on board</span>
                     <h3>Allocate IP</h3>
                     <p id="planning-board-copy">Pick a team, click one of its markets on the board, then use the controls below.</p>
                 </div>
-                <div class="planning-board-remaining">
-                    <span>IP remaining</span>
-                    <strong id="planning-board-remaining-value">0</strong>
+                <div class="planning-board-header-actions">
+                    <div class="planning-board-remaining">
+                        <span>IP remaining</span>
+                        <strong id="planning-board-remaining-value">0</strong>
+                    </div>
+                    <button id="planning-board-minimize" class="planning-board-icon-btn" type="button" aria-expanded="true" aria-label="Minimize planning panel">−</button>
                 </div>
             </div>
             <div id="planning-board-team-tabs" class="planning-board-team-tabs"></div>

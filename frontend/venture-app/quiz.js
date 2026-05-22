@@ -1,10 +1,12 @@
 // Reusable Tournament Module
 export class TournamentQuiz {
-    constructor(teamNames, questionBank, getCorrectLetter, getRandomQuestions) {
+    constructor(teamNames, questionBank, getCorrectLetter, getRandomQuestions, options = {}) {
         this.teamNames = teamNames;
         this.questionBank = questionBank;
         this.getCorrectLetter = getCorrectLetter;
         this.getRandomQuestions = getRandomQuestions;
+        this.aiTeams = new Set(options.aiTeams || []);
+        this.aiDifficulty = String(options.aiDifficulty || "medium").toLowerCase();
         this.matchups = [];
         this.currentMatchupIndex = 0;
         this.currentQuestionIndex = 0;
@@ -28,6 +30,7 @@ export class TournamentQuiz {
         // Track per-question answer times for each team
         this.questionTeamAnswers = new Map(); // teamName -> { answeredAt: timestamp, isCorrect: bool }
         this.currentQuestionStartTime = null;
+        this.aiAnswerTimeouts = [];
         
         // Key mappings
         this.keyToOption = {
@@ -164,6 +167,22 @@ export class TournamentQuiz {
         const team2Panel = document.getElementById("team2-panel");
         if (team1Panel) team1Panel.querySelector("h3").innerHTML = `TEAM 1: ${this.currentMatchup.team1}`;
         if (team2Panel) team2Panel.querySelector("h3").innerHTML = `TEAM 2: ${this.currentMatchup.team2}`;
+        if (team1Panel) {
+            const keys = team1Panel.querySelector(".team-keys");
+            if (keys) {
+                keys.textContent = this.isAiTeam(this.currentMatchup.team1)
+                    ? "IBM Granite AI is answering automatically"
+                    : "Use keys: 1 2 3 4";
+            }
+        }
+        if (team2Panel) {
+            const keys = team2Panel.querySelector(".team-keys");
+            if (keys) {
+                keys.textContent = this.isAiTeam(this.currentMatchup.team2)
+                    ? "IBM Granite AI is answering automatically"
+                    : "Use keys: 6 7 8 9";
+            }
+        }
         
         this.updateScores();
         this.updateTotalTimeDisplay();
@@ -199,6 +218,74 @@ export class TournamentQuiz {
         // This method is now handled in handleAnswer for more precise timing
         // Keeping for compatibility but logic moved
     }
+
+    isAiTeam(teamName) {
+        return this.aiTeams.has(teamName);
+    }
+
+    clearAiAnswerTimeouts() {
+        this.aiAnswerTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+        this.aiAnswerTimeouts = [];
+    }
+
+    getAiAccuracyChance(question) {
+        const questionDifficulty = String(question?.difficulty || "medium").toLowerCase();
+        const baseByDifficulty = {
+            easy: 0.58,
+            medium: 0.74,
+            hard: 0.88
+        };
+        const questionModifier = {
+            easy: 0.16,
+            medium: 0.0,
+            hard: -0.12
+        };
+        const baseChance = baseByDifficulty[this.aiDifficulty] ?? 0.74;
+        return Math.max(0.2, Math.min(0.97, baseChance + (questionModifier[questionDifficulty] ?? 0)));
+    }
+
+    randomWrongOption(correctOption) {
+        const distractors = ["a", "b", "c", "d"].filter((option) => option !== correctOption);
+        return distractors[Math.floor(Math.random() * distractors.length)] || "a";
+    }
+
+    getAiDelayMs() {
+        if (this.aiDifficulty === "easy") {
+            return 9000 + Math.floor(Math.random() * 9000);
+        }
+        if (this.aiDifficulty === "hard") {
+            return 2500 + Math.floor(Math.random() * 4500);
+        }
+        return 5000 + Math.floor(Math.random() * 7000);
+    }
+
+    scheduleAiAnswers(question) {
+        if (!this.currentMatchup) {
+            return;
+        }
+
+        const correctOption = window.currentCorrectAnswer;
+        [
+            { teamNumber: 1, teamName: this.currentMatchup.team1 },
+            { teamNumber: 2, teamName: this.currentMatchup.team2 }
+        ].forEach(({ teamNumber, teamName }) => {
+            if (!this.isAiTeam(teamName)) {
+                return;
+            }
+
+            const timeoutId = setTimeout(() => {
+                if (!this.questionActive) {
+                    return;
+                }
+                const chosenOption = Math.random() <= this.getAiAccuracyChance(question)
+                    ? correctOption
+                    : this.randomWrongOption(correctOption);
+                this.handleAnswer(teamNumber, chosenOption);
+            }, this.getAiDelayMs());
+
+            this.aiAnswerTimeouts.push(timeoutId);
+        });
+    }
     
     displayQuestion() {
         if (this.currentQuestionIndex >= this.currentQuestions.length) {
@@ -217,6 +304,7 @@ export class TournamentQuiz {
         
         // Reset per-question tracking
         this.questionTeamAnswers.clear();
+        this.clearAiAnswerTimeouts();
         
         // Record the start time for this question
         this.currentQuestionStartTime = Date.now();
@@ -260,6 +348,7 @@ export class TournamentQuiz {
         }
         
         this.startCountdown();
+        this.scheduleAiAnswers(question);
     }
     
     startCountdown() {
@@ -563,6 +652,7 @@ export class TournamentQuiz {
     
     nextQuestion() {
         this.stopCountdown();
+        this.clearAiAnswerTimeouts();
         this.currentQuestionIndex++;
         if (this.currentQuestionIndex < this.currentQuestions.length) {
             this.displayQuestion();
@@ -639,6 +729,7 @@ export class TournamentQuiz {
     }
     
     nextMatchup() {
+        this.clearAiAnswerTimeouts();
         this.currentMatchupIndex++;
         
         if (this.currentMatchupIndex < this.matchups.length) {
@@ -999,6 +1090,7 @@ export class TournamentQuiz {
             avgTime: team.avgTime !== Infinity ? (team.avgTime / 1000).toFixed(2) : 'N/A'
         }));
         
+        this.clearAiAnswerTimeouts();
         this.overlay.remove();
         this.removeEventListeners();
         
@@ -1063,6 +1155,11 @@ export class TournamentQuiz {
         const key = event.key;
         if (this.keyToOption[key] && this.questionActive) {
             const { team, option } = this.keyToOption[key];
+            const teamName = team === 1 ? this.currentMatchup?.team1 : this.currentMatchup?.team2;
+            if (teamName && this.isAiTeam(teamName)) {
+                event.preventDefault();
+                return;
+            }
             if ((team === 1 && window.team1Locked) || (team === 2 && window.team2Locked)) {
                 return;
             }

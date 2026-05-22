@@ -210,6 +210,22 @@ def submit_declared_moves_endpoint():
         return _server_error(exc)
 
 
+@api.route("/api/game/alliance-intent", methods=["POST"])
+def submit_alliance_intent_endpoint():
+    try:
+        data = _json_payload()
+        ally_team_id = data.get("ally_team_id")
+        state = game_service.submit_alliance_intent(
+            int(data["team_id"]),
+            int(ally_team_id) if ally_team_id not in (None, "", 0) else None,
+        )
+        return jsonify(_state_response("alliance_intent_recorded", state))
+    except (KeyError, TypeError, ValueError) as exc:
+        return _client_error(exc)
+    except Exception as exc:
+        return _server_error(exc)
+
+
 @api.route("/api/game/orders", methods=["POST"])
 @api.route("/api/game/move", methods=["POST"])
 def submit_orders_endpoint():

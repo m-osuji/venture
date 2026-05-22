@@ -38,6 +38,17 @@ const planningState = {
     status: null,
 };
 
+const planningBoardUiState = {
+    isMinimized: false,
+    isDragging: false,
+};
+
+const commentaryState = {
+    lastKey: null,
+    lastText: "",
+    inFlight: null,
+};
+
 export async function fetchGameState() {
     try {
         const response = await fetch(`${API_BASE}/api/game/state`);
@@ -253,6 +264,12 @@ function getPlanningReserve(teamId) {
     return calculatePlanningReserve(team);
 }
 
+function getPlanningTeams(state = currentBackendState) {
+    const teams = state?.teams || [];
+    const humanTeams = teams.filter((team) => !team?.is_ai);
+    return humanTeams.length ? humanTeams : teams;
+}
+
 function getPlanningDraftForTeam(teamId) {
     const numericTeamId = Number(teamId);
     if (!planningState.drafts.has(numericTeamId)) {
@@ -300,11 +317,15 @@ function syncPlanningFromBackend(state) {
     });
     planningState.drafts = nextDrafts;
 
-    const fallbackTeamId = Number(state.current_team_turn || state.teams?.[0]?.team_id || 0);
+    const planningTeams = getPlanningTeams(state);
+    const fallbackTeamId = Number(state.current_team_turn || planningTeams[0]?.team_id || 0);
     if (!nextDrafts.has(Number(planningState.selectedTeamId))) {
         planningState.selectedTeamId = nextDrafts.has(fallbackTeamId)
             ? fallbackTeamId
-            : Number(state.teams?.[0]?.team_id || 0);
+            : Number(planningTeams[0]?.team_id || 0);
+    }
+    if (!planningTeams.some((team) => Number(team.team_id) === Number(planningState.selectedTeamId))) {
+        planningState.selectedTeamId = Number(planningTeams[0]?.team_id || 0);
     }
 
     const selectedOwnedMarkets = ownedMarketsForTeam(planningState.selectedTeamId, state);
@@ -503,7 +524,7 @@ function renderPlanningBoard() {
 
     panel.classList.remove("hidden");
 
-    const teams = currentBackendState?.teams || [];
+    const teams = getPlanningTeams();
     const selectedTeamId = Number(planningState.selectedTeamId);
     const selectedTeam = teams.find((team) => Number(team.team_id) === selectedTeamId);
     const selectedTeamMarkets = ownedMarketsForTeam(selectedTeamId);
@@ -512,7 +533,7 @@ function renderPlanningBoard() {
 
     copy.textContent = selectedTeam
         ? `Round ${currentBackendState?.current_round || 1} planning is open. Click one of ${selectedTeam.team_name}'s owned markets on the board, then use the controls below.`
-        : "Pick a team, click one of its markets on the board, then use the controls below.";
+        : "Pick one of the player teams, click one of its markets on the board, then use the controls below.";
 
     tabs.innerHTML = teams
         .map((team) => `
@@ -587,24 +608,57 @@ function renderPlanningBoard() {
 
 function initPlanningBoardUI() {
     const panel = document.getElementById("planning-board-panel");
+    const header = panel?.querySelector(".planning-board-header");
     const tabs = document.getElementById("planning-board-team-tabs");
     const marketList = document.getElementById("planning-board-market-list");
     const decrementButton = document.getElementById("planning-board-decrement");
     const incrementButton = document.getElementById("planning-board-increment");
     const resetButton = document.getElementById("planning-board-reset");
     const saveButton = document.getElementById("planning-board-save");
+    const minimizeButton = document.getElementById("planning-board-minimize");
 
     if (
         !panel ||
+        !header ||
         !tabs ||
         !marketList ||
         !decrementButton ||
         !incrementButton ||
         !resetButton ||
-        !saveButton
+        !saveButton ||
+        !minimizeButton
     ) {
         return;
     }
+
+    if (panel.dataset.uiReady === "true") {
+        return;
+    }
+    panel.dataset.uiReady = "true";
+
+    try {
+        planningBoardUiState.isMinimized = localStorage.getItem("venturePlanningBoardMinimized") === "true";
+        const savedPosition = JSON.parse(localStorage.getItem("venturePlanningBoardPosition") || "null");
+        if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+            panel.style.left = `${savedPosition.left}px`;
+            panel.style.top = `${savedPosition.top}px`;
+            panel.style.right = "auto";
+        }
+    } catch {
+        planningBoardUiState.isMinimized = false;
+    }
+
+    function syncPlanningPanelUi() {
+        panel.classList.toggle("is-minimized", planningBoardUiState.isMinimized);
+        minimizeButton.textContent = planningBoardUiState.isMinimized ? "+" : "−";
+        minimizeButton.setAttribute("aria-expanded", planningBoardUiState.isMinimized ? "false" : "true");
+        minimizeButton.setAttribute(
+            "aria-label",
+            planningBoardUiState.isMinimized ? "Expand planning panel" : "Minimize planning panel",
+        );
+    }
+
+    syncPlanningPanelUi();
 
     tabs.addEventListener("click", (event) => {
         const button = event.target.closest("[data-planning-team-id]");
@@ -642,6 +696,77 @@ function initPlanningBoardUI() {
 
     saveButton.addEventListener("click", () => {
         submitPlanningAllocations();
+    });
+
+    minimizeButton.addEventListener("click", () => {
+        planningBoardUiState.isMinimized = !planningBoardUiState.isMinimized;
+        localStorage.setItem("venturePlanningBoardMinimized", planningBoardUiState.isMinimized ? "true" : "false");
+        syncPlanningPanelUi();
+    });
+
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    const stopDragging = () => {
+        if (!planningBoardUiState.isDragging) {
+            return;
+        }
+        planningBoardUiState.isDragging = false;
+        panel.classList.remove("is-dragging");
+        try {
+            localStorage.setItem(
+                "venturePlanningBoardPosition",
+                JSON.stringify({
+                    left: parseFloat(panel.style.left || "0"),
+                    top: parseFloat(panel.style.top || "0"),
+                }),
+            );
+        } catch {
+            // Ignore localStorage issues and keep the panel usable.
+        }
+        document.removeEventListener("mousemove", onDragMove);
+        document.removeEventListener("mouseup", stopDragging);
+    };
+
+    const onDragMove = (event) => {
+        if (!planningBoardUiState.isDragging) {
+            return;
+        }
+
+        const container = document.getElementById("board-container");
+        const containerRect = container?.getBoundingClientRect();
+        if (!containerRect) {
+            return;
+        }
+
+        const maxLeft = Math.max(0, containerRect.width - panel.offsetWidth);
+        const maxTop = Math.max(0, containerRect.height - panel.offsetHeight);
+        const nextLeft = Math.min(
+            maxLeft,
+            Math.max(0, event.clientX - containerRect.left - dragOffsetX),
+        );
+        const nextTop = Math.min(
+            maxTop,
+            Math.max(0, event.clientY - containerRect.top - dragOffsetY),
+        );
+
+        panel.style.left = `${nextLeft}px`;
+        panel.style.top = `${nextTop}px`;
+        panel.style.right = "auto";
+    };
+
+    header.addEventListener("mousedown", (event) => {
+        if (event.target.closest("button")) {
+            return;
+        }
+
+        const panelRect = panel.getBoundingClientRect();
+        dragOffsetX = event.clientX - panelRect.left;
+        dragOffsetY = event.clientY - panelRect.top;
+        planningBoardUiState.isDragging = true;
+        panel.classList.add("is-dragging");
+        document.addEventListener("mousemove", onDragMove);
+        document.addEventListener("mouseup", stopDragging);
     });
 }
 
@@ -852,7 +977,6 @@ function renderLeaderboard(state) {
     const items = entries
         .map((entry) => {
             const ethicsText =
-                state?.is_finished &&
                 entry.ethical_score !== null &&
                 entry.ethical_score !== undefined
                     ? ` | Ethics ${Number(entry.ethical_score).toFixed(2)}`
@@ -972,13 +1096,68 @@ function updateBoardNarration(state) {
         UPDATE: "Round updates are ready. Review the board, then start the next round when you are ready.",
     };
 
-    text.textContent = stageGuidance[String(state.current_stage || "PLAN").toUpperCase()] || stageGuidance.PLAN;
+    const fallbackText = stageGuidance[String(state.current_stage || "PLAN").toUpperCase()] || stageGuidance.PLAN;
+    text.textContent = commentaryState.lastText || fallbackText;
+    fetchBoardCommentary(state, fallbackText);
 
     const newButton = button.cloneNode(true);
     button.parentNode.replaceChild(newButton, button);
     newButton.addEventListener("click", () => {
         container.style.display = "none";
     });
+}
+
+async function fetchBoardCommentary(state, fallbackText) {
+    const text = document.getElementById("AI-text");
+    if (!text || !state?.session_uuid) {
+        return;
+    }
+
+    const commentaryKey = [
+        state.session_uuid,
+        state.current_round || 1,
+        state.current_stage || "PLAN",
+        (state.alliances || []).length,
+        (state.resolution_outcomes || []).length,
+        (state.active_quizzes || []).length,
+    ].join(":");
+
+    if (commentaryState.lastKey === commentaryKey && commentaryState.lastText) {
+        text.textContent = commentaryState.lastText;
+        return;
+    }
+    if (commentaryState.inFlight === commentaryKey) {
+        return;
+    }
+
+    commentaryState.inFlight = commentaryKey;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/ai/commentary`);
+        if (!response.ok) {
+            throw new Error(`Commentary request failed (${response.status})`);
+        }
+        const payload = await response.json();
+        const commentary = payload?.commentary || {};
+        const combined = [
+            commentary.headline,
+            commentary.summary,
+            commentary.taunt || commentary.targeted_taunt,
+        ]
+            .filter(Boolean)
+            .join(" ");
+
+        commentaryState.lastKey = commentaryKey;
+        commentaryState.lastText = combined || fallbackText;
+        text.textContent = commentaryState.lastText;
+    } catch (error) {
+        console.warn("Failed to fetch commentator output:", error);
+        commentaryState.lastKey = commentaryKey;
+        commentaryState.lastText = fallbackText;
+        text.textContent = fallbackText;
+    } finally {
+        commentaryState.inFlight = null;
+    }
 }
 
 // Initialize team info button

@@ -57,6 +57,11 @@ const API_BASE =
   import.meta.env.VITE_VENTURE_API_BASE ||
   "http://localhost:5000";
 
+function isGamePageRoute(pathname = window.location.pathname) {
+  const path = String(pathname || "").trim().toLowerCase();
+  return path === "/game" || path.endsWith("/pages/game.html") || path.endsWith("/game.html");
+}
+
 // Question bank loaded from CSV format
 let questionBank = [];
 let questionBankPromise = null;
@@ -781,10 +786,17 @@ async function startGameHandler() {
   }
 
   // Save the game config with the correct structure for the quiz
+  const allTeamNames = [...teamNames];
+  const allTeamColors = [...teamColors];
+  if (includeAI) {
+    allTeamNames.push("IBM Granite AI");
+    allTeamColors.push("#1b9aaa");
+  }
+
   const gameConfigForQuiz = {
-    teamCount: teamCount,
-    teamNames: teamNames,
-    teamColors: teamColors,
+    teamCount: allTeamNames.length,
+    teamNames: allTeamNames,
+    teamColors: allTeamColors,
     includeAI: includeAI,
     aiDifficulty: difficulty,
     gameLength: gameLength,
@@ -946,6 +958,8 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
     let currentTeamIndex = 0;
     const selectedMarkets = {};
     const availableMarkets = [...markets];
+    const savedConfig = JSON.parse(localStorage.getItem("ventureGameConfig") || "{}");
+    const aiTeamName = savedConfig.includeAI ? "IBM Granite AI" : null;
     
     // Create market selection overlay
     const marketOverlay = document.createElement("div");
@@ -988,6 +1002,54 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
             progressDiv.innerHTML = `Draft Pick ${currentTeamIndex + 1} of ${rankedTeamNames.length} | ${rankedTeamNames[currentTeamIndex]}'s turn`;
         }
         document.getElementById("current-team-name").innerHTML = `${rankedTeamNames[currentTeamIndex]}<br><span style="font-size: 14px; color: #666;">Tournament Rank: ${currentTeamIndex + 1}</span>`;
+    }
+
+    function isAiTurn() {
+        return Boolean(aiTeamName) && rankedTeamNames[currentTeamIndex] === aiTeamName;
+    }
+
+    function chooseAiDraftMarket() {
+        const aiDifficulty = String(savedConfig.aiDifficulty || "medium").toLowerCase();
+        const scoredMarkets = [...availableMarkets].map((market) => {
+            const sizeScore = { small: 1, medium: 2, large: 3, "very large": 4 }[String(market.size).toLowerCase()] || 0;
+            const growthScore = { low: 1, medium: 2, high: 3, "very high": 4 }[String(market.growth).toLowerCase()] || 0;
+            const regulationScore = { low: 1, medium: 2, high: 3, "very high": 4 }[String(market.regulation).toLowerCase()] || 0;
+            const riskScore = { low: 1, medium: 2, high: 3, "very high": 4 }[String(market.risk).toLowerCase()] || 0;
+
+            let score = (sizeScore * 1.4) + (growthScore * 1.15) - (regulationScore * 0.5) - (riskScore * 0.35);
+            if (aiDifficulty === "hard") {
+                score += growthScore * 0.25;
+            } else if (aiDifficulty === "easy") {
+                score -= riskScore * 0.2;
+            }
+            return { market, score };
+        });
+
+        scoredMarkets.sort((left, right) => right.score - left.score);
+        return scoredMarkets[0]?.market || availableMarkets[0];
+    }
+
+    function maybeAutoPickCurrentTeam() {
+        if (!isAiTurn()) {
+            return;
+        }
+
+        const pick = chooseAiDraftMarket();
+        if (!pick) {
+            return;
+        }
+
+        const feedback = document.getElementById("selection-feedback");
+        if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "#d9ecff";
+            feedback.style.color = "#1f4f82";
+            feedback.innerHTML = `${aiTeamName} is evaluating the board...`;
+        }
+
+        window.setTimeout(() => {
+            selectMarket(pick.id, pick.name);
+        }, 1200);
     }
     
     function displayMarkets() {
@@ -1051,6 +1113,7 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
         if (currentTeamIndex < rankedTeamNames.length) {
             updateDraftProgress();
             displayMarkets();
+            maybeAutoPickCurrentTeam();
         } else {
             // All teams have selected markets
             finishMarketSelection(selectedMarkets);
@@ -1131,6 +1194,7 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
     
     updateDraftProgress();
     displayMarkets();
+    maybeAutoPickCurrentTeam();
 }
 
 // Update territory buttons with market selections (placeholder for now)
@@ -1195,7 +1259,7 @@ function updateTerritoryButtonsWithMarketSelections() {
 
 // Tournament system with round robin between all teams
 async function startTeamQuiz() {
-    if (window.location.pathname !== "/game") return;
+    if (!isGamePageRoute()) return;
 
     await ensureQuestionBankLoaded();
     if (!questionBank.length) {
@@ -1222,7 +1286,11 @@ async function startTeamQuiz() {
         teamNames,
         questionBank,
         getCorrectLetter,
-        getRandomQuestions
+        getRandomQuestions,
+        {
+            aiTeams: gameConfig.includeAI ? ["IBM Granite AI"] : [],
+            aiDifficulty: gameConfig.aiDifficulty || "medium"
+        }
     );
     
     tournament.start((rankedTeams, tournamentResults) => {
@@ -1354,7 +1422,7 @@ let gameStartTime = null;
 let isGameTimed = false;
 
 function startGameTimer(gameLength) {
-  if (window.location.pathname !== "/game") {
+  if (!isGamePageRoute()) {
     return;
   }
   console.log("startGameTimer called with gameLength:", gameLength);

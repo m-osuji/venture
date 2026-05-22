@@ -144,6 +144,10 @@ def build_quizzes_for_pending_conflicts(
     quizzes: list[dict[str, Any]] = []
 
     for conflict in game_state.get("turn_log", {}).get("conflicts", []):
+        if str(conflict.get("status") or "").strip().lower() != "pending":
+            continue
+        if str(conflict.get("conflict_type") or "").strip().lower() == "neutral_capture":
+            continue
         quiz = build_quiz_for_conflict(conflict, used_ids)
         quizzes.append(quiz)
         used_ids.update(question["question_id"] for question in quiz["questions"])

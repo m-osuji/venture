@@ -664,6 +664,15 @@ footer nav p {
     backdrop-filter: blur(12px);
 }
 
+.planning-board-panel.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.planning-board-panel.is-minimized {
+    width: min(280px, calc(100vw - 32px));
+}
+
 .planning-board-panel.hidden,
 .planning-board-status.hidden {
     display: none;
@@ -674,6 +683,17 @@ footer nav p {
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 14px;
+    cursor: grab;
+}
+
+.planning-board-title-group {
+    min-width: 0;
+}
+
+.planning-board-header-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
 }
 
 .planning-board-kicker {
@@ -728,6 +748,42 @@ footer nav p {
     font-family: var(--heading-font);
     font-size: 28px;
     font-weight: 500;
+}
+
+.planning-board-icon-btn {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(67, 67, 67, 0.08);
+    color: var(--main-grey);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.planning-board-icon-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(238, 103, 43, 0.14);
+}
+
+.planning-board-panel.is-minimized .planning-board-team-tabs,
+.planning-board-panel.is-minimized .planning-board-status,
+.planning-board-panel.is-minimized .planning-board-selected,
+.planning-board-panel.is-minimized .planning-board-controls,
+.planning-board-panel.is-minimized .planning-board-summary,
+.planning-board-panel.is-minimized .planning-board-actions {
+    display: none;
+}
+
+.planning-board-panel.is-minimized .planning-board-header {
+    margin-bottom: 0;
+}
+
+.planning-board-panel.is-minimized .planning-board-header p {
+    display: none;
 }
 
 .planning-board-team-tabs {

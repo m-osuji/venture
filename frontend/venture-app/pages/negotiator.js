@@ -18,9 +18,11 @@ function toIdKey(value) {
 
 function orderedTeams(state) {
     const teams = [...(state?.teams || [])];
+    const humanTeams = teams.filter((team) => !team?.is_ai);
+    const visibleTeams = humanTeams.length ? humanTeams : teams;
     const teamOrder = Array.isArray(state?.team_order) ? state.team_order.map(Number) : [];
     const orderIndex = new Map(teamOrder.map((teamId, index) => [teamId, index]));
-    return teams.sort((left, right) => {
+    return visibleTeams.sort((left, right) => {
         const leftIndex = orderIndex.has(Number(left.team_id)) ? orderIndex.get(Number(left.team_id)) : Number.MAX_SAFE_INTEGER;
         const rightIndex = orderIndex.has(Number(right.team_id)) ? orderIndex.get(Number(right.team_id)) : Number.MAX_SAFE_INTEGER;
         if (leftIndex !== rightIndex) {
@@ -130,10 +132,12 @@ function defaultDraftForTeam(state, teamId) {
         (state?.actual_moves?.[toIdKey(teamId)] || [])[0] ||
         (state?.prepared_moves?.[toIdKey(teamId)] || [])[0] ||
         null;
+    const allianceTargetTeamId = state?.alliance_intents?.[toIdKey(teamId)] ?? "";
 
     return {
         declared: moveDraftFromMove(declaredMove),
         actual: moveDraftFromMove(actualMove),
+        alliance_target_team_id: allianceTargetTeamId === null ? "" : String(allianceTargetTeamId),
         saved: Boolean(declaredMove),
     };
 }
@@ -165,6 +169,11 @@ function loadDraftStore(state) {
                 ...fallbackDraft.actual,
                 ...(existingDraft.actual || {}),
             },
+            alliance_target_team_id: String(
+                existingDraft.alliance_target_team_id ??
+                fallbackDraft.alliance_target_team_id ??
+                "",
+            ),
             saved: Boolean(existingDraft.saved || fallbackDraft.saved),
         };
     }
@@ -199,6 +208,27 @@ function buildMarketOptions(markets, placeholder) {
             `<option value="${market.marketId}">${escapeHtml(market.market_name)} (${escapeHtml(String(market.size || "market"))}${ownerText})</option>`,
         );
     });
+    return options.join("");
+}
+
+function buildAllianceTargetOptions(state, teamId) {
+    const options = [`<option value="">No alliance this round</option>`];
+    const teams = [...(state?.teams || [])];
+    const teamOrder = Array.isArray(state?.team_order) ? state.team_order.map(Number) : [];
+    const orderIndex = new Map(teamOrder.map((id, index) => [id, index]));
+    teams
+        .sort((left, right) => {
+            const leftIndex = orderIndex.has(Number(left.team_id)) ? orderIndex.get(Number(left.team_id)) : Number.MAX_SAFE_INTEGER;
+            const rightIndex = orderIndex.has(Number(right.team_id)) ? orderIndex.get(Number(right.team_id)) : Number.MAX_SAFE_INTEGER;
+            if (leftIndex !== rightIndex) {
+                return leftIndex - rightIndex;
+            }
+            return Number(left.team_id) - Number(right.team_id);
+        })
+        .filter((team) => Number(team.team_id) !== Number(teamId))
+        .forEach((team) => {
+            options.push(`<option value="${team.team_id}">${escapeHtml(team.team_name)}</option>`);
+        });
     return options.join("");
 }
 
@@ -239,6 +269,15 @@ function applyMoveDraftToForm(prefix, moveDraft, state, teamId) {
 
     updateConditionalFields(prefix);
     applyMoveThresholds(prefix, state, teamId);
+}
+
+function applyAllianceDraftToForm(allianceTargetTeamId, state, teamId) {
+    const select = document.getElementById("alliance-target-team");
+    if (!select) {
+        return;
+    }
+    select.innerHTML = buildAllianceTargetOptions(state, teamId);
+    setSelectValue(select, allianceTargetTeamId);
 }
 
 function updateConditionalFields(prefix) {
@@ -425,6 +464,14 @@ function renderNegotiationWorkspace(state, draftStore, elements) {
     const selectedTeam = teamById(state, draftStore.selectedTeamId);
     const selectedDraft = draftStore.teamDrafts[toIdKey(draftStore.selectedTeamId)] || defaultDraftForTeam(state, draftStore.selectedTeamId);
     const selectedOwnedMarkets = ownedMarkets(state, draftStore.selectedTeamId);
+    const activeAlliance = (state.alliances || []).find((alliance) =>
+        String(alliance.status || "active").toLowerCase() === "active" &&
+        (alliance.members || []).map(Number).includes(Number(draftStore.selectedTeamId))
+    );
+    const alliancePartnerId = activeAlliance
+        ? (activeAlliance.members || []).map(Number).find((teamId) => Number(teamId) !== Number(draftStore.selectedTeamId))
+        : null;
+    const alliancePartner = alliancePartnerId ? teamById(state, alliancePartnerId) : null;
 
     elements.empty.classList.add("hidden");
     elements.workspace.classList.remove("hidden");
@@ -432,7 +479,7 @@ function renderNegotiationWorkspace(state, draftStore, elements) {
     elements.roundValue.textContent = String(state.current_round || 1);
     elements.savedValue.textContent = `${savedCount} / ${teams.length}`;
     elements.stageValue.textContent = String(state.current_stage || "NEGOTIATE").toUpperCase();
-    elements.stageMessage.textContent = `Round ${state.current_round || 1} negotiation is live. Save every team's public move and private locked move, then reveal orders.`;
+    elements.stageMessage.textContent = `Round ${state.current_round || 1} negotiation is live. Save each player team's public move and private locked move, then reveal orders. AI teams handle their own negotiation automatically.`;
 
     elements.teamTabs.innerHTML = teams
         .map((team) => {
@@ -444,7 +491,7 @@ function renderNegotiationWorkspace(state, draftStore, elements) {
                     <span class="neg-team-emblem" style="background:${escapeHtml(teamColour(team))}">${escapeHtml(teamInitials(team.team_name))}</span>
                     <span class="neg-team-tab-copy">
                         <strong>${escapeHtml(team.team_name)}</strong>
-                        <span>${escapeHtml(String(team.ip ?? 0))} reserve IP</span>
+                        <span>${escapeHtml(String(team.ip ?? 0))} reserve IP | Ethics ${escapeHtml(Number(team.ethical_score ?? 1).toFixed(2))}</span>
                     </span>
                 </button>
             `;
@@ -453,12 +500,13 @@ function renderNegotiationWorkspace(state, draftStore, elements) {
 
     elements.teamName.textContent = selectedTeam?.team_name || "Choose a team";
     elements.teamMeta.textContent = selectedTeam
-        ? `${selectedOwnedMarkets.length} owned markets | ${Number(selectedTeam.ip ?? 0)} IP currently in reserve`
+        ? `${selectedOwnedMarkets.length} owned markets | ${Number(selectedTeam.ip ?? 0)} IP in reserve | Ethics ${Number(selectedTeam.ethical_score ?? 1).toFixed(2)}${alliancePartner ? ` | Allied with ${alliancePartner.team_name}` : ""}`
         : "Select a team tab to enter its moves.";
 
     elements.teamSaveBadge.textContent = selectedDraft.saved ? "Saved" : "Not saved";
     elements.teamSaveBadge.classList.toggle("is-saved", Boolean(selectedDraft.saved));
 
+    applyAllianceDraftToForm(selectedDraft.alliance_target_team_id || "", state, draftStore.selectedTeamId);
     applyMoveDraftToForm("declared", selectedDraft.declared, state, draftStore.selectedTeamId);
     applyMoveDraftToForm("actual", selectedDraft.actual, state, draftStore.selectedTeamId);
 }
@@ -468,11 +516,13 @@ function collectSelectedTeamDraft(draftStore, markUnsaved = true) {
     draftStore.teamDrafts[teamId] = draftStore.teamDrafts[teamId] || {
         declared: blankMoveDraft("hold"),
         actual: blankMoveDraft("hold"),
+        alliance_target_team_id: "",
         saved: false,
     };
 
     draftStore.teamDrafts[teamId].declared = moveDraftFromForm("declared");
     draftStore.teamDrafts[teamId].actual = moveDraftFromForm("actual");
+    draftStore.teamDrafts[teamId].alliance_target_team_id = document.getElementById("alliance-target-team")?.value || "";
     if (markUnsaved) {
         draftStore.teamDrafts[teamId].saved = false;
     }
@@ -520,6 +570,7 @@ export function initNegotiatorPage() {
     let draftStore = null;
 
     const inputIds = [
+        "alliance-target-team",
         "declared-action-type",
         "declared-source-market",
         "declared-target-market",
@@ -616,6 +667,10 @@ export function initNegotiatorPage() {
             await postJson(`${API_BASE}/api/game/declared-moves`, {
                 team_id: teamId,
                 moves: declaredMoves,
+            });
+            await postJson(`${API_BASE}/api/game/alliance-intent`, {
+                team_id: teamId,
+                ally_team_id: draft.alliance_target_team_id || null,
             });
 
             draft.saved = true;

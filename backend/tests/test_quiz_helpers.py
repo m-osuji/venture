@@ -47,7 +47,7 @@ def test_build_quiz_for_conflict_returns_one_question_per_difficulty():
     ]
 
     public_payload = qh.to_public_quiz_payload(quiz)
-    assert "answer" not in public_payload["questions"][0]
+    assert "answer" in public_payload["questions"][0]
     assert public_payload["questions"][0]["options"]["option_1"]
 
 

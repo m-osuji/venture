@@ -1,12 +1,9 @@
-// index.test.js
-
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
 
 describe("Index HTML", () => {
   beforeEach(() => {
     const html = fs.readFileSync(
-      path.resolve(__dirname, "../index.html"),
+      new URL("../index.html", import.meta.url),
       "utf8"
     );
 

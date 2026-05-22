@@ -1,12 +1,9 @@
-// tutorial.test.js
-
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
 
 describe("Tutorial Page", () => {
   beforeEach(() => {
     const html = fs.readFileSync(
-      path.resolve(__dirname, "../pages/tutorial.html"),
+      new URL("../pages/tutorial.html", import.meta.url),
       "utf8"
     );
 

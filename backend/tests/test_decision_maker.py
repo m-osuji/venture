@@ -56,7 +56,13 @@ def test_generate_legal_actions_supports_reallocation_and_research_options(monke
 
     actions = dm.generate_legal_actions(game_state)
 
-    assert all(action.action_type != "defend" for action in actions)
+    assert any(
+        action.action_type == "defend"
+        and action.source_market_id == 1
+        and action.target_market_id == 2
+        and action.metadata.get("defend_mode") == "reallocate"
+        for action in actions
+    )
 
     market_one_research = [
         action
@@ -280,7 +286,7 @@ def test_select_best_order_bundle_respects_zero_max_actions():
     assert selection_state.remaining_current_ip == 4
 
 
-def test_research_scoring_rewards_fortifying_a_threatened_market(monkeypatch):
+def test_defend_scoring_rewards_reallocating_into_threatened_market(monkeypatch):
     _stub_market_knowledge(
         monkeypatch,
         {
@@ -304,11 +310,11 @@ def test_research_scoring_rewards_fortifying_a_threatened_market(monkeypatch):
     )
 
     action = dm.Action(
-        action_type="research",
+        action_type="defend",
         target_market_id=2,
         source_market_id=1,
         ip_spent=2,
-        metadata={"research_option": "fortify_market", "resource_pool": "current_ip"},
+        metadata={"defend_mode": "reallocate", "resource_pool": "market_ip"},
     )
     game_state = {
         "owned_markets": [1, 2],
@@ -321,7 +327,7 @@ def test_research_scoring_rewards_fortifying_a_threatened_market(monkeypatch):
     score, reasons = dm.score_action(action, game_state, dm.get_decision_traits("medium"))
 
     assert score > 0
-    assert reasons["option_value"] >= 0
+    assert reasons["reallocation_efficiency"] >= 0
 
 
 def test_get_decision_traits_uses_profile_override_and_validates_difficulty(monkeypatch):

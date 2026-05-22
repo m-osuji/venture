@@ -1,9 +1,12 @@
-import fs from "node:fs";
+// game.test.js
+
+const fs = require("fs");
+const path = require("path");
 
 describe("Game Page", () => {
   beforeEach(() => {
     const html = fs.readFileSync(
-      new URL("../pages/game.html", import.meta.url),
+      path.resolve(__dirname, "../pages/game.html"),
       "utf8"
     );
 
@@ -19,11 +22,11 @@ describe("Game Page", () => {
     expect(document.getElementById("stage-indicator")).not.toBeNull();
   });
 
-  test("renders planning board panel hidden by default", () => {
-    const planningPanel = document.getElementById("planning-board-panel");
+  test("renders team display (initially hidden)", () => {
+    const teamDisplay = document.getElementById("current-team-display");
 
-    expect(planningPanel).not.toBeNull();
-    expect(planningPanel.classList.contains("hidden")).toBe(true);
+    expect(teamDisplay).not.toBeNull();
+    expect(teamDisplay.style.display).toBe("none");
   });
 
   test("renders leaderboard button and overlay", () => {

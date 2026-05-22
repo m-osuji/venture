@@ -1,7 +1,6 @@
 import pytest
 
 from backend.enums import AIDifficulty, AgentType, GameStage
-import backend.ai_opponent.knowledge_profile as kp
 from backend.ai_opponent.knowledge_profile import (
     get_attributes,
     get_persona,
@@ -11,9 +10,9 @@ from backend.ai_opponent.knowledge_profile import (
 )
 
 def test_get_attributes_success(monkeypatch):
+    # patch the REAL dependency path
     monkeypatch.setattr(
-        kp,
-        "fetch_market_by_id",
+        "backend.helpers.db_helpers.fetch_market_by_id",
         lambda market_id: {
             "market_id": market_id,
             "market_name": "Finance",
@@ -28,8 +27,7 @@ def test_get_attributes_success(monkeypatch):
 
 def test_get_attributes_missing_market(monkeypatch):
     monkeypatch.setattr(
-        kp,
-        "fetch_market_by_id",
+        "backend.helpers.db_helpers.fetch_market_by_id",
         lambda market_id: None,
     )
 
@@ -42,8 +40,7 @@ def test_get_attributes_db_error(monkeypatch):
         raise Exception("db exploded")
 
     monkeypatch.setattr(
-        kp,
-        "fetch_market_by_id",
+        "backend.helpers.db_helpers.fetch_market_by_id",
         boom,
     )
 

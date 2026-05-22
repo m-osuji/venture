@@ -30,7 +30,6 @@
             <button id="leaderboard-button" type="button" class="leaderboard-button">
                 <img src="../images/leaderboard_icon.png" alt="Leaderboard" class="leaderboard-icon">
             </button>
-            
         </div>
         <aside id="planning-board-panel" class="planning-board-panel hidden" aria-live="polite">
             <div class="planning-board-header">
@@ -54,7 +53,7 @@
                 <div class="planning-board-market-card">
                     <div>
                         <strong id="planning-board-market-name">Select a market</strong>
-                        <p id="planning-board-market-meta">Click one of the selected team&apos;s owned territories.</p>
+                        <p id="planning-board-market-meta">Click one of the selected team's owned territories.</p>
                     </div>
                     <div class="planning-board-allocation-pill">
                         <strong id="planning-board-market-allocation">0</strong>
@@ -91,305 +90,465 @@
         </div>
 
         <div>
+            <!-- Food & Water -->
             <button type="button" class="territory-button" data-adjusted-position-left="1800" data-adjusted-position-top="1100" data-territory="food-and-water">
                 <h3>Food & Water</h3>
-                <p>Uncaptured ⋅ 1500</p>
+                <p>Uncaptured - 1500</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Food & Water Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Fisheries -->
             <button type="button" class="territory-button" data-adjusted-position-left="1600" data-adjusted-position-top="800" data-territory="fisheries">
                 <h3>Fisheries</h3>
-                <p>Uncaptured ⋅ 600</p>
+                <p>Uncaptured - 600</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Fisheries Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Agriculture -->
             <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="1300" data-territory="agriculture">
                 <h3>Agriculture</h3>
-                <p>Uncaptured ⋅ 1100</p>
+                <p>Uncaptured - 1100</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Agriculture Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1100</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Healthcare -->
             <button type="button" class="territory-button" data-adjusted-position-left="3100" data-adjusted-position-top="1200" data-territory="healthcare">
                 <h3>Healthcare</h3>
-                <p>Uncaptured ⋅ 1300</p>
+                <p>Uncaptured - 1300</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Healthcare Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1300</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Pharmaceuticals -->
             <button type="button" class="territory-button" data-adjusted-position-left="3550" data-adjusted-position-top="1050" data-territory="pharmaceuticals">
                 <h3>Pharmaceuticals</h3>
-                <p>Uncaptured ⋅ 900</p>
+                <p>Uncaptured - 900</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Pharmaceuticals Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Science -->
             <button type="button" class="territory-button" data-adjusted-position-left="3000" data-adjusted-position-top="800" data-territory="science">
                 <h3>Science</h3>
-                <p>Uncaptured ⋅ 1200</p>
+                <p>Uncaptured - 1200</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Science Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1200</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Law -->
             <button type="button" class="territory-button" data-adjusted-position-left="4850" data-adjusted-position-top="1000" data-territory="law">
                 <h3>Law</h3>
-                <p>Uncaptured ⋅ 1700</p>
+                <p>Uncaptured - 1700</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Law Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1700</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Technology -->
             <button type="button" class="territory-button" data-adjusted-position-left="1900" data-adjusted-position-top="2150" data-territory="technology">
                 <h3>Technology</h3>
-                <p>Owned by John M ⋅ 1800</p>
+                <p>Owned by John M - 1800</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Technology Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Education -->
             <button type="button" class="territory-button" data-adjusted-position-left="2450" data-adjusted-position-top="1925" data-territory="education">
                 <h3>Education</h3>
-                <p>Uncaptured ⋅ 500</p>
+                <p>Uncaptured - 500</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Education Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Cybersecurity -->
             <button type="button" class="territory-button" data-adjusted-position-left="2000" data-adjusted-position-top="2600" data-territory="cybersecurity">
                 <h3>Cybersecurity</h3>
-                <p>Uncaptured ⋅ 800</p>
+                <p>Uncaptured - 800</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Cybersecurity Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Automotive -->
             <button type="button" class="territory-button" data-adjusted-position-left="2550" data-adjusted-position-top="2450" data-territory="automotive">
                 <h3>Automotive</h3>
-                <p>Uncaptured ⋅ 1300</p>
+                <p>Uncaptured - 1300</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Automotive Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Aerospace -->
             <button type="button" class="territory-button" data-adjusted-position-left="4050" data-adjusted-position-top="2200" data-territory="aerospace">
                 <h3>Aerospace</h3>
-                <p>Owned by John M ⋅ 1300</p>
+                <p>Owned by John M - 1300</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Aerospace Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/500</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Manufacturing -->
             <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="3300" data-territory="manufacturing">
                 <h3>Manufacturing</h3>
-                <p>Uncaptured ⋅ 2100</p>
+                <p>Uncaptured - 2100</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Manufacturing Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/2100</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Mining -->
             <button type="button" class="territory-button" data-adjusted-position-left="1700" data-adjusted-position-top="3550" data-territory="mining">
                 <h3>Mining</h3>
-                <p>Uncaptured ⋅ 900</p>
+                <p>Uncaptured - 900</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Mining Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Civil Engineering -->
             <button type="button" class="territory-button" data-adjusted-position-left="1400" data-adjusted-position-top="3800" data-territory="civil-engineering">
                 <h3>Civil Engineering</h3>
-                <p>Uncaptured ⋅ 1100</p>
+                <p>Uncaptured - 1100</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Civil Engineering Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1100</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Energy -->
             <button type="button" class="territory-button" data-adjusted-position-left="3000" data-adjusted-position-top="3700" data-territory="energy">
                 <h3>Energy</h3>
-                <p>Uncaptured ⋅ 900</p>
+                <p>Uncaptured - 900</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Energy Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/900</button>
-                </div>
-            </div>
-            <button type="button" class="territory-button" data-adjusted-position-left="3650" data-adjusted-position-top="3600" data-territory="transport">
-                <h3>Transport</h3>
-                <p>Uncaptured ⋅ 600</p>
-            </button>
-            <div class="territory-overlay" style="display: none;">
-                <div class="territory-dialog">
-                    <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Transport Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
-                </div>
-            </div>
-            <button type="button" class="territory-button" data-adjusted-position-left="3300" data-adjusted-position-top="3400" data-territory="weapons">
-                <h3>Weapons</h3>
-                <p>Uncaptured ⋅ 1700</p>
-            </button>
-            <div class="territory-overlay" style="display: none;">
-                <div class="territory-dialog">
-                    <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Weapons Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1700</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
 
+            <!-- Transport -->
+            <button type="button" class="territory-button" data-adjusted-position-left="3650" data-adjusted-position-top="3600" data-territory="transport">
+                <h3>Transport</h3>
+                <p>Uncaptured - 600</p>
+            </button>
+            <div class="territory-overlay" style="display: none;">
+                <div class="territory-dialog">
+                    <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
+                </div>
+            </div>
+
+            <!-- Weapons -->
+            <button type="button" class="territory-button" data-adjusted-position-left="3300" data-adjusted-position-top="3400" data-territory="weapons">
+                <h3>Weapons</h3>
+                <p>Uncaptured - 1700</p>
+            </button>
+            <div class="territory-overlay" style="display: none;">
+                <div class="territory-dialog">
+                    <button type="button" class="territory-close" aria-label="Close territory info">×</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
+                </div>
+            </div>
+
+            <!-- Real Estate -->
             <button type="button" class="territory-button" data-adjusted-position-left="4850" data-adjusted-position-top="3550" data-territory="real-estate">
                 <h3>Real Estate</h3>
-                <p>Uncaptured ⋅ 400</p>
+                <p>Uncaptured - 400</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Real Estate Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/400</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Retail -->
             <button type="button" class="territory-button" data-adjusted-position-left="4900" data-adjusted-position-top="3200" data-territory="retail">
                 <h3>Retail</h3>
-                <p>Uncaptured ⋅ 600</p>
+                <p>Uncaptured - 600</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Retail Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/600</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
+
+            <!-- Finance -->
             <button type="button" class="territory-button" data-adjusted-position-left="5250" data-adjusted-position-top="3000" data-territory="finance">
                 <h3>Finance</h3>
-                <p>Uncaptured ⋅ 1300</p>
+                <p>Uncaptured - 1300</p>
             </button>
             <div class="territory-overlay" style="display: none;">
                 <div class="territory-dialog">
                     <button type="button" class="territory-close" aria-label="Close territory info">×</button>
-                    <h3>Finance Market</h3>
-                    <hr>
-                    <p>Description of market</p>
-                    <p>Star Diagram Here</p>
-                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture 350/1300</button>
+                    <h3>Loading market data...</h3>
+                    <div id="spider-chart-container" class="spider-chart-container"></div>
+                    <div id="market-description" class="market-description"></div>
+                    <div id="strategic-advice" class="strategic-advice"></div>
+                    <div class="market-stats">
+                        <div class="stat-row"><span>Size:</span><span id="stat-size">-</span></div>
+                        <div class="stat-row"><span>Regulation:</span><span id="stat-regulation">-</span></div>
+                        <div class="stat-row"><span>Competition:</span><span id="stat-competition">-</span></div>
+                        <div class="stat-row"><span>Resources:</span><span id="stat-resources">-</span></div>
+                    </div>
+                    <button type="button" class="territory-action-button" aria-label="Capture territory">Capture Market</button>
                 </div>
             </div>
         </div>
@@ -397,7 +556,7 @@
         <div id="AI-container">
             <img id="AI" src="../images/AI_thinking.png">
             <div id="AI-bubble">
-                <p id="AI-text">Welcome to Venture, the ultimate game that puts your business acumen to the test. Using IBM SkillsBuild, you’ll embark on a dynamic journey, facing me – the unrivalled business adversary – or competing with fellow apprentices. Sharpen your skills, strategise, and rise above the rest as you navigate challenges and opportunities. Only the most resourceful will prevail and earn the title of champion in the world of Venture.</p>
+                <p id="AI-text">Welcome to Venture, the ultimate game that puts your business acumen to the test. Using IBM SkillsBuild, you will embark on a dynamic journey, facing me – the unrivalled business adversary – or competing with fellow apprentices. Sharpen your skills, strategise, and rise above the rest as you navigate challenges and opportunities. Only the most resourceful will prevail and earn the title of champion in the world of Venture.</p>
                 <button id="AI-confirm">x</button>
             </div>
         </div>

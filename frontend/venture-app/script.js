@@ -975,7 +975,7 @@ function startMarketSelection(rankedTeams, tournamentResults = []) {
                 <h3 id="current-team-name">Team Name</h3>
                 <p>Select your starting market</p>
             </div>
-            <div id="markets-list" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
+            <div id="markets-list" style="margin-bottom: 20px; overflow-y: auto;">
                 <!-- Markets will be listed here -->
             </div>
             <div id="selection-feedback" style="text-align: center; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: none;"></div>
@@ -1230,7 +1230,8 @@ function updateTerritoryButtonsWithMarketSelections() {
         'finance': 'finance',
         'energy': 'energy',
         'manufacturing': 'manufacturing',
-        'agriculture': 'agriculture'
+        'agriculture': 'agriculture',
+        'technology': 'technology'
     };
     
     territoryButtons.forEach(button => {
@@ -1557,3 +1558,249 @@ window.onpopstate = () => {
 init();
 
 console.log("PATH:", window.location.pathname);
+
+// Updated Database Inspection Tool - Tests multiple endpoints
+async function inspectMarketDatabase() {
+    console.log("🔍 INSPECTING MARKET DATABASE...");
+    console.log("API_BASE:", API_BASE);
+    
+    // Test different possible endpoints
+    const endpointsToTry = [
+        { url: `${API_BASE}/api/markets`, name: "All markets" },
+        { url: `${API_BASE}/api/game/state`, name: "Game state (includes markets)" },
+        { url: `${API_BASE}/api/market/list`, name: "Market list" },
+        { url: `${API_BASE}/api/markets/all`, name: "Markets all" }
+    ];
+    
+    let marketData = null;
+    let workingEndpoint = null;
+    
+    // Try each endpoint
+    for (const endpoint of endpointsToTry) {
+        try {
+            console.log(`\n📡 Trying: ${endpoint.name} (${endpoint.url})`);
+            const response = await fetch(endpoint.url);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ SUCCESS! Status: ${response.status}`);
+                console.log("Data type:", Array.isArray(data) ? "Array" : typeof data);
+                console.log("Data preview:", data);
+                
+                // Check if this looks like market data
+                if (Array.isArray(data) && data.length > 0) {
+                    marketData = data;
+                    workingEndpoint = endpoint.url;
+                    console.log(`🎯 Found ${data.length} items in array`);
+                    break;
+                } else if (data.markets && Array.isArray(data.markets)) {
+                    marketData = data.markets;
+                    workingEndpoint = endpoint.url;
+                    console.log(`🎯 Found ${data.markets.length} markets in data.markets`);
+                    break;
+                } else if (data.market_state) {
+                    // Game state endpoint - extract markets from market_state
+                    marketData = Object.values(data.market_state);
+                    workingEndpoint = endpoint.url;
+                    console.log(`🎯 Found ${marketData.length} markets in market_state object`);
+                    break;
+                }
+            } else {
+                console.log(`❌ Failed: ${response.status} - ${response.statusText}`);
+            }
+        } catch (error) {
+            console.log(`❌ Error: ${error.message}`);
+        }
+    }
+    
+    if (!marketData) {
+        console.log("\n❌ Could not find market data from any endpoint");
+        console.log("\n💡 SUGGESTIONS:");
+        console.log("1. Check your backend routes - look for routes like @app.route('/api/markets')");
+        console.log("2. Run this Python code to see what endpoints exist:");
+        console.log(`
+   from flask import Flask
+   app = Flask(__name__)
+   print([rule.rule for rule in app.url_map.iter_rules()])
+        `);
+        return null;
+    }
+    
+    // Process found market data
+    console.log(`\n✅ WORKING ENDPOINT: ${workingEndpoint}`);
+    console.log(`📊 Found ${marketData.length} markets`);
+    
+    // Display sample market structure
+    if (marketData.length > 0) {
+        const sample = marketData[0];
+        console.log("\n📋 SAMPLE MARKET STRUCTURE:");
+        console.log("Keys:", Object.keys(sample));
+        console.log("Sample data:", sample);
+        
+        // Check for attribute fields
+        const possibleAttributes = ['size', 'regulation', 'competition', 'resources', 
+                                    'market_size', 'regulation_level', 'competition_level', 
+                                    'resource_availability'];
+        
+        console.log("\n🎯 ATTRIBUTE CHECK:");
+        possibleAttributes.forEach(attr => {
+            if (sample[attr] !== undefined) {
+                console.log(`  ✅ Found: ${attr} = ${sample[attr]}`);
+            }
+        });
+        
+        // Create attribute mapping if fields exist
+        const attributeMapping = {};
+        possibleAttributes.forEach(attr => {
+            if (sample[attr] !== undefined) {
+                attributeMapping[attr] = sample[attr];
+            }
+        });
+        
+        if (Object.keys(attributeMapping).length > 0) {
+            console.log("\n📊 MARKET ATTRIBUTES SUMMARY:");
+            marketData.forEach(market => {
+                const name = market.market_name || market.name || "Unknown";
+                const attrs = [];
+                Object.keys(attributeMapping).forEach(attr => {
+                    if (market[attr]) attrs.push(`${attr}:${market[attr]}`);
+                });
+                console.log(`  - ${name}: ${attrs.join(', ')}`);
+            });
+        }
+        
+        // Score conversion helper
+        const scoreMap = {
+            'Small': 3, 'Medium': 6, 'Large': 10,
+            'Low': 2, 'Medium': 5, 'High': 8, 'Very High': 10,
+            'low': 2, 'medium': 5, 'high': 8, 'very high': 10
+        };
+        
+        // Generate spider chart scores
+        console.log("\n🕷️ SPIDER CHART SCORES (0-10):");
+        const marketScores = marketData.map(market => {
+            const name = market.market_name || market.name;
+            const size = scoreMap[market.size || market.market_size] || 5;
+            const regulation = scoreMap[market.regulation || market.regulation_level] || 5;
+            const competition = scoreMap[market.competition || market.competition_level] || 5;
+            const resources = scoreMap[market.resources || market.resource_availability] || 5;
+            
+            return {
+                name: name,
+                scores: {
+                    size: size,
+                    regulation: regulation,
+                    competition: competition,
+                    resources: resources,
+                    profitPotential: Math.min(10, (size + (10 - competition)) / 2),
+                    entryDifficulty: Math.min(10, (regulation + competition) / 2),
+                    growthRisk: Math.min(10, ((10 - size) + competition) / 2)
+                }
+            };
+        });
+        
+        console.table(marketScores.slice(0, 10));
+        
+        // Save to window for access
+        window.marketData = marketData;
+        window.marketScores = marketScores;
+        
+        return { markets: marketData, scores: marketScores, endpoint: workingEndpoint };
+    }
+    
+    return null;
+}
+
+// Function to manually create market data if backend doesn't have it yet
+function createFallbackMarketData() {
+    console.log("📝 Creating fallback market data based on your provided sample...");
+    
+    const fallbackMarkets = [
+        { market_id: 1, market_name: "Healthcare", size: "Large", regulation: "High", competition: "Medium", resources: "Low" },
+        { market_id: 3, market_name: "Finance", size: "Large", regulation: "High", competition: "Medium", resources: "High" },
+        { market_id: 4, market_name: "Energy", size: "Large", regulation: "Medium", competition: "High", resources: "High" },
+        { market_id: 5, market_name: "Food & Water", size: "Large", regulation: "Medium", competition: "High", resources: "Medium" },
+        { market_id: 6, market_name: "Transport", size: "Large", regulation: "Medium", competition: "High", resources: "Medium" },
+        { market_id: 7, market_name: "Real Estate", size: "Large", regulation: "Medium", competition: "Medium", resources: "Medium" },
+        { market_id: 8, market_name: "Pharmaceutics", size: "Medium", regulation: "High", competition: "High", resources: "Medium" },
+        { market_id: 9, market_name: "Manufacturing", size: "Medium", regulation: "Low", competition: "High", resources: "Medium" },
+        { market_id: 10, market_name: "Technology", size: "Medium", regulation: "Low", competition: "High", resources: "High" },
+        { market_id: 11, market_name: "Science", size: "Medium", regulation: "Medium", competition: "High", resources: "Low" },
+        { market_id: 12, market_name: "Civil Engineering", size: "Medium", regulation: "Medium", competition: "Medium", resources: "Low" },
+        { market_id: 13, market_name: "Automotive", size: "Medium", regulation: "Medium", competition: "Medium", resources: "Medium" },
+        { market_id: 14, market_name: "Agriculture", size: "Medium", regulation: "Low", competition: "High", resources: "Low" },
+        { market_id: 15, market_name: "Education", size: "Small", regulation: "Medium", competition: "Medium", resources: "Low" },
+        { market_id: 16, market_name: "Retail", size: "Small", regulation: "Low", competition: "Medium", resources: "Medium" },
+        { market_id: 17, market_name: "Law", size: "Small", regulation: "High", competition: "Low", resources: "Low" },
+        { market_id: 18, market_name: "Mining", size: "Small", regulation: "Low", competition: "High", resources: "High" },
+        { market_id: 19, market_name: "Fisheries", size: "Small", regulation: "Low", competition: "Medium", resources: "Medium" },
+        { market_id: 20, market_name: "Cybersecurity", size: "Small", regulation: "Low", competition: "Medium", resources: "High" },
+        { market_id: 21, market_name: "Aerospace", size: "Medium", regulation: "High", competition: "Medium", resources: "High" },
+        { market_id: 22, market_name: "Weapons", size: "Small", regulation: "High", competition: "Low", resources: "Very High" }
+    ];
+    
+    console.log(`✅ Created ${fallbackMarkets.length} fallback markets`);
+    window.marketData = fallbackMarkets;
+    
+    return fallbackMarkets;
+}
+
+// Quick test to check what your backend actually returns
+async function quickBackendTest() {
+    console.log("🚀 QUICK BACKEND TEST");
+    console.log("API_BASE:", API_BASE);
+    
+    const testEndpoints = [
+        `${API_BASE}/api/game/state`,
+        `${API_BASE}/api/markets`,
+        `${API_BASE}/api/market/1`,
+        `${API_BASE}/`
+    ];
+    
+    for (const endpoint of testEndpoints) {
+        try {
+            console.log(`\n📡 Testing: ${endpoint}`);
+            const response = await fetch(endpoint);
+            console.log(`  Status: ${response.status} ${response.statusText}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log(`  Response type: ${typeof data}`);
+                console.log(`  Response preview:`, data);
+                if (response.headers.get('content-type')?.includes('html')) {
+                    console.log(`  ⚠️ Got HTML instead of JSON - endpoint might be serving a page`);
+                }
+            }
+        } catch (error) {
+            console.log(`  ❌ Error: ${error.message}`);
+        }
+    }
+}
+
+// Run this first to see what your backend has
+async function fullDiagnostic() {
+    console.clear();
+    console.log("=".repeat(60));
+    console.log("VENTURE GAME - MARKET DATA DIAGNOSTIC");
+    console.log("=".repeat(60));
+    
+    await quickBackendTest();
+    console.log("\n" + "=".repeat(60));
+    await inspectMarketDatabase();
+    
+    // If no market data found, offer fallback
+    if (!window.marketData || window.marketData.length === 0) {
+        console.log("\n⚠️ No market data found from backend.");
+        const useFallback = confirm("No market data found. Would you like to use fallback market data for testing?");
+        if (useFallback) {
+            createFallbackMarketData();
+            console.log("✅ Fallback data created. Run inspectMarketDatabase() again to see it.");
+        }
+    }
+}
+
+// Make functions available globally
+window.inspectMarketDatabase = inspectMarketDatabase;
+window.quickBackendTest = quickBackendTest;
+window.fullDiagnostic = fullDiagnostic;
+window.createFallbackMarketData = createFallbackMarketData;

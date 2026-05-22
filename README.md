@@ -12,6 +12,7 @@ Before launching the app, you need to set up both the Python backend environment
 Activate the virtual environment:
 - Windows: `.\venv\Scripts\activate`
 - Mac/Linux: `source venv/bin/activate`
+- Git Bash: `. venv/Scripts/activate`
 
 2. **Install Backend Dependencies**
 ```bash

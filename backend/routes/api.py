@@ -118,6 +118,13 @@ def start_game():
         game_mode = str(data.get("mode") or "full").strip().lower()
         difficulty = str(data.get("difficulty") or "medium").strip().lower()
 
+        # clean up any existing game state before starting a new game to prevent conflicts
+        if os.path.exists(gameplay_helpers.GAME_STATE_PATH):
+            try:
+                os.remove(gameplay_helpers.GAME_STATE_PATH)
+            except OSError as e:
+                print(f"Error cleaning up old game state: {e}")
+
         state = game_service.create_game(
             teams=teams,
             game_mode=game_mode,

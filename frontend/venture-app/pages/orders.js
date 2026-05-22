@@ -1,6 +1,6 @@
 const API_BASE =
     window.VENTURE_API_BASE ||
-    import.meta.env.VITE_VENTURE_API_BASE ||
+    "https://venture-o2cx.onrender.com" ||
     "http://localhost:5000";
 
 let resolveSession = null;

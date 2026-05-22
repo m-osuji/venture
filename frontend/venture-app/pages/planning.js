@@ -5,7 +5,7 @@ import {
 
 const API_BASE =
     window.VENTURE_API_BASE ||
-    import.meta.env.VITE_VENTURE_API_BASE ||
+    "https://venture-o2cx.onrender.com" ||
     "http://localhost:5000";
 
 const TEAM_COLOURS = ["#EE672B", "#467096", "#2A9D8F", "#D62839", "#7B2CBF", "#F4A261"];

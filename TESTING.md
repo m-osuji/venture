@@ -112,28 +112,6 @@ The frontend automated suite currently includes tests for:
 - Game page behaviour
 - Quiz page behaviour
 
-## System Testing
-
-Automated tests do not fully replace system testing for a game with stage transitions, browser interaction, and AI-supported flow. The following repeatable manual system tests should be run before release or assessment.
-
-### System Test Setup
-
-Start the application with two terminals:
-
-```powershell
-# Terminal 1
-cd "C:\Users\Student\Year 2\project"
-.venv\Scripts\python.exe -m backend.app
-```
-
-```powershell
-# Terminal 2
-cd "C:\Users\Student\Year 2\project\frontend\venture-app"
-npm.cmd run dev
-```
-
-Then open the Vite URL shown in the terminal, usually `http://127.0.0.1:5173`.
-
 ### Manual System Test Cases
 
 `ST-01` Start a new game  
@@ -191,13 +169,3 @@ The following make the testing process repeatable:
 - Frontend line coverage is not currently reported
 - Backend coverage is currently estimated with `trace` because `coverage.py` is not installed in the venv
 - Slow Granite/model-dependent tests are intentionally excluded from the standard fast automated run because they rely on model availability outside normal local/CI conditions
-
-## Overall Assessment
-
-Current evidence supports the claim that testing is structured and systematic:
-
-- The backend has a substantial automated test suite with 122 passing tests in the normal fast run
-- The frontend has automated Jest coverage for the main browser pages
-- Manual system testing can be repeated using documented setup and scenario steps
-
-The strongest areas are backend gameplay helpers, quiz logic, service orchestration, decision logic, and API routes. The main remaining gap is the absence of a full automated end-to-end browser test suite.

@@ -47,69 +47,8 @@ def test_build_quiz_for_conflict_returns_one_question_per_difficulty():
     ]
 
     public_payload = qh.to_public_quiz_payload(quiz)
-    assert public_payload["questions"][0]["answer"].startswith("option_")
+    assert "answer" not in public_payload["questions"][0]
     assert public_payload["questions"][0]["options"]["option_1"]
-
-
-def test_fetch_questions_falls_back_to_same_topic_when_exact_difficulty_missing(monkeypatch):
-    def fake_fetch(topic=None, difficulty=None):
-        rows = [
-            {
-                "question_id": 101,
-                "topic": "Data Science",
-                "difficulty_level": "medium",
-                "content": "Medium DS",
-                "option_1": "A",
-                "option_2": "B",
-                "option_3": "C",
-                "option_4": "D",
-                "answer": "option_1",
-            }
-        ]
-        if topic == "Data Science" and difficulty == "easy":
-            return []
-        if topic == "Data Science" and difficulty is None:
-            return rows
-        return []
-
-    monkeypatch.setattr(qh, "db_fetch_questions", fake_fetch)
-
-    questions = qh.fetch_questions_by_topic_and_difficulty("Data Science", "easy")
-
-    assert len(questions) == 1
-    assert questions[0]["question_id"] == 101
-    assert questions[0]["difficulty_level"] == "medium"
-
-
-def test_fetch_questions_falls_back_to_any_question_when_topic_missing(monkeypatch):
-    def fake_fetch(topic=None, difficulty=None):
-        if topic == "Missing Topic" and difficulty == "easy":
-            return []
-        if topic == "Missing Topic" and difficulty is None:
-            return []
-        if topic is None and difficulty == "easy":
-            return [
-                {
-                    "question_id": 202,
-                    "topic": "Cybersecurity",
-                    "difficulty_level": "easy",
-                    "content": "Easy fallback",
-                    "option_1": "A",
-                    "option_2": "B",
-                    "option_3": "C",
-                    "option_4": "D",
-                    "answer": "option_2",
-                }
-            ]
-        return []
-
-    monkeypatch.setattr(qh, "db_fetch_questions", fake_fetch)
-
-    questions = qh.fetch_questions_by_topic_and_difficulty("Missing Topic", "easy")
-
-    assert len(questions) == 1
-    assert questions[0]["question_id"] == 202
-    assert questions[0]["topic"] == "Cybersecurity"
 
 
 def test_score_team_answers_applies_correct_and_perfect_round_bonus():

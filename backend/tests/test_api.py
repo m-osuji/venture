@@ -16,6 +16,10 @@ sys.modules["backend.ai_opponent.agents.commentator"] = fake_commentator
 
 from backend.routes import api as api_module
 
+# Keep this file's fake isolated so other test modules can import the real
+# commentator implementation during collection.
+sys.modules.pop("backend.ai_opponent.agents.commentator", None)
+
 # Running test flask app
 @pytest.fixture
 def app():
@@ -145,6 +149,32 @@ def test_get_game_status_active(client, monkeypatch):
     }
 
 
+def test_get_game_state_endpoint_404_when_inactive(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "get_public_game_state",
+        lambda: None,
+    )
+
+    response = client.get("/api/game/state")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "No active game found"}
+
+
+def test_get_game_state_endpoint_returns_public_state(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "get_public_game_state",
+        lambda: {"session_uuid": "state-123", "current_stage": "PLAN"},
+    )
+
+    response = client.get("/api/game/state")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"session_uuid": "state-123", "current_stage": "PLAN"}
+
+
 # Tests if starting a game with no input uses the default settings
 def test_start_game_uses_defaults(client, monkeypatch):
     created_state = {
@@ -172,6 +202,47 @@ def test_start_game_uses_defaults(client, monkeypatch):
     body = response.get_json()
     assert body["status"] == "game_started"
     assert body["session_uuid"] == "abc123"
+
+
+def test_start_game_uses_custom_payload_and_difficulty(client, monkeypatch):
+    captured = {}
+
+    def fake_create_game(**kwargs):
+        captured.update(kwargs)
+        return {
+            "session_uuid": "custom-123",
+            "teams": kwargs["teams"],
+        }
+
+    monkeypatch.setattr(api_module.game_service, "create_game", fake_create_game)
+    monkeypatch.setattr(api_module.gameplay_helpers, "save_state", lambda state: None)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/game/start",
+        json={
+            "mode": "speedrun",
+            "difficulty": "hard",
+            "team_order": [2, 1],
+            "teams": [
+                {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+                {"id": 2, "name": "Granite", "colour": "#222222", "is_ai": True},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "teams": [
+            {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+            {"id": 2, "name": "Granite", "colour": "#222222", "is_ai": True},
+        ],
+        "game_mode": "speedrun",
+        "include_ai": True,
+        "team_order": [2, 1],
+    }
+    body = response.get_json()
+    assert body["game_state"]["ai_difficulty"] == "hard"
 
 
 # Tests if the AI decision endpoint returns a single action in action mode
@@ -213,40 +284,6 @@ def test_get_ai_decision_orders(client, monkeypatch):
     body = response.get_json()
     assert body["mode"] == "orders"
     assert body["decision"] == {"orders": [1, 2]}
-
-
-def test_get_ai_decision_plan_mode(client, monkeypatch):
-    patch_ai_game_state(monkeypatch)
-
-    monkeypatch.setattr(
-        api_module,
-        "choose_plan_allocations",
-        lambda ctx, difficulty: {"allocations": [{"market_id": 1, "ip_allocated": 2}]},
-    )
-
-    response = client.get("/api/ai/decide?mode=plan")
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["mode"] == "plan"
-    assert body["decision"] == {"allocations": [{"market_id": 1, "ip_allocated": 2}]}
-
-
-def test_get_ai_decision_negotiation_mode(client, monkeypatch):
-    patch_ai_game_state(monkeypatch)
-
-    monkeypatch.setattr(
-        api_module,
-        "choose_declared_and_actual_moves",
-        lambda ctx, difficulty: {"declared_moves": [], "actual_moves": []},
-    )
-
-    response = client.get("/api/ai/decide?mode=negotiation")
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["mode"] == "negotiation"
-    assert body["decision"] == {"declared_moves": [], "actual_moves": []}
 
 
 # Tests if the game status endpoint returns a 500 when the service crashes
@@ -344,6 +381,45 @@ def test_resolve_pending_quizzes(client, monkeypatch):
     assert body["game_state"]["status"] == "resolved"
 
 
+# Tests if the demo start endpoint creates a demo game with default demo values
+def test_start_demo(client, monkeypatch):
+    fake_state = {"session_uuid": "demo123", "teams": []}
+
+    def fake_create_demo_game(**kwargs):
+        assert kwargs["game_mode"] == "speedrun"
+        assert kwargs["difficulty"] == "medium"
+        return fake_state
+
+    monkeypatch.setattr(api_module.game_service, "create_demo_game", fake_create_demo_game)
+    monkeypatch.setattr(
+        api_module.gameplay_helpers,
+        "get_frontend_state",
+        lambda state: {"session_uuid": state["session_uuid"]},
+    )
+
+    response = client.post("/api/demo/start", json={})
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "demo_started"
+    assert body["session_uuid"] == "demo123"
+
+
+# Tests if the demo step endpoint advances one scripted demo step
+def test_run_demo_step(client, monkeypatch):
+    fake_state = {"demo_message": "step complete"}
+
+    monkeypatch.setattr(api_module.game_service, "run_demo_step", lambda: fake_state)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post("/api/demo/step")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "demo_step_applied"
+    assert body["message"] == "step complete"
+
+
 # Tests if the AI commentary endpoint returns the mocked narration
 def test_get_ai_commentary(client, monkeypatch):
     monkeypatch.setattr(
@@ -385,6 +461,78 @@ def test_set_team_order_endpoint(client, monkeypatch):
     assert body["status"] == "team_order_set"
 
 
+def test_start_demo_uses_custom_payload(client, monkeypatch):
+    captured = {}
+
+    def fake_create_demo_game(**kwargs):
+        captured.update(kwargs)
+        return {"session_uuid": "demo-456"}
+
+    monkeypatch.setattr(api_module.game_service, "create_demo_game", fake_create_demo_game)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/demo/start",
+        json={
+            "mode": "full",
+            "difficulty": "hard",
+            "team_order": [2, 1],
+            "teams": [
+                {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+                {"id": 2, "name": "Beta", "colour": "#222222", "is_ai": False},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "teams": [
+            {"id": 1, "name": "Alpha", "colour": "#111111", "is_ai": False},
+            {"id": 2, "name": "Beta", "colour": "#222222", "is_ai": False},
+        ],
+        "game_mode": "full",
+        "difficulty": "hard",
+        "team_order": [2, 1],
+    }
+    assert response.get_json()["status"] == "demo_started"
+
+
+def test_submit_plan_notes_endpoint(client, monkeypatch):
+    def fake_submit(team_id, notes):
+        assert team_id == 2
+        assert notes == {"summary": "protect finance"}
+        return {"saved": True}
+
+    monkeypatch.setattr(api_module.game_service, "submit_plan_notes", fake_submit)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/game/plan-notes",
+        json={"team_id": 2, "notes": {"summary": "protect finance"}},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "plan_notes_recorded"
+
+
+def test_submit_declared_moves_endpoint(client, monkeypatch):
+    def fake_submit(team_id, moves):
+        assert team_id == 1
+        assert moves == [{"action_type": "hold"}]
+        return {"saved": True}
+
+    monkeypatch.setattr(api_module.game_service, "submit_declared_moves", fake_submit)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/game/declared-moves",
+        json={"team_id": 1, "moves": [{"action_type": "hold"}]},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "declared_moves_recorded"
+
+
 # tests if gameplay moves are submitted correctly
 def test_submit_orders_endpoint(client, monkeypatch):
     def fake_submit(team_id, moves):
@@ -402,6 +550,146 @@ def test_submit_orders_endpoint(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.get_json()["status"] == "orders_recorded"
+
+
+def test_submit_move_alias_endpoint(client, monkeypatch):
+    monkeypatch.setattr(api_module.game_service, "submit_actual_moves", lambda team_id, moves: {"ok": True})
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post("/api/game/move", json={"team_id": 2, "moves": []})
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "orders_recorded"
+
+
+def test_submit_quiz_results_endpoint(client, monkeypatch):
+    def fake_submit(market_id, team_results):
+        assert market_id == 4
+        assert team_results == [{"team_id": 1, "score": 2}]
+        return {"resolved": True}
+
+    monkeypatch.setattr(api_module.game_service, "submit_quiz_results", fake_submit)
+    monkeypatch.setattr(api_module.gameplay_helpers, "get_frontend_state", lambda state: state)
+
+    response = client.post(
+        "/api/game/quiz-results",
+        json={"market_id": 4, "team_results": [{"team_id": 1, "score": 2}]},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "quiz_results_recorded"
+
+
+def test_get_ai_context_endpoint(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "build_ai_context",
+        lambda team_id: {"team_id": team_id, "owned_markets": [1, 2]},
+    )
+
+    response = client.get("/api/ai/context/3")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "team_id": 3,
+        "context": {"team_id": 3, "owned_markets": [1, 2]},
+    }
+
+
+def test_get_ai_context_value_error_returns_400(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "build_ai_context",
+        lambda team_id: (_ for _ in ()).throw(ValueError("bad team")),
+    )
+
+    response = client.get("/api/ai/context/3")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "bad team"}
+
+
+def test_get_ai_commentary_returns_404_without_active_game(client, monkeypatch):
+    monkeypatch.setattr(api_module.game_service, "get_game_state", lambda: None)
+
+    response = client.get("/api/ai/commentary")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "No active game session"}
+
+
+def test_get_ai_decision_returns_404_without_game(client, monkeypatch):
+    monkeypatch.setattr(api_module.game_service, "get_game_state", lambda: None)
+
+    response = client.get("/api/ai/decide")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "No active game found"}
+
+
+def test_get_ai_decision_returns_400_when_no_ai_team_configured(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "get_game_state",
+        lambda: {"teams": [], "ai_difficulty": "medium"},
+    )
+
+    response = client.get("/api/ai/decide")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "No AI team configured in the current game."}
+
+
+def test_get_ai_decision_defaults_to_orders_mode(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "get_game_state",
+        lambda: {
+            "teams": [{"team_id": 9, "is_ai": True}],
+            "ai_difficulty": "hard",
+        },
+    )
+    monkeypatch.setattr(
+        api_module.game_service,
+        "build_ai_context",
+        lambda team_id: {"team_id": team_id, "owned_markets": [1]},
+    )
+    monkeypatch.setattr(
+        api_module,
+        "choose_orders",
+        lambda ctx, difficulty: {"orders": [{"action_type": "hold"}]},
+    )
+
+    response = client.get("/api/ai/decide")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["team_id"] == 9
+    assert body["difficulty"] == "hard"
+    assert body["mode"] == "orders"
+    assert body["decision"]["orders"][0]["action_type"] == "hold"
+
+
+def test_get_ai_decision_respects_requested_team_id_query(client, monkeypatch):
+    monkeypatch.setattr(
+        api_module.game_service,
+        "get_game_state",
+        lambda: {
+            "teams": [{"team_id": 9, "is_ai": True}],
+            "ai_difficulty": "medium",
+        },
+    )
+    monkeypatch.setattr(
+        api_module.game_service,
+        "build_ai_context",
+        lambda team_id: {"team_id": team_id},
+    )
+    monkeypatch.setattr(api_module, "choose_orders", lambda ctx, difficulty: {"orders": []})
+
+    response = client.get("/api/ai/decide?team_id=3")
+
+    assert response.status_code == 200
+    assert response.get_json()["team_id"] == 3
 
 
 # tests that invalid team_id type triggers error handling

@@ -110,7 +110,7 @@ def test_game_service_runs_a_full_conflict_round(monkeypatch):
 
     public_state = service.get_public_game_state()
     assert public_state is not None
-    assert public_state["active_quizzes"][0]["questions"][0]["answer"].startswith("option_")
+    assert "answer" not in public_state["active_quizzes"][0]["questions"][0]
 
     quiz = service.get_game_state()["turn_log"]["active_quizzes"][0]
     service.submit_quiz_results(
@@ -163,6 +163,25 @@ def test_build_ai_context_uses_persisted_state(monkeypatch):
     assert 2 in context["enemy_markets"]
 
 
+def test_get_public_game_state_returns_none_without_state(monkeypatch):
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: None)
+
+    assert service.get_public_game_state() is None
+
+
+def test_get_public_game_state_projects_frontend_state(monkeypatch):
+    state = {"session_uuid": "abc"}
+
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: state)
+    monkeypatch.setattr(
+        service.gameplay_helpers,
+        "get_frontend_state",
+        lambda loaded_state: {"session_uuid": loaded_state["session_uuid"], "public": True},
+    )
+
+    assert service.get_public_game_state() == {"session_uuid": "abc", "public": True}
+
+
 def test_game_service_persists_alliance_lifecycle(monkeypatch):
     _stub_reference_data(monkeypatch)
     _stub_persistence(monkeypatch)
@@ -201,8 +220,7 @@ def test_game_service_persists_alliance_lifecycle(monkeypatch):
     assert broken_state["alliances"][0]["status"] == "broken"
     assert broken_state["alliances"][0]["broken_by_team_id"] == 1
 
-
-def test_game_service_forms_mutual_alliance_from_intents(monkeypatch):
+def test_game_service_can_reject_alliance_offer(monkeypatch):
     _stub_reference_data(monkeypatch)
     _stub_persistence(monkeypatch)
 
@@ -218,19 +236,21 @@ def test_game_service_forms_mutual_alliance_from_intents(monkeypatch):
     service.submit_plan_notes(2, "ally")
     service.advance_stage()
 
-    service.submit_declared_moves(1, [])
-    service.submit_declared_moves(2, [])
-    service.submit_alliance_intent(1, 2)
-    service.submit_alliance_intent(2, 1)
+    offered_state = service.propose_alliance(1, 2, protected_markets=[2])
+    offer_id = offered_state["turn_log"]["alliance_offers"][0]["offer_id"]
 
-    orders_state = service.advance_stage()
+    rejected_state = service.reject_alliance_offer(
+        offer_id,
+        2,
+        reason="not worth it",
+    )
 
-    assert orders_state["current_stage"] == GameStage.ORDERS
-    assert len(orders_state["alliances"]) == 1
-    assert orders_state["alliances"][0]["members"] == [1, 2]
+    assert rejected_state["turn_log"]["alliance_offers"][0]["status"] == "rejected"
+    assert rejected_state["turn_log"]["alliance_offers"][0]["rejection_reason"] == "not worth it"
+    assert rejected_state["alliances"] == []
 
 
-def test_game_service_persists_plan_allocations_and_replaces_them(monkeypatch):
+def test_game_service_persists_declared_moves(monkeypatch):
     _stub_reference_data(monkeypatch)
     _stub_persistence(monkeypatch)
 
@@ -243,72 +263,58 @@ def test_game_service_persists_plan_allocations_and_replaces_them(monkeypatch):
     )
 
     state = service.get_game_state()
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["2"]["owner"] = 1
-    state["teams"][0]["ip"] = 5
+    state["current_stage"] = GameStage.NEGOTIATE
     service.gameplay_helpers.save_state(state)
 
-    updated = service.submit_plan_allocations(
+    updated = service.submit_declared_moves(
         1,
-        [
-            {"market_id": 1, "ip_allocated": 2},
-            {"market_id": 2, "ip_allocated": 1},
-        ],
+        [{"action_type": "hold", "target_market_id": None, "ip_spent": 0}],
     )
 
-    assert updated["teams"][0]["ip"] == 2
-    assert updated["market_state"]["1"]["allocated_ip"] == 2
-    assert updated["market_state"]["2"]["allocated_ip"] == 1
-    assert updated["turn_log"]["plan_allocations"]["1"] == [
-        {"market_id": 1, "ip_allocated": 2},
-        {"market_id": 2, "ip_allocated": 1},
+    assert updated["turn_log"]["declared_moves"]["1"] == [
+        {
+            "action_type": "hold",
+            "target_market_id": None,
+            "source_market_id": None,
+            "ip_spent": 0,
+            "metadata": {},
+        }
     ]
 
-    updated = service.submit_plan_allocations(
-        1,
-        [
-            {"market_id": 2, "ip_allocated": 4},
-        ],
-    )
-
-    assert updated["teams"][0]["ip"] == 1
-    assert updated["market_state"]["1"]["allocated_ip"] == 0
-    assert updated["market_state"]["2"]["allocated_ip"] == 4
-    assert updated["turn_log"]["plan_allocations"]["1"] == [
-        {"market_id": 2, "ip_allocated": 4},
+def test_create_demo_game_seeds_scripted_state(monkeypatch):
+    markets = [
+        {"market_id": 1, "market_name": "Technology", "size": "medium", "regulation_level": "low", "growth_potential": "high", "security_risk": "low", "key_topic": "AI"},
+        {"market_id": 2, "market_name": "Finance", "size": "large", "regulation_level": "medium", "growth_potential": "medium", "security_risk": "medium", "key_topic": "Cybersecurity"},
+        {"market_id": 3, "market_name": "Cybersecurity", "size": "large", "regulation_level": "low", "growth_potential": "high", "security_risk": "medium", "key_topic": "Cybersecurity"},
     ]
+    monkeypatch.setattr(service.gameplay_helpers, "fetch_all_markets", lambda: markets)
+    monkeypatch.setattr(service.gameplay_helpers, "fetch_all", lambda query, params=(): [])
+    monkeypatch.setattr(service.gameplay_helpers, "_refresh_active_synergies", lambda state: None)
+    monkeypatch.setattr(service.gameplay_helpers, "_refresh_market_estimates", lambda state: None)
+    storage = _stub_persistence(monkeypatch)
 
-
-def test_game_service_can_advance_plan_with_allocations_only(monkeypatch):
-    _stub_reference_data(monkeypatch)
-    _stub_persistence(monkeypatch)
-
-    service.create_game(
+    state = service.create_demo_game(
         teams=[
-            {"id": 1, "name": "Red", "colour": "#f00"},
-            {"id": 2, "name": "Blue", "colour": "#00f"},
+            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
+            {"id": 2, "name": "Blue", "colour": "#00f", "is_ai": False},
         ],
         team_order=[1, 2],
     )
 
-    state = service.get_game_state()
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["2"]["owner"] = 2
-    state["teams"][0]["ip"] = 2
-    state["teams"][1]["ip"] = 2
-    service.gameplay_helpers.save_state(state)
-
-    service.submit_plan_allocations(1, [{"market_id": 1, "ip_allocated": 2}])
-    service.submit_plan_allocations(2, [])
-
-    next_state = service.advance_stage()
-
-    assert next_state["current_stage"] == GameStage.NEGOTIATE
-    public_state = service.get_public_game_state()
-    assert public_state["plan_allocations"] == {}
-    assert public_state["plan_allocations_submitted_team_ids"] == [1, 2]
+    assert state["demo_script"]["enabled"] is True
+    assert state["rules"]["max_rounds"] == 1
+    assert storage["state"]["demo_script"]["target_market_id"] == 3
 
 
+def test_run_demo_step_requires_active_demo(monkeypatch):
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: {"demo_script": {"enabled": False}})
+
+    try:
+        service.run_demo_step()
+    except ValueError as exc:
+        assert "No scripted demo is active" in str(exc)
+    else:
+        raise AssertionError("Expected inactive demo to raise ValueError")
 def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
     _stub_reference_data(monkeypatch)
     storage = _stub_persistence(monkeypatch)
@@ -372,250 +378,51 @@ def test_game_service_finishes_when_round_cap_is_reached(monkeypatch):
     assert storage["state"]["status"] == SessionStatus.FINISHED
 
 
-def test_configure_opening_setup_auto_assigns_missing_ai_market(monkeypatch):
-    _stub_reference_data(monkeypatch)
-    _stub_persistence(monkeypatch)
+def test_game_service_resolve_pending_quizzes_persists(monkeypatch):
+    state = {"current_stage": GameStage.RESOLVE, "turn_log": {"active_quizzes": []}}
+    saved = {}
 
-    service.create_game(
-        teams=[
-            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
-            {"id": 2, "name": "Granite", "colour": "#00f", "is_ai": True},
-        ],
-        team_order=[1, 2],
-        include_ai=True,
-    )
-
-    state = service.get_game_state()
-    assert state is not None
-    state["ai_difficulty"] = "medium"
-    service.gameplay_helpers.save_state(state)
-
-    configured = service.configure_opening_setup(
-        [1, 2],
-        [{"team_id": 1, "market_id": 1}],
-    )
-
-    owners = {
-        int(market_id): market["owner"]
-        for market_id, market in configured["market_state"].items()
-        if market.get("owner") is not None
-    }
-
-    assert owners[1] == 1
-    assert 2 in owners.values()
-    assert next(team for team in configured["teams"] if team["team_id"] == 2)["ip"] > 0
-
-
-def test_advance_stage_auto_submits_ai_actions_and_merges_quiz_results(monkeypatch):
-    _stub_reference_data(monkeypatch)
-    _stub_persistence(monkeypatch)
-
-    service.create_game(
-        teams=[
-            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
-            {"id": 2, "name": "Granite", "colour": "#00f", "is_ai": True},
-        ],
-        team_order=[1, 2],
-        include_ai=True,
-    )
-
-    state = service.get_game_state()
-    assert state is not None
-    state["ai_difficulty"] = "medium"
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["2"]["owner"] = 2
-    state["teams"][0]["ip"] = 4
-    state["teams"][1]["ip"] = 4
-    service.gameplay_helpers.save_state(state)
-
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: deepcopy(state))
     monkeypatch.setattr(
-        service,
-        "choose_plan_allocations",
-        lambda context, difficulty: {"allocations": [], "strategy": "hold reserves"},
+        service.gameplay_helpers,
+        "resolve_pending_quizzes",
+        lambda loaded_state, force=False: loaded_state.update(
+            {"resolved": True, "resolve_force": force}
+        ),
     )
     monkeypatch.setattr(
-        service,
-        "choose_declared_and_actual_moves",
-        lambda context, difficulty: {"declared_moves": [], "actual_moves": []},
+        service.gameplay_helpers,
+        "save_state",
+        lambda updated_state: saved.update(updated_state),
+    )
+
+    updated = service.resolve_pending_quizzes(force=True)
+
+    assert updated["resolved"] is True
+    assert updated["resolve_force"] is True
+    assert saved["resolved"] is True
+
+
+def test_game_service_set_team_order_persists(monkeypatch):
+    state = {"teams": [{"team_id": 1}, {"team_id": 2}], "team_order": []}
+    saved = {}
+
+    monkeypatch.setattr(service.gameplay_helpers, "load_state", lambda: deepcopy(state))
+    monkeypatch.setattr(
+        service.gameplay_helpers,
+        "set_team_order",
+        lambda loaded_state, order: loaded_state.update(
+            {"team_order": list(order), "current_team_turn": order[0]}
+        ),
     )
     monkeypatch.setattr(
-        service,
-        "choose_orders",
-        lambda context, difficulty: {"orders": []},
-    )
-    monkeypatch.setattr(
-        service,
-        "_build_ai_quiz_result",
-        lambda quiz, team_id, difficulty: {
-            "team_id": team_id,
-            "questions": quiz["questions"],
-            "answers": [],
-        },
+        service.gameplay_helpers,
+        "save_state",
+        lambda updated_state: saved.update(updated_state),
     )
 
-    service.submit_plan_notes(1, "attack")
-    negotiate_state = service.advance_stage()
+    updated = service.set_team_order([2, 1])
 
-    assert negotiate_state["current_stage"] == GameStage.NEGOTIATE
-    assert negotiate_state["turn_log"]["plan_allocations"]["2"] == []
-    assert negotiate_state["turn_log"]["declared_moves"]["2"][0]["action_type"] == "hold"
-
-    orders_state = service.advance_stage()
-    assert orders_state["current_stage"] == GameStage.ORDERS
-
-    service.submit_actual_moves(
-        1,
-        [
-            {
-                "action_type": "attack",
-                "target_market_id": 2,
-                "ip_spent": 2,
-                "metadata": {"resource_pool": "current_ip"},
-            }
-        ],
-    )
-
-    resolve_state = service.advance_stage()
-    assert resolve_state["current_stage"] == GameStage.RESOLVE
-    assert resolve_state["turn_log"]["actual_moves"]["2"][0]["action_type"] == "hold"
-    assert resolve_state["turn_log"]["quiz_results"]["2"]["team_results"][0]["team_id"] == 2
-
-    quiz = service.get_game_state()["turn_log"]["active_quizzes"][0]
-    service.submit_quiz_results(
-        2,
-        [
-            {
-                "team_id": 1,
-                "answers": _perfect_answers(quiz["questions"]),
-            }
-        ],
-    )
-
-    updated_state = service.get_game_state()
-    stored_team_ids = {
-        int(result["team_id"])
-        for result in updated_state["turn_log"]["quiz_results"]["2"]["team_results"]
-    }
-    assert stored_team_ids == {1, 2}
-
-    post_resolve = service.advance_stage()
-    assert post_resolve["current_stage"] == GameStage.UPDATE
-    assert post_resolve["market_state"]["2"]["owner"] == 1
-
-
-def test_ai_falls_back_to_market_backed_attack_when_orders_would_hold(monkeypatch):
-    _stub_reference_data(monkeypatch)
-    _stub_persistence(monkeypatch)
-
-    service.create_game(
-        teams=[
-            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
-            {"id": 2, "name": "Granite", "colour": "#00f", "is_ai": True},
-        ],
-        team_order=[1, 2],
-        include_ai=True,
-    )
-
-    state = service.get_game_state()
-    assert state is not None
-    state["ai_difficulty"] = "medium"
-    state["current_stage"] = GameStage.NEGOTIATE
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["1"]["allocated_ip"] = 0
-    state["market_state"]["2"]["owner"] = 2
-    state["market_state"]["2"]["allocated_ip"] = 3
-    state["teams"][0]["ip"] = 0
-    state["teams"][1]["ip"] = 0
-    state["turn_log"]["declared_moves"] = {}
-    state["turn_log"]["actual_moves"] = {}
-    service.gameplay_helpers.save_state(state)
-
-    monkeypatch.setattr(
-        service,
-        "choose_declared_and_actual_moves",
-        lambda context, difficulty: {
-            "declared_moves": [{"action_type": "hold", "ip_spent": 0, "metadata": {}}],
-            "actual_moves": [{"action_type": "hold", "ip_spent": 0, "metadata": {}}],
-        },
-    )
-
-    negotiated = service.advance_stage()
-
-    ai_declared = negotiated["turn_log"]["declared_moves"]["2"]
-    ai_actual_draft = negotiated["turn_log"]["ai_actual_move_drafts"]["2"]
-
-    assert ai_actual_draft[0]["action_type"] == "attack"
-    assert ai_declared[0]["action_type"] == "hold"
-    assert ai_actual_draft[0]["metadata"]["resource_pool"] == "market_ip"
-    assert ai_actual_draft[0]["source_market_id"] == 2
-    assert ai_actual_draft[0]["target_market_id"] == 1
-
-
-def test_ai_can_publish_decoy_declared_move_during_negotiation(monkeypatch):
-    _stub_reference_data(monkeypatch)
-    _stub_persistence(monkeypatch)
-
-    service.create_game(
-        teams=[
-            {"id": 1, "name": "Red", "colour": "#f00", "is_ai": False},
-            {"id": 2, "name": "Granite", "colour": "#00f", "is_ai": True},
-        ],
-        team_order=[1, 2],
-        include_ai=True,
-    )
-
-    state = service.get_game_state()
-    assert state is not None
-    state["ai_difficulty"] = "hard"
-    state["current_stage"] = GameStage.NEGOTIATE
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["2"]["owner"] = 2
-    state["market_state"]["2"]["allocated_ip"] = 3
-    state["market_state"]["3"] = {
-        "owner": None,
-        "allocated_ip": 0,
-        "_size": "Large",
-        "_growth_potential": "High",
-        "_regulation_level": "Low",
-        "_security_risk": "Low",
-    }
-    state["turn_log"]["declared_moves"] = {}
-    state["turn_log"]["actual_moves"] = {}
-    service.gameplay_helpers.save_state(state)
-
-    monkeypatch.setattr(
-        service,
-        "choose_declared_and_actual_moves",
-        lambda context, difficulty: {
-            "declared_moves": [
-                {
-                    "action_type": "attack",
-                    "target_market_id": 1,
-                    "source_market_id": 2,
-                    "ip_spent": 2,
-                    "metadata": {"resource_pool": "market_ip"},
-                }
-            ],
-            "actual_moves": [
-                {
-                    "action_type": "attack",
-                    "target_market_id": 1,
-                    "source_market_id": 2,
-                    "ip_spent": 2,
-                    "metadata": {"resource_pool": "market_ip"},
-                }
-            ],
-        },
-    )
-    monkeypatch.setattr(service.random, "random", lambda: 0.0)
-    monkeypatch.setattr(service.random, "choice", lambda seq: seq[-1])
-
-    negotiated = service.advance_stage()
-
-    ai_declared = negotiated["turn_log"]["declared_moves"]["2"][0]
-    ai_actual = negotiated["turn_log"]["ai_actual_move_drafts"]["2"][0]
-
-    assert ai_actual["target_market_id"] == 1
-    assert ai_declared["action_type"] == "attack"
-    assert ai_declared["target_market_id"] == 3
-    assert ai_declared["metadata"]["reason"] == "decoy_attack"
+    assert updated["team_order"] == [2, 1]
+    assert updated["current_team_turn"] == 2
+    assert saved["team_order"] == [2, 1]

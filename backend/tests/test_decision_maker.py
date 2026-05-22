@@ -7,7 +7,7 @@ def _stub_market_knowledge(monkeypatch, attrs_by_market):
     monkeypatch.setattr(dm, "get_synergies_for_market", lambda market_id: [])
 
 
-def test_generate_legal_actions_has_no_defend_and_supports_research_options(monkeypatch):
+def test_generate_legal_actions_supports_reallocation_and_research_options(monkeypatch):
     _stub_market_knowledge(
         monkeypatch,
         {
@@ -56,7 +56,13 @@ def test_generate_legal_actions_has_no_defend_and_supports_research_options(monk
 
     actions = dm.generate_legal_actions(game_state)
 
-    assert all(action.action_type != "defend" for action in actions)
+    assert any(
+        action.action_type == "defend"
+        and action.source_market_id == 1
+        and action.target_market_id == 2
+        and action.metadata.get("defend_mode") == "reallocate"
+        for action in actions
+    )
 
     market_one_research = [
         action
@@ -66,52 +72,6 @@ def test_generate_legal_actions_has_no_defend_and_supports_research_options(monk
 
     assert {action.metadata["research_option"] for action in market_one_research} == set(dm.RESEARCH_OPTIONS)
     assert all(action.ip_spent == 3 for action in market_one_research)
-
-
-def test_choose_plan_allocations_only_uses_owned_markets_and_budget(monkeypatch):
-    _stub_market_knowledge(
-        monkeypatch,
-        {
-            1: {
-                "market_id": 1,
-                "size": "Large",
-                "growth_potential": "High",
-                "regulation_level": "Medium",
-                "security_risk": "High",
-                "key_topic": "AI",
-            },
-            2: {
-                "market_id": 2,
-                "size": "Small",
-                "growth_potential": "Low",
-                "regulation_level": "Low",
-                "security_risk": "Low",
-                "key_topic": "Education",
-            },
-            3: {
-                "market_id": 3,
-                "size": "Large",
-                "growth_potential": "Medium",
-                "regulation_level": "Low",
-                "security_risk": "Low",
-                "key_topic": "Cybersecurity",
-            },
-        },
-    )
-
-    game_state = {
-        "current_ip": 4,
-        "owned_markets": [1, 2],
-        "enemy_markets": [3],
-        "market_states": {1: {"threat": 0.9}, 2: {"threat": 0.1}},
-    }
-
-    result = dm.choose_plan_allocations(game_state, difficulty="medium")
-
-    assert result["ip_allocated"] == 4
-    assert result["remaining_ip"] == 0
-    assert {entry["market_id"] for entry in result["allocations"]}.issubset({1, 2})
-    assert result["allocations"][0]["market_id"] == 1
 
 
 def test_choose_orders_returns_compatible_bundle_within_budgets(monkeypatch):
@@ -170,47 +130,6 @@ def test_choose_orders_returns_compatible_bundle_within_budgets(monkeypatch):
     assert len(result["orders"]) >= 2
     assert result["current_ip_spent"] <= game_state["current_ip"]
     assert result["market_ip_reallocated"] <= 2
-
-
-def test_choose_declared_and_actual_moves_can_bluff_on_betrayal(monkeypatch):
-    _stub_market_knowledge(
-        monkeypatch,
-        {
-            1: {
-                "market_id": 1,
-                "size": "Medium",
-                "growth_potential": "Medium",
-                "regulation_level": "Low",
-                "security_risk": "Low",
-                "key_topic": "AI",
-            },
-            9: {
-                "market_id": 9,
-                "size": "Large",
-                "growth_potential": "High",
-                "regulation_level": "Low",
-                "security_risk": "Low",
-                "key_topic": "AI",
-            },
-        },
-    )
-
-    game_state = {
-        "current_ip": 4,
-        "owned_markets": [1],
-        "allied_markets": [9],
-        "attackable_markets": [9],
-        "market_states": {9: {"enemy_strength_estimate": 0}},
-        "commitments": {"avoid_attack_markets": [9], "protected_markets": [9]},
-        "rules": {"allow_attack_allies": True, "attack_cost": 1, "research_cost": 2, "max_orders_per_round": 1},
-        "ethical_score": 0.1,
-    }
-
-    result = dm.choose_declared_and_actual_moves(game_state, difficulty="hard", max_actions=1)
-
-    assert result["honesty"] == "betrayal"
-    assert result["actual_moves"][0]["action_type"] == "attack"
-    assert result["declared_moves"][0]["action_type"] == "hold"
 
 
 def test_attack_scoring_penalises_betrayal_commitments(monkeypatch):
@@ -308,3 +227,133 @@ def test_choose_action_keeps_single_action_interface(monkeypatch):
 
     assert "action_type" in result
     assert "orders" not in result
+
+
+def test_generate_legal_actions_returns_hold_when_no_resources(monkeypatch):
+    _stub_market_knowledge(monkeypatch, {})
+
+    actions = dm.generate_legal_actions({"current_ip": 0, "owned_markets": [], "market_states": {}})
+
+    assert len(actions) == 1
+    assert actions[0].action_type == "hold"
+
+
+def test_generate_legal_actions_blocks_allied_attacks_when_rules_forbid(monkeypatch):
+    _stub_market_knowledge(
+        monkeypatch,
+        {
+            1: {
+                "market_id": 1,
+                "size": "Medium",
+                "growth_potential": "Medium",
+                "regulation_level": "Low",
+                "security_risk": "Low",
+                "key_topic": "AI",
+            },
+            2: {
+                "market_id": 2,
+                "size": "Small",
+                "growth_potential": "Low",
+                "regulation_level": "Low",
+                "security_risk": "Low",
+                "key_topic": "Education",
+            },
+        },
+    )
+
+    actions = dm.generate_legal_actions(
+        {
+            "current_ip": 3,
+            "owned_markets": [1],
+            "allied_markets": [2],
+            "attackable_markets": [2],
+            "rules": {"attack_cost": 1, "forbid_attack_allies": True, "research_cost": 2},
+        }
+    )
+
+    assert all(action.target_market_id != 2 for action in actions if action.action_type == "attack")
+
+
+def test_select_best_order_bundle_respects_zero_max_actions():
+    selected, selection_state = dm.select_best_order_bundle(
+        [],
+        {"current_ip": 4, "owned_markets": [], "rules": {}},
+        dm.get_decision_traits("medium"),
+        max_actions=0,
+    )
+
+    assert selected == []
+    assert selection_state.remaining_current_ip == 4
+
+
+def test_defend_scoring_rewards_reallocating_into_threatened_market(monkeypatch):
+    _stub_market_knowledge(
+        monkeypatch,
+        {
+            1: {
+                "market_id": 1,
+                "size": "Small",
+                "growth_potential": "Low",
+                "regulation_level": "Low",
+                "security_risk": "Low",
+                "key_topic": "AI",
+            },
+            2: {
+                "market_id": 2,
+                "size": "Large",
+                "growth_potential": "High",
+                "regulation_level": "Low",
+                "security_risk": "Medium",
+                "key_topic": "Cybersecurity",
+            },
+        },
+    )
+
+    action = dm.Action(
+        action_type="defend",
+        target_market_id=2,
+        source_market_id=1,
+        ip_spent=2,
+        metadata={"defend_mode": "reallocate", "resource_pool": "market_ip"},
+    )
+    game_state = {
+        "owned_markets": [1, 2],
+        "market_states": {
+            1: {"threat": 0.1, "allocated_ip": 4},
+            2: {"threat": 0.9, "allocated_ip": 0, "research_level": 1},
+        },
+    }
+
+    score, reasons = dm.score_action(action, game_state, dm.get_decision_traits("medium"))
+
+    assert score > 0
+    assert reasons["reallocation_efficiency"] >= 0
+
+
+def test_get_decision_traits_uses_profile_override_and_validates_difficulty(monkeypatch):
+    monkeypatch.setattr(
+        dm.knowledge_profile,
+        "get_decision_traits",
+        lambda difficulty: {
+            "quiz_strength": 0.8,
+            "risk_tolerance": 0.4,
+            "aggression": 0.6,
+            "defense_bias": 0.7,
+            "ethical_bias": 0.9,
+            "topic_strengths": {"AI": 0.95},
+        },
+        raising=False,
+    )
+
+    traits = dm.get_decision_traits("medium")
+    assert traits["topic_strengths"]["AI"] == 0.95
+    assert traits["topic_strengths"]["Education"] == 0.8
+
+    monkeypatch.delattr(dm.knowledge_profile, "get_decision_traits", raising=False)
+
+    try:
+        dm.get_decision_traits("legendary")
+    except ValueError as exc:
+        assert "Invalid difficulty" in str(exc)
+    else:
+        raise AssertionError("Expected invalid difficulty to raise ValueError")

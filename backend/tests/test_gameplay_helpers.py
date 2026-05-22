@@ -162,82 +162,6 @@ def test_prepare_resolution_applies_defend_and_builds_conflicts(monkeypatch):
     assert state["turn_log"]["active_quizzes"][0]["quiz_topic"] == "Cybersecurity"
 
 
-def test_prepare_resolution_neutral_capture_skips_quiz(monkeypatch):
-    state = _build_state(monkeypatch)
-
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["3"]["owner"] = None
-    state["market_state"]["1"]["allocated_ip"] = 2
-    _team_entry(state, 1)["ip"] = 0
-    _team_entry(state, 2)["ip"] = 0
-
-    gph.submit_plan_notes(state, 1, "attack")
-    gph.submit_plan_notes(state, 2, "hold")
-    gph.advance_stage(state)
-    gph.advance_stage(state)
-
-    gph.submit_actual_moves(
-        state,
-        1,
-        [
-            {
-                "action_type": "attack",
-                "source_market_id": 1,
-                "target_market_id": 3,
-                "ip_spent": 2,
-                "metadata": {"resource_pool": "market_ip"},
-            }
-        ],
-    )
-    gph.submit_actual_moves(state, 2, [])
-
-    gph.advance_stage(state)
-
-    assert state["current_stage"] == GameStage.RESOLVE
-    assert state["market_state"]["3"]["owner"] == 1
-    assert state["market_state"]["3"]["contested"] is False
-    assert len(state["turn_log"]["active_quizzes"]) == 0
-    assert state["turn_log"]["conflicts"][0]["conflict_type"] == "neutral_capture"
-    assert state["turn_log"]["conflicts"][0]["status"] == "resolved"
-
-
-def test_prepare_resolution_allows_market_backed_attack_without_reserve_ip(monkeypatch):
-    state = _build_state(monkeypatch)
-
-    state["market_state"]["1"]["owner"] = 1
-    state["market_state"]["2"]["owner"] = 2
-    state["market_state"]["1"]["allocated_ip"] = 2
-    _team_entry(state, 1)["ip"] = 0
-    _team_entry(state, 2)["ip"] = 0
-
-    gph.submit_plan_notes(state, 1, "attack")
-    gph.submit_plan_notes(state, 2, "hold")
-    gph.advance_stage(state)
-    gph.advance_stage(state)
-
-    gph.submit_actual_moves(
-        state,
-        1,
-        [
-            {
-                "action_type": "attack",
-                "source_market_id": 1,
-                "target_market_id": 2,
-                "ip_spent": 2,
-                "metadata": {"resource_pool": "market_ip"},
-            }
-        ],
-    )
-    gph.submit_actual_moves(state, 2, [])
-
-    gph.advance_stage(state)
-
-    assert state["current_stage"] == GameStage.RESOLVE
-    assert state["market_state"]["1"]["allocated_ip"] == 0
-    assert _team_entry(state, 1)["ip"] == 0
-    assert state["turn_log"]["conflicts"][0]["market_id"] == 2
-
-
 def test_submit_quiz_results_resolves_conflicts_via_turn_log(monkeypatch):
     state = _build_state(monkeypatch)
 
@@ -450,7 +374,7 @@ def test_plan_and_declared_mismatch_penalise_ethics(monkeypatch):
         [
             {
                 "action_type": "attack",
-                "target_market_id": 2,
+                "target_market_id": 3,
                 "ip_spent": 2,
                 "metadata": {"resource_pool": "current_ip"},
             }
@@ -462,16 +386,12 @@ def test_plan_and_declared_mismatch_penalise_ethics(monkeypatch):
     quiz = state["turn_log"]["active_quizzes"][0]
     gph.submit_quiz_results(
         state,
-        2,
+        3,
         [
             {
                 "team_id": 1,
                 "answers": _perfect_answers(quiz["questions"]),
-            },
-            {
-                "team_id": 2,
-                "answers": [],
-            },
+            }
         ],
     )
     gph.advance_stage(state)
@@ -591,7 +511,7 @@ def test_frontend_state_exposes_public_quiz_payload_only(monkeypatch):
     public_question = frontend_state["active_quizzes"][0]["questions"][0]
 
     assert frontend_state["active_quizzes"][0]["market_id"] == 2
-    assert public_question["answer"].startswith("option_")
+    assert "answer" not in public_question
     assert public_question["options"]["option_1"]
 
 

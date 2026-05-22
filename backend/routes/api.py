@@ -118,6 +118,13 @@ def start_game():
         game_mode = str(data.get("mode") or "full").strip().lower()
         difficulty = str(data.get("difficulty") or "medium").strip().lower()
 
+        # clean up any existing game state before starting a new game to prevent conflicts
+        if os.path.exists(gameplay_helpers.GAME_STATE_PATH):
+            try:
+                os.remove(gameplay_helpers.GAME_STATE_PATH)
+            except OSError as e:
+                print(f"Error cleaning up old game state: {e}")
+
         state = game_service.create_game(
             teams=teams,
             game_mode=game_mode,
@@ -209,7 +216,6 @@ def submit_declared_moves_endpoint():
     except Exception as exc:
         return _server_error(exc)
 
-
 @api.route("/api/game/alliance-intent", methods=["POST"])
 def submit_alliance_intent_endpoint():
     try:
@@ -224,7 +230,6 @@ def submit_alliance_intent_endpoint():
         return _client_error(exc)
     except Exception as exc:
         return _server_error(exc)
-
 
 @api.route("/api/game/orders", methods=["POST"])
 @api.route("/api/game/move", methods=["POST"])
@@ -425,7 +430,7 @@ def _stage_name(raw_stage: Any) -> str:
 def _normalise_team_payload(teams: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalised: list[dict[str, Any]] = []
     for index, team in enumerate(teams, start=1):
-        name = str(team.get("name") or f"Team {index}").strip()
+        name = (team.get("name") or f"Team {index}").strip()
         colour = str(team.get("colour") or "#467096").strip()
         normalised.append(
             {

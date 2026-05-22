@@ -66,7 +66,7 @@ export async function fetchGameState() {
         updateStageIndicator();
         updateBoardNarration(currentBackendState);
         showGameUI();
-        maybeNavigateToStagePage(currentBackendState);
+        // maybeNavigateToStagePage(currentBackendState);
 
         console.log("Backend state synced:", currentBackendState);
         return currentBackendState;
@@ -1526,6 +1526,7 @@ async function fetchBoardCommentary(state, fallbackText) {
         (state.alliances || []).length,
         (state.resolution_outcomes || []).length,
         (state.active_quizzes || []).length,
+        Date.now() // force AI to re-generate response
     ].join(":");
 
     if (commentaryState.lastKey === commentaryKey && commentaryState.lastText) {

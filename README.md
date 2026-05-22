@@ -41,7 +41,8 @@ Once setup is complete, you can launch both the backend and frontend simultaneou
 
 1. Open a terminal in the root `project` folder.
 2. Ensure your virtual environment is activated (see the Python setup bullet point [above](#first-time-setup))
-3. Run the master launcher:
+3. **If needed:** Delete any pre-existing `game_state.json` files from the `backend/` directory, so as to forget the previous game state.
+4. Run the master launcher:
 ```bash
    npm run dev
 ```
